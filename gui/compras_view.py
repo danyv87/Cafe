@@ -8,7 +8,7 @@ from controllers.materia_prima_controller import listar_materias_primas, obtener
 def mostrar_ventana_compras():
     ventana = tk.Toplevel()
     ventana.title("Registrar Compra de Materia Prima")
-    ventana.geometry("700x750")  # Ajusta el tamaño para acomodar los nuevos elementos
+    ventana.geometry("800x850")  # Ajusta el tamaño para acomodar los nuevos elementos
 
     # --- Variables para el control de edición ---
     # Almacena el índice del ítem seleccionado en lista_compra para editar
@@ -27,6 +27,9 @@ def mostrar_ventana_compras():
     entry_buscar_mp.pack()
 
     tk.Label(ventana, text="Materias Primas disponibles:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
+    # Mensaje de clarificación para el usuario
+    tk.Label(ventana, text="Para comprar nuevas materias primas, regístralas primero en 'Gestionar Materias Primas'.",
+             font=("Helvetica", 9, "italic"), fg="gray").pack(pady=(0, 5))
 
     # Frame para el Listbox de materias primas y su Scrollbar
     frame_mp_list = tk.Frame(ventana)

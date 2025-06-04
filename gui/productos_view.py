@@ -5,19 +5,25 @@ from controllers.productos_controller import listar_productos, agregar_producto,
 def mostrar_ventana_productos():
     ventana = tk.Toplevel()
     ventana.title("Gestión de Productos")
-    ventana.geometry("600x500") # Ajusta el tamaño para acomodar los nuevos botones y campos
+    ventana.geometry("600x650") # Ajusta el tamaño para acomodar los nuevos textos guía
+    ventana.resizable(False, False) # Hacer la ventana no redimensionable
 
     # --- Variables para los campos de edición ---
     producto_seleccionado_id = tk.StringVar()
 
     # --- Widgets de la Interfaz ---
 
+    # Título principal
+    tk.Label(ventana, text="Gestión de Productos", font=("Helvetica", 16, "bold")).pack(pady=(15, 5))
+    tk.Label(ventana, text="Aquí puede administrar los productos de su cafetería.", font=("Helvetica", 10, "italic"), fg="gray").pack(pady=(0, 10))
+
+
     # Frame para la lista de productos
     frame_lista = tk.Frame(ventana)
-    frame_lista.pack(pady=10, fill=tk.BOTH, expand=True)
+    frame_lista.pack(pady=10, fill=tk.BOTH, expand=True, padx=10) # Añadir padx
 
     scrollbar = tk.Scrollbar(frame_lista, orient=tk.VERTICAL)
-    lista = tk.Listbox(frame_lista, width=70, yscrollcommand=scrollbar.set, exportselection=False)
+    lista = tk.Listbox(frame_lista, width=70, height=10, yscrollcommand=scrollbar.set, exportselection=False) # Aumentar altura
     scrollbar.config(command=lista.yview)
 
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -25,27 +31,31 @@ def mostrar_ventana_productos():
 
     # Frame para el formulario de Agregar
     frame_form_agregar = tk.LabelFrame(ventana, text="Agregar Nuevo Producto", padx=10, pady=10)
-    frame_form_agregar.pack(pady=10, fill=tk.X)
+    frame_form_agregar.pack(pady=10, fill=tk.X, padx=10) # Añadir padx
 
-    tk.Label(frame_form_agregar, text="Nombre:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Complete los campos para añadir un nuevo producto al sistema.", font=("Helvetica", 9, "italic"), fg="gray").grid(row=0, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
+
+    tk.Label(frame_form_agregar, text="Nombre:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
     entry_nombre = tk.Entry(frame_form_agregar, width=40)
-    entry_nombre.grid(row=0, column=1, padx=5, pady=2)
+    entry_nombre.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_agregar, text="Precio (Gs):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Precio (Gs):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
     entry_precio = tk.Entry(frame_form_agregar, width=40)
-    entry_precio.grid(row=1, column=1, padx=5, pady=2)
+    entry_precio.grid(row=2, column=1, padx=5, pady=2)
 
     # Frame para el formulario de Editar/Eliminar
     frame_form_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Producto Seleccionado", padx=10, pady=10)
-    frame_form_editar.pack(pady=10, fill=tk.X)
+    frame_form_editar.pack(pady=10, fill=tk.X, padx=10) # Añadir padx
 
-    tk.Label(frame_form_editar, text="Nombre:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_editar, text="Seleccione un producto de la lista superior para editar o eliminar.", font=("Helvetica", 9, "italic"), fg="gray").grid(row=0, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
+
+    tk.Label(frame_form_editar, text="Nombre:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
     entry_nombre_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
-    entry_nombre_editar.grid(row=0, column=1, padx=5, pady=2)
+    entry_nombre_editar.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_editar, text="Precio (Gs):").grid(row=1, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_editar, text="Precio (Gs):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
     entry_precio_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
-    entry_precio_editar.grid(row=1, column=1, padx=5, pady=2)
+    entry_precio_editar.grid(row=2, column=1, padx=5, pady=2)
 
     # --- Funciones (definidas DESPUÉS de los widgets que usan) ---
 
@@ -106,6 +116,10 @@ def mostrar_ventana_productos():
         try:
             seleccion_indices = lista.curselection()
             if not seleccion_indices:
+                # Limpiar campos si no hay selección o la selección se desactiva
+                producto_seleccionado_id.set("")
+                entry_nombre_editar.delete(0, tk.END)
+                entry_precio_editar.delete(0, tk.END)
                 return
 
             linea_seleccionada = lista.get(seleccion_indices[0])
@@ -206,10 +220,10 @@ def mostrar_ventana_productos():
         else:
             messagebox.showinfo("Cancelado", "Eliminación de producto cancelada.")
 
-    # --- Vinculación de Eventos y Carga Inicial ---
-    tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(row=2, column=0, columnspan=2, pady=5)
-    tk.Button(frame_form_editar, text="Editar Producto", command=editar, width=20, bg="lightblue").grid(row=2, column=0, pady=5, padx=5)
-    tk.Button(frame_form_editar, text="Eliminar Producto", command=eliminar, width=20, bg="lightcoral").grid(row=2, column=1, pady=5, padx=5)
+    # --- Botones de acción ---
+    tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(row=3, column=0, columnspan=2, pady=5)
+    tk.Button(frame_form_editar, text="Editar Producto", command=editar, width=20, bg="lightblue").grid(row=3, column=0, pady=5, padx=5)
+    tk.Button(frame_form_editar, text="Eliminar Producto", command=eliminar, width=20, bg="lightcoral").grid(row=3, column=1, pady=5, padx=5)
 
     lista.bind("<<ListboxSelect>>", seleccionar_producto) # Vincula el evento de selección
 
