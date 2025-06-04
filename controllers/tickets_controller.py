@@ -1,13 +1,15 @@
 import json
 import os
-from models.ticket import Ticket # Importa el nuevo modelo Ticket
-from models.venta_detalle import VentaDetalle # Importa el modelo VentaDetalle
-from controllers.productos_controller import listar_productos # Todavía necesitamos los productos
+from datetime import datetime
+from collections import defaultdict # Importa defaultdict para facilitar la suma
+from models.ticket import Ticket
+from models.venta_detalle import VentaDetalle
+from controllers.productos_controller import listar_productos
 
-DATA_PATH = "data/tickets.json" # La ruta de datos ahora apunta a tickets.json
+DATA_PATH = "data/tickets.json"
 
 
-def cargar_tickets(): # Renombrada de cargar_ventas
+def cargar_tickets():
     """
     Carga la lista de tickets desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
@@ -17,24 +19,21 @@ def cargar_tickets(): # Renombrada de cargar_ventas
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Convierte los diccionarios cargados en objetos Ticket
             return [Ticket.from_dict(t) for t in data]
     except json.JSONDecodeError:
-        # Maneja el caso de un archivo JSON vacío o malformado
         print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
         return []
 
 
-def guardar_tickets(tickets): # Renombrada de guardar_ventas
+def guardar_tickets(tickets):
     """
     Guarda la lista de objetos Ticket en el archivo JSON.
     """
     with open(DATA_PATH, "w", encoding="utf-8") as f:
-        # Convierte los objetos Ticket a diccionarios para guardarlos como JSON
         json.dump([t.to_dict() for t in tickets], f, indent=4)
 
 
-def registrar_ticket(cliente, items_venta_detalle): # Nueva función para registrar un ticket completo
+def registrar_ticket(cliente, items_venta_detalle):
     """
     Registra un nuevo ticket de venta con múltiples ítems.
     Args:
@@ -52,25 +51,97 @@ def registrar_ticket(cliente, items_venta_detalle): # Nueva función para regist
 
     tickets = cargar_tickets()
     nuevo_ticket = Ticket(
-        cliente=cliente.strip(), # Elimina espacios en blanco del nombre del cliente
-        items_venta=items_venta_detalle # La lista de VentaDetalle
+        cliente=cliente.strip(),
+        items_venta=items_venta_detalle
     )
     tickets.append(nuevo_ticket)
     guardar_tickets(tickets)
     return nuevo_ticket
 
 
-def listar_tickets(): # Renombrada de listar_ventas
+def listar_tickets():
     """
     Retorna la lista completa de tickets.
     """
     return cargar_tickets()
 
 
-def total_vendido_tickets(): # Renombrada de total_vendido
+def total_vendido_tickets():
     """
     Calcula y retorna el total de todas las ventas registradas en todos los tickets.
     """
     tickets = cargar_tickets()
     return round(sum(t.total for t in tickets), 2)
 
+def obtener_ventas_por_mes():
+    """
+    Calcula el total de ventas agrupadas por mes y año.
+    Retorna una lista de tuplas (mes_año, total_vendido_ese_mes) ordenada cronológicamente,
+    con el total formateado con separador de miles y signo de moneda.
+    Ejemplo: [('2023-01', 'Gs 150.000,00'), ('2023-02', 'Gs 200.000,00')]
+    """
+    tickets = cargar_tickets()
+    ventas_mensuales = defaultdict(float) # Usamos defaultdict para sumar fácilmente los totales por mes
+
+    for ticket in tickets:
+        try:
+            # Parseamos la fecha del ticket para obtener el mes y año
+            fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
+            mes_año = fecha_dt.strftime("%Y-%m") # Formato "YYYY-MM"
+            ventas_mensuales[mes_año] += ticket.total
+        except ValueError:
+            # Si la fecha del ticket no tiene el formato esperado, la ignoramos o manejamos el error
+            print(f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas mensuales.")
+            continue
+        except Exception as e:
+            print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")
+            continue
+
+    # Convertimos el defaultdict a una lista de tuplas y la ordenamos cronológicamente
+    ventas_ordenadas = sorted(ventas_mensuales.items())
+
+    # Formatear los totales con separador de miles (punto) y decimales (coma), y signo de moneda "Gs "
+    formatted_ventas = []
+    for mes_año, total in ventas_ordenadas:
+        # Formatear con separador de miles y dos decimales, luego ajustar los separadores
+        # Ejemplo: 150000.00 -> "150,000.00" (usando locale por defecto)
+        # Luego, reemplazamos la coma por 'X' (temporal), el punto por coma, y 'X' por punto.
+        # Esto convierte "150,000.00" a "150.000,00"
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_ventas.append((mes_año, f"Gs {total_str}"))
+
+    return formatted_ventas
+
+def obtener_ventas_por_semana():
+    """
+    Calcula el total de ventas agrupadas por semana y año.
+    La semana se representa como 'YYYY-WNN' (Año-Número de Semana).
+    Retorna una lista de tuplas (semana_año, total_vendido_esa_semana) ordenada cronológicamente,
+    con el total formateado con separador de miles y signo de moneda.
+    Ejemplo: [('2023-W01', 'Gs 75.000,00'), ('2023-W02', 'Gs 100.000,00')]
+    """
+    tickets = cargar_tickets()
+    ventas_semanales = defaultdict(float)
+
+    for ticket in tickets:
+        try:
+            fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
+            # %G: Año ISO, %V: Número de semana ISO (01-53), %u: Día de la semana ISO (1 para lunes)
+            # Usamos %G-W%V para obtener el formato Año-Semana
+            semana_año = fecha_dt.strftime("%G-W%V")
+            ventas_semanales[semana_año] += ticket.total
+        except ValueError:
+            print(f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas semanales.")
+            continue
+        except Exception as e:
+            print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")
+            continue
+
+    ventas_ordenadas = sorted(ventas_semanales.items())
+
+    formatted_ventas = []
+    for semana_año, total in ventas_ordenadas:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_ventas.append((semana_año, f"Gs {total_str}"))
+
+    return formatted_ventas

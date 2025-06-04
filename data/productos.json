@@ -23,5 +23,10 @@
         "id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
         "nombre": "Medialunas con relleno de dulce de leche",
         "precio_unitario": 7000.0
+    },
+    {
+        "id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+        "nombre": "Medialunas con relleno de dulce de guayaba",
+        "precio_unitario": 7000.0
     }
 ]
