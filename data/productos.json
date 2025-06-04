@@ -1,0 +1,27 @@
+[
+    {
+        "id": "0193e1f6-6e81-4b1c-b9d9-402424916c7f",
+        "nombre": "medialunas de dulce de leche",
+        "precio_unitario": 6000.0
+    },
+    {
+        "id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre": "alfajor",
+        "precio_unitario": 5000.0
+    },
+    {
+        "id": "4c11be36-3200-48d6-94da-c16fdd6f7da6",
+        "nombre": "pastafrola (porci\u00f3n)",
+        "precio_unitario": 7000.0
+    },
+    {
+        "id": "c405d3db-b788-4ec9-972b-b76a86f4781d",
+        "nombre": "mbeju",
+        "precio_unitario": 15000.0
+    },
+    {
+        "id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+        "nombre": "Medialunas con relleno de dulce de leche",
+        "precio_unitario": 7000.0
+    }
+]

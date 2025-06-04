@@ -1,0 +1,90 @@
+[
+    {
+        "fecha": "2025-06-03 15:56:51",
+        "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre_producto": "alfajor",
+        "cantidad": 5,
+        "precio_unitario": 5000.0,
+        "total": 25000.0
+    },
+    {
+        "fecha": "2025-06-03 15:56:56",
+        "producto_id": "0193e1f6-6e81-4b1c-b9d9-402424916c7f",
+        "nombre_producto": "medialunas de dulce de leche",
+        "cantidad": 5,
+        "precio_unitario": 6000.0,
+        "total": 30000.0
+    },
+    {
+        "fecha": "2025-06-03 16:03:34",
+        "producto_id": "4c11be36-3200-48d6-94da-c16fdd6f7da6",
+        "nombre_producto": "pastafrola (porci\u00f3n)",
+        "cantidad": 10,
+        "precio_unitario": 7000.0,
+        "total": 70000.0
+    },
+    {
+        "fecha": "2025-06-03 16:09:37",
+        "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre_producto": "alfajor",
+        "cantidad": 5,
+        "precio_unitario": 5000.0,
+        "total": 25000.0
+    },
+    {
+        "fecha": "2025-06-03 16:09:37",
+        "producto_id": "0193e1f6-6e81-4b1c-b9d9-402424916c7f",
+        "nombre_producto": "medialunas de dulce de leche",
+        "cantidad": 10,
+        "precio_unitario": 6000.0,
+        "total": 60000.0
+    },
+    {
+        "fecha": "2025-06-03 18:14:10",
+        "producto_id": "c405d3db-b788-4ec9-972b-b76a86f4781d",
+        "nombre_producto": "mbeju",
+        "cantidad": 2,
+        "precio_unitario": 15000.0,
+        "total": 30000.0
+    },
+    {
+        "fecha": "2025-06-03 18:14:10",
+        "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre_producto": "alfajor",
+        "cantidad": 5,
+        "precio_unitario": 5000.0,
+        "total": 25000.0
+    },
+    {
+        "fecha": "2025-06-03 18:43:15",
+        "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre_producto": "alfajor",
+        "cantidad": 10,
+        "precio_unitario": 5000.0,
+        "total": 50000.0
+    },
+    {
+        "fecha": "2025-06-03 18:43:15",
+        "producto_id": "c405d3db-b788-4ec9-972b-b76a86f4781d",
+        "nombre_producto": "mbeju",
+        "cantidad": 10,
+        "precio_unitario": 15000.0,
+        "total": 150000.0
+    },
+    {
+        "fecha": "2025-06-03 20:51:20",
+        "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+        "nombre_producto": "alfajor",
+        "cantidad": 2,
+        "precio_unitario": 5000.0,
+        "total": 10000.0
+    },
+    {
+        "fecha": "2025-06-03 20:51:20",
+        "producto_id": "c405d3db-b788-4ec9-972b-b76a86f4781d",
+        "nombre_producto": "mbeju",
+        "cantidad": 1,
+        "precio_unitario": 15000.0,
+        "total": 15000.0
+    }
+]
