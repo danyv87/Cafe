@@ -2,11 +2,14 @@ import uuid
 from datetime import datetime
 
 class Receta:
-    def __init__(self, producto_id, producto_nombre, ingredientes=None, id=None):
+    def __init__(self, producto_id, nombre_producto, ingredientes=None, rendimiento=None, id=None):
         self.id = id or str(uuid.uuid4()) # ID único para la receta
-        self.producto_id = producto_id # ID del producto al que pertenece esta receta
-        self.producto_nombre = producto_nombre # ¡Nuevo atributo: nombre del producto!
-        self.ingredientes = ingredientes if ingredientes is not None else [] # Lista de diccionarios de ingredientes
+        self.producto_id = producto_id # ID del producto terminado al que pertenece esta receta
+        self.nombre_producto = nombre_producto # Nombre del producto terminado
+        # ingredientes será una lista de diccionarios, ej:
+        # [{"materia_prima_id": "uuid1", "nombre_materia_prima": "Granos de Café", "cantidad_necesaria": 20, "unidad_medida": "gramos"}]
+        self.ingredientes = ingredientes if ingredientes is not None else []
+        self.rendimiento = rendimiento # Nuevo atributo para el rendimiento de la receta (ej. número de unidades)
 
     def to_dict(self):
         """
@@ -15,8 +18,9 @@ class Receta:
         return {
             "id": self.id,
             "producto_id": self.producto_id,
-            "producto_nombre": self.producto_nombre, # Incluir en la serialización
-            "ingredientes": self.ingredientes
+            "nombre_producto": self.nombre_producto,
+            "ingredientes": self.ingredientes, # Los ingredientes ya son diccionarios
+            "rendimiento": self.rendimiento # Incluir el rendimiento en el diccionario
         }
 
     @staticmethod
@@ -27,7 +31,7 @@ class Receta:
         return Receta(
             id=data.get("id"),
             producto_id=data.get("producto_id"),
-            producto_nombre=data.get("producto_nombre"), # Incluir en la deserialización
-            ingredientes=data.get("ingredientes", [])
+            nombre_producto=data.get("nombre_producto"),
+            ingredientes=data.get("ingredientes", []),
+            rendimiento=data.get("rendimiento") # Obtener el rendimiento del diccionario
         )
-

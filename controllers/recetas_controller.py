@@ -2,16 +2,14 @@ import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 from models.receta import Receta  # Importa el modelo Receta
-# Las siguientes importaciones se moverán dentro de las funciones para evitar el ciclo de importación
-# from controllers.productos_controller import listar_productos, obtener_producto_por_id
+from controllers.productos_controller import listar_productos, obtener_producto_por_id  # Para verificar productos
 from controllers.materia_prima_controller import listar_materias_primas, \
-    obtener_materia_prima_por_id  # Esta importación está bien
+    obtener_materia_prima_por_id  # Para verificar materias primas
 
-# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
+# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     BASE_PATH = sys._MEIPASS
 else:
-    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 DATA_PATH = os.path.join(BASE_PATH, "data", "recetas.json")
@@ -82,21 +80,32 @@ def validar_ingredientes_receta(ingredientes):
     return True, ""
 
 
-def agregar_receta(producto_id, nombre_producto, ingredientes):
+def validar_receta_completa(ingredientes, rendimiento):
+    """
+    Valida los ingredientes y el rendimiento de una receta.
+    """
+    es_valido_ingredientes, mensaje_ingredientes = validar_ingredientes_receta(ingredientes)
+    if not es_valido_ingredientes:
+        return False, mensaje_ingredientes
+
+    if rendimiento is None or not isinstance(rendimiento, (int, float)) or rendimiento <= 0:
+        return False, "El rendimiento de la receta debe ser un número positivo."
+
+    return True, ""
+
+
+def agregar_receta(producto_id, nombre_producto, ingredientes, rendimiento):
     """
     Agrega una nueva receta a la lista y la guarda.
-    Valida que el producto exista y que los ingredientes sean válidos.
+    Valida que el producto exista, que los ingredientes sean válidos y el rendimiento.
     """
-    # Importación local para evitar el ciclo de dependencia
-    from controllers.productos_controller import obtener_producto_por_id
-
     # 1. Validar que el producto al que se asigna la receta exista
     producto = obtener_producto_por_id(producto_id)
     if not producto:
         raise ValueError(f"Producto con ID '{producto_id}' no encontrado. No se puede crear la receta.")
 
-    # 2. Validar los ingredientes de la receta
-    es_valido, mensaje_error = validar_ingredientes_receta(ingredientes)
+    # 2. Validar los ingredientes y el rendimiento de la receta
+    es_valido, mensaje_error = validar_receta_completa(ingredientes, rendimiento)
     if not es_valido:
         raise ValueError(mensaje_error)
 
@@ -107,7 +116,7 @@ def agregar_receta(producto_id, nombre_producto, ingredientes):
         if r.producto_id == producto_id:
             raise ValueError(f"Ya existe una receta para el producto '{nombre_producto}'. Edítela en su lugar.")
 
-    nueva_receta = Receta(producto_id, nombre_producto, ingredientes)
+    nueva_receta = Receta(producto_id, nombre_producto, ingredientes, rendimiento)
     recetas.append(nueva_receta)
     guardar_recetas(recetas)
     return nueva_receta
@@ -132,26 +141,20 @@ def obtener_receta_por_producto_id(producto_id):
     return None
 
 
-def editar_receta(receta_id, nuevos_ingredientes):
+def editar_receta(receta_id, nuevos_ingredientes, nuevo_rendimiento):
     """
     Edita una receta existente por su ID.
-    Valida los nuevos ingredientes.
+    Valida los nuevos ingredientes y el rendimiento.
     """
-    # Importación local para evitar el ciclo de dependencia
-    from controllers.productos_controller import obtener_producto_por_id
-
-    es_valido, mensaje_error = validar_ingredientes_receta(nuevos_ingredientes)
+    es_valido, mensaje_error = validar_receta_completa(nuevos_ingredientes, nuevo_rendimiento)
     if not es_valido:
         raise ValueError(mensaje_error)
 
     recetas = cargar_recetas()
     for i, r in enumerate(recetas):
         if r.id == receta_id:
-            # Al editar, también actualizamos el nombre del producto por si ha cambiado en el producto original
-            producto_asociado = obtener_producto_por_id(r.producto_id)
-            if producto_asociado:
-                recetas[i].producto_nombre = producto_asociado.nombre
             recetas[i].ingredientes = nuevos_ingredientes
+            recetas[i].rendimiento = nuevo_rendimiento  # Actualizar el rendimiento
             guardar_recetas(recetas)
             return recetas[i]
     raise ValueError(f"Receta con ID '{receta_id}' no encontrada para edición.")
