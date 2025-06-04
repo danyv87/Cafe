@@ -1,12 +1,27 @@
 import json
 import os
+import sys # Importar el módulo sys para PyInstaller
 from datetime import datetime
-from collections import defaultdict # Importa defaultdict para facilitar la suma
+from collections import defaultdict
 from models.ticket import Ticket
 from models.venta_detalle import VentaDetalle
 from controllers.productos_controller import listar_productos
 
-DATA_PATH = "data/tickets.json"
+# Determinar la ruta base de la aplicación.
+# sys._MEIPASS es una variable especial que PyInstaller establece
+# y apunta a la carpeta temporal donde se extraen los archivos empaquetados.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Estamos en un ejecutable PyInstaller
+    BASE_PATH = sys._MEIPASS
+else:
+    # Estamos en un entorno de desarrollo normal
+    BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+# Construir la ruta completa al archivo JSON
+DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
+
+# Asegurarse de que la carpeta 'data' exista
+os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
 def cargar_tickets():
@@ -103,10 +118,6 @@ def obtener_ventas_por_mes():
     # Formatear los totales con separador de miles (punto) y decimales (coma), y signo de moneda "Gs "
     formatted_ventas = []
     for mes_año, total in ventas_ordenadas:
-        # Formatear con separador de miles y dos decimales, luego ajustar los separadores
-        # Ejemplo: 150000.00 -> "150,000.00" (usando locale por defecto)
-        # Luego, reemplazamos la coma por 'X' (temporal), el punto por coma, y 'X' por punto.
-        # Esto convierte "150,000.00" a "150.000,00"
         total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
         formatted_ventas.append((mes_año, f"Gs {total_str}"))
 
@@ -127,7 +138,7 @@ def obtener_ventas_por_semana():
         try:
             fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
             # %G: Año ISO, %V: Número de semana ISO (01-53), %u: Día de la semana ISO (1 para lunes)
-            # Usamos %G-W%V para obtener el formato Año-Semana
+            # Usamos %G-%V para obtener el formato Año-Semana
             semana_año = fecha_dt.strftime("%G-W%V")
             ventas_semanales[semana_año] += ticket.total
         except ValueError:

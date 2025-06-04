@@ -1,12 +1,28 @@
 import json
 import os
+import sys # Importar el módulo sys para PyInstaller
 from datetime import datetime
-from collections import defaultdict # Importa defaultdict para facilitar la suma
-from models.compra import Compra # Importa el modelo Compra
-from models.compra_detalle import CompraDetalle # Importa el modelo CompraDetalle
-from controllers.productos_controller import listar_productos, obtener_producto_por_id, guardar_productos # Necesitamos esto para actualizar stock
+from collections import defaultdict
+from models.compra import Compra
+from models.compra_detalle import CompraDetalle
+# No necesitamos productos_controller para la ruta base aquí, pero lo mantenemos si se usa para otras funciones
+from controllers.productos_controller import listar_productos, obtener_producto_por_id, guardar_productos
 
-DATA_PATH = "data/compras.json" # La ruta de datos ahora apunta a compras.json
+# Determinar la ruta base de la aplicación.
+# sys._MEIPASS es una variable especial que PyInstaller establece
+# y apunta a la carpeta temporal donde se extraen los archivos empaquetados.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Estamos en un ejecutable PyInstaller
+    BASE_PATH = sys._MEIPASS
+else:
+    # Estamos en un entorno de desarrollo normal
+    BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+
+# Construir la ruta completa al archivo JSON
+DATA_PATH = os.path.join(BASE_PATH, "data", "compras.json")
+
+# Asegurarse de que la carpeta 'data' exista
+os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
 def cargar_compras():
