@@ -1,17 +1,25 @@
 import json
 import os
-import sys # Importar el módulo sys para PyInstaller
+import sys  # Importar el módulo sys para PyInstaller
 from models.producto import Producto
+
+# Las siguientes importaciones se moverán dentro de las funciones para evitar el ciclo de importación
+# from controllers.recetas_controller import obtener_receta_por_producto_id
+# from controllers.materia_prima_controller import obtener_materia_prima_por_id
 
 # Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Estamos en un ejecutable PyInstaller
     BASE_PATH = sys._MEIPASS
 else:
-    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
+    # Estamos en un entorno de desarrollo normal, la ruta base es el directorio padre
+    # del directorio actual (controllers)
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
+# Construir la ruta completa al archivo JSON
 DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
 
+# Asegurarse de que la carpeta 'data' exista
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
@@ -20,20 +28,22 @@ def cargar_productos():
     Carga la lista de productos desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
-    print(f"DEBUG: Intentando cargar productos desde: {DATA_PATH}") # DEBUG LINE
+    print(f"DEBUG: Intentando cargar productos desde: {DATA_PATH}")  # DEBUG LINE
     if not os.path.exists(DATA_PATH):
-        print(f"DEBUG: Archivo no encontrado: {DATA_PATH}") # DEBUG LINE
+        print(f"DEBUG: Archivo de productos no encontrado: {DATA_PATH}")  # DEBUG LINE
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Productos cargados (raw data): {data}") # DEBUG LINE
+            print(f"DEBUG: Productos cargados (raw data): {data}")  # DEBUG LINE
+            # Convierte los diccionarios cargados en objetos Producto
             return [Producto.from_dict(p) for p in data]
     except json.JSONDecodeError:
+        # Maneja el caso de un archivo JSON vacío o malformado
         print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
         return []
     except Exception as e:
-        print(f"DEBUG: Error inesperado al cargar productos: {e}") # DEBUG LINE
+        print(f"DEBUG: Error inesperado al cargar productos: {e}")  # DEBUG LINE
         return []
 
 
@@ -41,10 +51,12 @@ def guardar_productos(productos):
     """
     Guarda la lista de objetos Producto en el archivo JSON.
     """
-    print(f"DEBUG: Intentando guardar {len(productos)} productos en: {DATA_PATH}") # DEBUG LINE
+    print(f"DEBUG: Intentando guardar {len(productos)} productos en: {DATA_PATH}")  # DEBUG LINE
     with open(DATA_PATH, "w", encoding="utf-8") as f:
+        # Convierte los objetos Producto a diccionarios para guardarlos como JSON
         json.dump([p.to_dict() for p in productos], f, indent=4)
-    print("DEBUG: Productos guardados con éxito.") # DEBUG LINE
+    print("DEBUG: Productos guardados con éxito.")  # DEBUG LINE
+
 
 def validar_producto(nombre, precio_unitario):
     """
@@ -53,11 +65,13 @@ def validar_producto(nombre, precio_unitario):
     """
     if not nombre or not isinstance(nombre, str) or len(nombre.strip()) == 0:
         return False, "El nombre del producto no puede estar vacío."
+    # Asegurarse de que el precio sea un número antes de la validación numérica
     if not isinstance(precio_unitario, (int, float)):
         return False, "El precio unitario debe ser un número."
     if precio_unitario <= 0:
         return False, "El precio unitario debe ser un número positivo."
     return True, ""
+
 
 def agregar_producto(nombre, precio_unitario):
     """
@@ -66,19 +80,21 @@ def agregar_producto(nombre, precio_unitario):
     """
     es_valido, mensaje_error = validar_producto(nombre, precio_unitario)
     if not es_valido:
-        raise ValueError(mensaje_error) # Lanza un error si la validación falla
+        raise ValueError(mensaje_error)  # Lanza un error si la validación falla
 
     productos = cargar_productos()
-    nuevo_producto = Producto(nombre.strip(), precio_unitario) # Elimina espacios en blanco del nombre
+    nuevo_producto = Producto(nombre.strip(), precio_unitario)  # Elimina espacios en blanco del nombre
     productos.append(nuevo_producto)
     guardar_productos(productos)
     return nuevo_producto
+
 
 def listar_productos():
     """
     Retorna la lista completa de productos.
     """
     return cargar_productos()
+
 
 def obtener_producto_por_id(id_producto):
     """
@@ -90,6 +106,7 @@ def obtener_producto_por_id(id_producto):
         if producto.id == id_producto:
             return producto
     return None
+
 
 def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario):
     """
@@ -107,8 +124,9 @@ def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario):
             productos[i].nombre = nuevo_nombre.strip()
             productos[i].precio_unitario = nuevo_precio_unitario
             guardar_productos(productos)
-            return productos[i] # Retorna el producto editado
+            return productos[i]  # Retorna el producto editado
     raise ValueError(f"Producto con ID '{id_producto}' no encontrado para edición.")
+
 
 def eliminar_producto(id_producto):
     """
@@ -124,4 +142,56 @@ def eliminar_producto(id_producto):
         raise ValueError(f"Producto con ID '{id_producto}' no encontrado para eliminación.")
 
     guardar_productos(productos)
-    return True # Retorna True si la eliminación fue exitosa
+    return True  # Retorna True si la eliminación fue exitosa
+
+
+def calcular_costo_produccion_producto(producto_id):
+    """
+    Calcula el costo total de las materias primas necesarias para producir una unidad de un producto.
+    Retorna el costo de producción o 0 si no hay receta o materias primas.
+    """
+    # Importaciones locales para evitar el ciclo de dependencia
+    from controllers.recetas_controller import obtener_receta_por_producto_id
+    from controllers.materia_prima_controller import obtener_materia_prima_por_id
+
+    receta = obtener_receta_por_producto_id(producto_id)
+    if not receta or not receta.ingredientes:
+        return 0  # No hay receta o no tiene ingredientes, costo de producción es 0
+
+    costo_total = 0
+    for ingrediente in receta.ingredientes:
+        mp_id = ingrediente["materia_prima_id"]
+        cantidad_necesaria = ingrediente["cantidad_necesaria"]
+
+        materia_prima = obtener_materia_prima_por_id(mp_id)
+        if materia_prima:
+            costo_total += (cantidad_necesaria * materia_prima.costo_unitario)
+        else:
+            print(
+                f"Advertencia: Materia prima con ID '{mp_id}' no encontrada para la receta del producto '{receta.nombre_producto}'. No se incluirá en el costo.")
+            # Podrías lanzar un error aquí si quieres una validación más estricta
+    return costo_total
+
+
+def obtener_rentabilidad_productos():
+    """
+    Calcula la rentabilidad (ganancia y margen de beneficio) para cada producto.
+    Retorna una lista de diccionarios con la información de rentabilidad.
+    """
+    productos = listar_productos()
+    rentabilidad_data = []
+
+    for p in productos:
+        costo_produccion = calcular_costo_produccion_producto(p.id)
+        ganancia = p.precio_unitario - costo_produccion
+        margen_beneficio = (ganancia / p.precio_unitario * 100) if p.precio_unitario > 0 else 0
+
+        rentabilidad_data.append({
+            "producto_id": p.id,
+            "nombre_producto": p.nombre,
+            "precio_venta": p.precio_unitario,
+            "costo_produccion": costo_produccion,
+            "ganancia": ganancia,
+            "margen_beneficio": margen_beneficio
+        })
+    return rentabilidad_data

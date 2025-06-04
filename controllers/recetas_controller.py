@@ -2,9 +2,10 @@ import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 from models.receta import Receta  # Importa el modelo Receta
-from controllers.productos_controller import listar_productos, obtener_producto_por_id  # Para verificar productos
+# Las siguientes importaciones se moverán dentro de las funciones para evitar el ciclo de importación
+# from controllers.productos_controller import listar_productos, obtener_producto_por_id
 from controllers.materia_prima_controller import listar_materias_primas, \
-    obtener_materia_prima_por_id  # Para verificar materias primas
+    obtener_materia_prima_por_id  # Esta importación está bien
 
 # Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -86,6 +87,9 @@ def agregar_receta(producto_id, nombre_producto, ingredientes):
     Agrega una nueva receta a la lista y la guarda.
     Valida que el producto exista y que los ingredientes sean válidos.
     """
+    # Importación local para evitar el ciclo de dependencia
+    from controllers.productos_controller import obtener_producto_por_id
+
     # 1. Validar que el producto al que se asigna la receta exista
     producto = obtener_producto_por_id(producto_id)
     if not producto:
@@ -133,6 +137,9 @@ def editar_receta(receta_id, nuevos_ingredientes):
     Edita una receta existente por su ID.
     Valida los nuevos ingredientes.
     """
+    # Importación local para evitar el ciclo de dependencia
+    from controllers.productos_controller import obtener_producto_por_id
+
     es_valido, mensaje_error = validar_ingredientes_receta(nuevos_ingredientes)
     if not es_valido:
         raise ValueError(mensaje_error)

@@ -7,58 +7,83 @@ from gui.estadisticas_view import mostrar_ventana_estadisticas
 from gui.compras_view import mostrar_ventana_compras
 from gui.compras_historial_view import mostrar_ventana_historial_compras
 from gui.materia_prima_view import mostrar_ventana_materias_primas
-from gui.recetas_view import mostrar_ventana_recetas # ¡Nueva importación!
+from gui.recetas_view import mostrar_ventana_recetas
+from gui.rentabilidad_view import mostrar_ventana_rentabilidad
 
 def iniciar_app():
     root = tk.Tk()
     root.title("Sistema de Ventas - Cafetería")
-    root.geometry("500x800") # Aumenta el tamaño para acomodar el nuevo botón y espaciado
+    root.geometry("600x850") # Tamaño aumentado para una mejor distribución
     root.resizable(False, False) # Hace la ventana no redimensionable
     root.configure(bg="#F0F0F0") # Un gris claro para un fondo minimalista
 
-    # Estilo general para los botones (usando ttk)
+    # --- Configuración de Estilos (ttk.Style) ---
     style = ttk.Style()
+    style.theme_use("clam") # Un tema más moderno para ttk
+
+    # Estilo general para los LabelFrames
+    style.configure("TFrame", background="#F0F0F0")
+    style.configure("TLabelframe",
+                    background="#F0F0F0",
+                    font=("Segoe UI", 12, "bold"),
+                    foreground="#444444")
+    style.configure("TLabelframe.Label", background="#F0F0F0", foreground="#444444")
+
+    # Estilo general para los botones
     style.configure("TButton",
-                    font=("Segoe UI", 11, "bold"), # Fuente moderna y limpia
-                    foreground="#333333", # Texto gris oscuro
-                    background="#E0E0E0", # Fondo gris claro para los botones
-                    padding=[15, 10], # Mayor padding para un look más espacioso
-                    relief="flat", # Sin relieve para un aspecto plano
-                    borderwidth=0, # Sin borde
-                    focuscolor="#D0D0D0") # Color al enfocar
+                    font=("Segoe UI", 11, "bold"),
+                    foreground="#333333",
+                    background="#E0E0E0",
+                    padding=[15, 10],
+                    relief="flat",
+                    borderwidth=0,
+                    focuscolor="#D0D0D0")
     style.map("TButton",
-              background=[("active", "#D0D0D0")], # Un gris ligeramente más oscuro al pasar el mouse
-              foreground=[("active", "#000000")]) # Texto más oscuro al pasar el mouse
+              background=[("active", "#D0D0D0")],
+              foreground=[("active", "#000000")])
 
     # Estilo específico para el botón de Salir
     style.configure("Exit.TButton",
-                    background="#FF6B6B", # Rojo suave para salir
+                    background="#FF6B6B",
                     foreground="white")
     style.map("Exit.TButton",
-              background=[("active", "#FF8C8C")]) # Rojo más claro al pasar el mouse
+              background=[("active", "#FF8C8C")])
+
+    # --- Widgets de la Interfaz ---
 
     # Etiqueta del título principal
     tk.Label(root,
              text="Sistema de Gestión de Cafetería",
-             font=("Segoe UI", 18, "bold"), # Fuente ligeramente más pequeña
-             bg="#F0F0F0", # Mismo color de fondo que la ventana
-             fg="#222222").pack(pady=(40, 30)) # Más padding superior para centrar
+             font=("Segoe UI", 20, "bold"),
+             bg="#F0F0F0",
+             fg="#222222").pack(pady=(30, 20))
 
-    # Frame para los botones principales para mejor organización
-    button_frame = tk.Frame(root, bg="#F0F0F0") # Mismo color de fondo
-    button_frame.pack(pady=10, fill=tk.X, padx=50) # Añade padding horizontal para centrar los botones
+    # Frame principal para todos los grupos de botones
+    main_button_container = ttk.Frame(root, padding=20)
+    main_button_container.pack(pady=10, fill=tk.BOTH, expand=True, padx=30)
 
-    # Botones principales (ahora usando ttk.Button)
-    ttk.Button(button_frame, text="Gestionar Productos", command=mostrar_ventana_productos).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Gestionar Materias Primas", command=mostrar_ventana_materias_primas).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Gestionar Recetas", command=mostrar_ventana_recetas).pack(pady=10, fill=tk.X) # ¡Nuevo botón!
-    ttk.Button(button_frame, text="Registrar Venta", command=mostrar_ventana_ventas).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Registrar Compra", command=mostrar_ventana_compras).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Ver Historial de Ventas", command=mostrar_ventana_informes).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Ver Historial de Compras", command=mostrar_ventana_historial_compras).pack(pady=10, fill=tk.X)
-    ttk.Button(button_frame, text="Ver Estadísticas", command=mostrar_ventana_estadisticas).pack(pady=10, fill=tk.X)
+    # --- Grupo: Gestión de Datos Maestros ---
+    frame_master_data = ttk.LabelFrame(main_button_container, text="Gestión de Datos Maestros", padding=15)
+    frame_master_data.pack(pady=10, fill=tk.X)
+    ttk.Button(frame_master_data, text="Gestionar Productos", command=mostrar_ventana_productos).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_master_data, text="Gestionar Materias Primas", command=mostrar_ventana_materias_primas).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_master_data, text="Gestionar Recetas", command=mostrar_ventana_recetas).pack(pady=5, fill=tk.X)
 
-    # Botón de Salir (con un color diferente)
-    ttk.Button(root, text="Salir", command=root.destroy, style="Exit.TButton").pack(pady=(30, 20), fill=tk.X, padx=50) # Más padding y centrado
+    # --- Grupo: Operaciones Diarias ---
+    frame_daily_ops = ttk.LabelFrame(main_button_container, text="Operaciones Diarias", padding=15)
+    frame_daily_ops.pack(pady=10, fill=tk.X)
+    ttk.Button(frame_daily_ops, text="Registrar Venta", command=mostrar_ventana_ventas).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_daily_ops, text="Registrar Compra", command=mostrar_ventana_compras).pack(pady=5, fill=tk.X)
+
+    # --- Grupo: Informes y Análisis ---
+    frame_reports = ttk.LabelFrame(main_button_container, text="Informes y Análisis", padding=15)
+    frame_reports.pack(pady=10, fill=tk.X)
+    ttk.Button(frame_reports, text="Ver Historial de Ventas", command=mostrar_ventana_informes).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_reports, text="Ver Historial de Compras", command=mostrar_ventana_historial_compras).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_reports, text="Ver Estadísticas", command=mostrar_ventana_estadisticas).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_reports, text="Ver Rentabilidad", command=mostrar_ventana_rentabilidad).pack(pady=5, fill=tk.X)
+
+    # Botón de Salir
+    ttk.Button(root, text="Salir", command=root.destroy, style="Exit.TButton").pack(pady=(30, 20), fill=tk.X, padx=50)
 
     root.mainloop()
