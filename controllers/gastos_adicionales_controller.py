@@ -1,0 +1,157 @@
+import json
+import os
+import sys # Importar el módulo sys para PyInstaller
+from datetime import datetime
+from collections import defaultdict # Importa defaultdict para facilitar la suma
+from models.gasto_adicional import GastoAdicional
+
+# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    BASE_PATH = sys._MEIPASS
+else:
+    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+
+DATA_PATH = os.path.join(BASE_PATH, "data", "gastos_adicionales.json")
+
+# Asegurarse de que la carpeta 'data' exista
+os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+
+def cargar_gastos_adicionales():
+    """
+    Carga la lista de gastos adicionales desde el archivo JSON.
+    Si el archivo no existe, devuelve una lista vacía.
+    """
+    if not os.path.exists(DATA_PATH):
+        return []
+    try:
+        with open(DATA_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return [GastoAdicional.from_dict(ga) for ga in data]
+    except json.JSONDecodeError:
+        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        return []
+    except Exception as e:
+        print(f"Error inesperado al cargar gastos adicionales: {e}")
+        return []
+
+def guardar_gastos_adicionales(gastos_adicionales):
+    """
+    Guarda la lista de objetos GastoAdicional en el archivo JSON.
+    """
+    with open(DATA_PATH, "w", encoding="utf-8") as f:
+        json.dump([ga.to_dict() for ga in gastos_adicionales], f, indent=4)
+
+def validar_gasto_adicional(nombre, monto):
+    """
+    Valida los datos de un gasto adicional.
+    Retorna True si es válido, False y un mensaje de error en caso contrario.
+    """
+    if not nombre or not isinstance(nombre, str) or len(nombre.strip()) == 0:
+        return False, "El nombre del gasto no puede estar vacío."
+    if not isinstance(monto, (int, float)) or monto <= 0:
+        return False, "El monto del gasto debe ser un número positivo."
+    return True, ""
+
+def agregar_gasto_adicional(nombre, monto, fecha=None, descripcion=None):
+    """
+    Agrega un nuevo gasto adicional a la lista y lo guarda.
+    """
+    es_valido, mensaje_error = validar_gasto_adicional(nombre, monto)
+    if not es_valido:
+        raise ValueError(mensaje_error)
+
+    gastos_adicionales = cargar_gastos_adicionales()
+    nuevo_gasto = GastoAdicional(
+        nombre.strip(),
+        monto,
+        fecha,
+        descripcion.strip() if descripcion else ""
+    )
+    gastos_adicionales.append(nuevo_gasto)
+    guardar_gastos_adicionales(gastos_adicionales)
+    return nuevo_gasto
+
+def listar_gastos_adicionales():
+    """
+    Retorna la lista completa de gastos adicionales.
+    """
+    return cargar_gastos_adicionales()
+
+def eliminar_gasto_adicional(id_gasto):
+    """
+    Elimina un gasto adicional de la lista por su ID.
+    """
+    gastos_adicionales = cargar_gastos_adicionales()
+    gastos_original_count = len(gastos_adicionales)
+    gastos_adicionales = [ga for ga in gastos_adicionales if ga.id != id_gasto]
+
+    if len(gastos_adicionales) == gastos_original_count:
+        raise ValueError(f"Gasto adicional con ID '{id_gasto}' no encontrado para eliminación.")
+
+    guardar_gastos_adicionales(gastos_adicionales)
+    return True
+
+def obtener_gastos_adicionales_por_mes():
+    """
+    Calcula el total de gastos adicionales agrupados por mes y año.
+    Retorna una lista de tuplas (mes_año, total_gastado_ese_mes) ordenada cronológicamente,
+    con el total formateado con separador de miles y signo de moneda.
+    Ejemplo: [('2023-01', 'Gs 150.000,00'), ('2023-02', 'Gs 200.000,00')]
+    """
+    gastos = cargar_gastos_adicionales()
+    gastos_mensuales = defaultdict(float)
+
+    for gasto in gastos:
+        try:
+            fecha_dt = datetime.strptime(gasto.fecha, "%Y-%m-%d %H:%M:%S")
+            mes_año = fecha_dt.strftime("%Y-%m")
+            gastos_mensuales[mes_año] += gasto.monto
+        except ValueError:
+            print(f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas mensuales.")
+            continue
+        except Exception as e:
+            print(f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}")
+            continue
+
+    gastos_ordenados = sorted(gastos_mensuales.items())
+
+    formatted_gastos = []
+    for mes_año, total in gastos_ordenados:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_gastos.append((mes_año, f"Gs {total_str}"))
+
+    return formatted_gastos
+
+def obtener_gastos_adicionales_por_semana():
+    """
+    Calcula el total de gastos adicionales agrupados por semana y año.
+    La semana se representa como 'YYYY-WNN' (Año-Número de Semana).
+    Retorna una lista de tuplas (semana_año, total_gastado_esa_semana) ordenada cronológicamente,
+    con el total formateado con separador de miles y signo de moneda.
+    Ejemplo: [('2023-W01', 'Gs 25.000,00'), ('2023-W02', 'Gs 30.000,00')]
+    """
+    gastos = cargar_gastos_adicionales()
+    gastos_semanales = defaultdict(float)
+
+    for gasto in gastos:
+        try:
+            fecha_dt = datetime.strptime(gasto.fecha, "%Y-%m-%d %H:%M:%S")
+            semana_año = fecha_dt.strftime("%G-W%V") # Formato Año-Semana ISO
+            gastos_semanales[semana_año] += gasto.monto
+        except ValueError:
+            print(f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas semanales.")
+            continue
+        except Exception as e:
+            print(f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}")
+            continue
+
+    gastos_ordenados = sorted(gastos_semanales.items())
+
+    formatted_gastos = []
+    for semana_año, total in gastos_ordenadas:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted_gastos.append((semana_año, f"Gs {total_str}"))
+
+    return formatted_gastos
+

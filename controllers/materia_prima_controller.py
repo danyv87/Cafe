@@ -166,3 +166,30 @@ def actualizar_stock_materia_prima(id_materia_prima, cantidad_cambio):
     materias_primas[i].stock = nuevo_stock
     guardar_materias_primas(materias_primas)
     return materias_primas[i]
+
+
+def establecer_stock_materia_prima(id_materia_prima, nuevo_stock_absoluto):
+    """
+    Establece el stock de una materia prima a un valor absoluto específico.
+    Calcula la diferencia y llama a actualizar_stock_materia_prima.
+    Args:
+        id_materia_prima (str): ID de la materia prima a actualizar.
+        nuevo_stock_absoluto (int): El nuevo valor de stock deseado.
+    Raises:
+        ValueError: Si la materia prima no se encuentra o el nuevo stock absoluto es negativo.
+    """
+    if not isinstance(nuevo_stock_absoluto, int) or nuevo_stock_absoluto < 0:
+        raise ValueError("El stock absoluto debe ser un número entero no negativo.")
+
+    materia_prima = obtener_materia_prima_por_id(id_materia_prima)
+    if not materia_prima:
+        raise ValueError(f"Materia prima con ID '{id_materia_prima}' no encontrada para establecer stock.")
+
+    cantidad_actual = materia_prima.stock
+    cantidad_cambio = nuevo_stock_absoluto - cantidad_actual
+
+    # Reutilizamos la lógica de actualización de stock.
+    # No necesitamos verificar si el stock resultante es negativo aquí,
+    # ya que actualizar_stock_materia_prima ya lo hace.
+    return actualizar_stock_materia_prima(id_materia_prima, cantidad_cambio)
+
