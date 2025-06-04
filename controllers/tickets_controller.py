@@ -1,11 +1,14 @@
 import json
 import os
-import sys # Importar el módulo sys para PyInstaller
+import sys  # Importar el módulo sys para PyInstaller
 from datetime import datetime
 from collections import defaultdict
 from models.ticket import Ticket
 from models.venta_detalle import VentaDetalle
 from controllers.productos_controller import listar_productos
+from controllers.recetas_controller import obtener_receta_por_producto_id  # ¡Nueva importación!
+from controllers.materia_prima_controller import actualizar_stock_materia_prima, \
+    obtener_materia_prima_por_id  # ¡Nuevas importaciones!
 
 # Determinar la ruta base de la aplicación.
 # sys._MEIPASS es una variable especial que PyInstaller establece
@@ -50,12 +53,13 @@ def guardar_tickets(tickets):
 
 def registrar_ticket(cliente, items_venta_detalle):
     """
-    Registra un nuevo ticket de venta con múltiples ítems.
+    Registra un nuevo ticket de venta con múltiples ítems y deduce el stock de materias primas.
     Args:
         cliente (str): Nombre del cliente.
         items_venta_detalle (list): Lista de objetos VentaDetalle.
     Raises:
-        ValueError: Si el cliente está vacío o no hay ítems en el ticket.
+        ValueError: Si el cliente está vacío, no hay ítems en el ticket,
+                    o si el stock de alguna materia prima es insuficiente.
     Returns:
         Ticket: El objeto Ticket recién registrado.
     """
@@ -64,6 +68,25 @@ def registrar_ticket(cliente, items_venta_detalle):
     if not items_venta_detalle:
         raise ValueError("El ticket debe contener al menos un producto.")
 
+    # --- Verificación de stock antes de registrar el ticket ---
+    # Esto es crucial para evitar registrar una venta y luego fallar en la deducción.
+    for item in items_venta_detalle:
+        receta = obtener_receta_por_producto_id(item.producto_id)
+        if receta and receta.ingredientes:
+            for ingrediente in receta.ingredientes:
+                mp_id = ingrediente["materia_prima_id"]
+                cantidad_necesaria_por_unidad = ingrediente["cantidad_necesaria"]
+
+                materia_prima = obtener_materia_prima_por_id(mp_id)
+                if not materia_prima:
+                    raise ValueError(f"Materia prima '{ingrediente.get('nombre_materia_prima',mp_id)}' no encontrada para la receta del producto '{item.nombre_producto}'.")
+
+                cantidad_a_deducir = item.cantidad * cantidad_necesaria_por_unidad
+                if materia_prima.stock < cantidad_a_deducir:
+                    raise ValueError(
+                        f"Stock insuficiente de '{materia_prima.nombre}' para producir '{item.nombre_producto}'. Se necesitan {cantidad_a_deducir} {materia_prima.unidad_medida} pero solo hay {materia_prima.stock} {materia_prima.unidad_medida}.")
+
+    # Si todas las verificaciones de stock pasaron, procedemos a registrar el ticket y deducir el stock
     tickets = cargar_tickets()
     nuevo_ticket = Ticket(
         cliente=cliente.strip(),
@@ -71,6 +94,19 @@ def registrar_ticket(cliente, items_venta_detalle):
     )
     tickets.append(nuevo_ticket)
     guardar_tickets(tickets)
+
+    # --- Deducción de stock después de registrar el ticket ---
+    for item in items_venta_detalle:
+        receta = obtener_receta_por_producto_id(item.producto_id)
+        if receta and receta.ingredientes:
+            for ingrediente in receta.ingredientes:
+                mp_id = ingrediente["materia_prima_id"]
+                cantidad_necesaria_por_unidad = ingrediente["cantidad_necesaria"]
+                cantidad_a_deducir = item.cantidad * cantidad_necesaria_por_unidad
+
+                # Llamar a la función de actualización de stock para deducir
+                actualizar_stock_materia_prima(mp_id, -cantidad_a_deducir)  # Usar negativo para restar
+
     return nuevo_ticket
 
 
@@ -88,6 +124,7 @@ def total_vendido_tickets():
     tickets = cargar_tickets()
     return round(sum(t.total for t in tickets), 2)
 
+
 def obtener_ventas_por_mes():
     """
     Calcula el total de ventas agrupadas por mes y año.
@@ -96,17 +133,18 @@ def obtener_ventas_por_mes():
     Ejemplo: [('2023-01', 'Gs 150.000,00'), ('2023-02', 'Gs 200.000,00')]
     """
     tickets = cargar_tickets()
-    ventas_mensuales = defaultdict(float) # Usamos defaultdict para sumar fácilmente los totales por mes
+    ventas_mensuales = defaultdict(float)  # Usamos defaultdict para sumar fácilmente los totales por mes
 
     for ticket in tickets:
         try:
             # Parseamos la fecha del ticket para obtener el mes y año
             fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
-            mes_año = fecha_dt.strftime("%Y-%m") # Formato "YYYY-MM"
+            mes_año = fecha_dt.strftime("%Y-%m")  # Formato "YYYY-MM"
             ventas_mensuales[mes_año] += ticket.total
         except ValueError:
             # Si la fecha del ticket no tiene el formato esperado, la ignoramos o manejamos el error
-            print(f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas mensuales.")
+            print(
+                f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas mensuales.")
             continue
         except Exception as e:
             print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")
@@ -122,6 +160,7 @@ def obtener_ventas_por_mes():
         formatted_ventas.append((mes_año, f"Gs {total_str}"))
 
     return formatted_ventas
+
 
 def obtener_ventas_por_semana():
     """
@@ -142,7 +181,8 @@ def obtener_ventas_por_semana():
             semana_año = fecha_dt.strftime("%G-W%V")
             ventas_semanales[semana_año] += ticket.total
         except ValueError:
-            print(f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas semanales.")
+            print(
+                f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas semanales.")
             continue
         except Exception as e:
             print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")

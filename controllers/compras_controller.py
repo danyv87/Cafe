@@ -5,20 +5,15 @@ from datetime import datetime
 from collections import defaultdict
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
-# No necesitamos productos_controller para la ruta base aquí, pero lo mantenemos si se usa para otras funciones
-from controllers.productos_controller import listar_productos, obtener_producto_por_id, guardar_productos
+from controllers.materia_prima_controller import actualizar_stock_materia_prima
 
-# Determinar la ruta base de la aplicación.
-# sys._MEIPASS es una variable especial que PyInstaller establece
-# y apunta a la carpeta temporal donde se extraen los archivos empaquetados.
+# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Estamos en un ejecutable PyInstaller
     BASE_PATH = sys._MEIPASS
 else:
-    # Estamos en un entorno de desarrollo normal
-    BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-# Construir la ruta completa al archivo JSON
 DATA_PATH = os.path.join(BASE_PATH, "data", "compras.json")
 
 # Asegurarse de que la carpeta 'data' exista
@@ -30,16 +25,20 @@ def cargar_compras():
     Carga la lista de compras desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
+    print(f"DEBUG: Intentando cargar compras desde: {DATA_PATH}") # DEBUG LINE
     if not os.path.exists(DATA_PATH):
+        print(f"DEBUG: Archivo de compras no encontrado: {DATA_PATH}") # DEBUG LINE
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Convierte los diccionarios cargados en objetos Compra
+            print(f"DEBUG: Compras cargadas (raw data): {data}") # DEBUG LINE
             return [Compra.from_dict(c) for c in data]
     except json.JSONDecodeError:
-        # Maneja el caso de un archivo JSON vacío o malformado
         print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        return []
+    except Exception as e:
+        print(f"DEBUG: Error inesperado al cargar compras: {e}") # DEBUG LINE
         return []
 
 
@@ -47,17 +46,18 @@ def guardar_compras(compras):
     """
     Guarda la lista de objetos Compra en el archivo JSON.
     """
+    print(f"DEBUG: Intentando guardar {len(compras)} compras en: {DATA_PATH}") # DEBUG LINE
     with open(DATA_PATH, "w", encoding="utf-8") as f:
-        # Convierte los objetos Compra a diccionarios para guardarlos como JSON
         json.dump([c.to_dict() for c in compras], f, indent=4)
+    print("DEBUG: Compras guardadas con éxito.") # DEBUG LINE
 
 
 def registrar_compra(proveedor, items_compra_detalle):
     """
-    Registra una nueva compra con múltiples ítems.
+    Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
         proveedor (str): Nombre del proveedor.
-        items_compra_detalle (list): Lista de objetos CompraDetalle.
+        items_compra_detalle (list): Lista de objetos CompraDetalle (ahora representando materias primas).
     Raises:
         ValueError: Si el proveedor está vacío o no hay ítems en la compra.
     Returns:
@@ -70,21 +70,20 @@ def registrar_compra(proveedor, items_compra_detalle):
 
     compras = cargar_compras()
     nueva_compra = Compra(
-        proveedor=proveedor.strip(), # Elimina espacios en blanco del nombre del proveedor
-        items_compra=items_compra_detalle # La lista de CompraDetalle
+        proveedor=proveedor.strip(),
+        items_compra=items_compra_detalle
     )
     compras.append(nueva_compra)
     guardar_compras(compras)
 
-    # Opcional: Aquí podrías integrar la actualización del stock de productos
-    # Por ahora, solo registramos la compra. Si en el futuro se implementa
-    # la gestión de inventario, este es el lugar para incrementar el stock.
-    # for item in items_compra_detalle:
-    #     producto = obtener_producto_por_id(item.producto_id)
-    #     if producto:
-    #         producto.stock += item.cantidad
-    #         # Necesitarías una función en productos_controller para guardar un solo producto
-    #         # o cargar todos y luego guardar_productos(productos)
+    # ¡Actualizar el stock de materias primas!
+    for item in items_compra_detalle:
+        try:
+            # El producto_id en CompraDetalle ahora es el ID de la MateriaPrima
+            actualizar_stock_materia_prima(item.producto_id, item.cantidad)
+        except ValueError as e:
+            print(f"Error al actualizar stock de materia prima '{item.nombre_producto}': {e}")
+            raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
 

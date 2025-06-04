@@ -3,20 +3,15 @@ import os
 import sys # Importar el módulo sys para PyInstaller
 from models.producto import Producto
 
-# Determinar la ruta base de la aplicación.
-# sys._MEIPASS es una variable especial que PyInstaller establece
-# y apunta a la carpeta temporal donde se extraen los archivos empaquetados.
+# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Estamos en un ejecutable PyInstaller
     BASE_PATH = sys._MEIPASS
 else:
-    # Estamos en un entorno de desarrollo normal
-    BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-# Construir la ruta completa al archivo JSON
 DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
 
-# Asegurarse de que la carpeta 'data' exista
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
@@ -25,16 +20,20 @@ def cargar_productos():
     Carga la lista de productos desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
+    print(f"DEBUG: Intentando cargar productos desde: {DATA_PATH}") # DEBUG LINE
     if not os.path.exists(DATA_PATH):
+        print(f"DEBUG: Archivo no encontrado: {DATA_PATH}") # DEBUG LINE
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # Convierte los diccionarios cargados en objetos Producto
+            print(f"DEBUG: Productos cargados (raw data): {data}") # DEBUG LINE
             return [Producto.from_dict(p) for p in data]
     except json.JSONDecodeError:
-        # Maneja el caso de un archivo JSON vacío o malformado
         print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        return []
+    except Exception as e:
+        print(f"DEBUG: Error inesperado al cargar productos: {e}") # DEBUG LINE
         return []
 
 
@@ -42,9 +41,10 @@ def guardar_productos(productos):
     """
     Guarda la lista de objetos Producto en el archivo JSON.
     """
+    print(f"DEBUG: Intentando guardar {len(productos)} productos en: {DATA_PATH}") # DEBUG LINE
     with open(DATA_PATH, "w", encoding="utf-8") as f:
-        # Convierte los objetos Producto a diccionarios para guardarlos como JSON
         json.dump([p.to_dict() for p in productos], f, indent=4)
+    print("DEBUG: Productos guardados con éxito.") # DEBUG LINE
 
 def validar_producto(nombre, precio_unitario):
     """
@@ -53,7 +53,6 @@ def validar_producto(nombre, precio_unitario):
     """
     if not nombre or not isinstance(nombre, str) or len(nombre.strip()) == 0:
         return False, "El nombre del producto no puede estar vacío."
-    # Asegurarse de que el precio sea un número antes de la validación numérica
     if not isinstance(precio_unitario, (int, float)):
         return False, "El precio unitario debe ser un número."
     if precio_unitario <= 0:

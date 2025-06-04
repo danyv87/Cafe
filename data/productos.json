@@ -28,5 +28,10 @@
         "id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
         "nombre": "Medialunas con relleno de dulce de guayaba",
         "precio_unitario": 7000.0
+    },
+    {
+        "id": "570883ff-ad36-4ec6-8f38-83d0ea8a5dac",
+        "nombre": "Mixto de Jam\u00f3n y Queso",
+        "precio_unitario": 15000.0
     }
 ]

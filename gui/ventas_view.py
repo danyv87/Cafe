@@ -3,12 +3,14 @@ from tkinter import messagebox
 from controllers.productos_controller import listar_productos
 from controllers.tickets_controller import registrar_ticket  # Ahora importamos registrar_ticket
 from models.venta_detalle import VentaDetalle  # Importamos VentaDetalle
+from controllers.recetas_controller import obtener_receta_por_producto_id  # ¡Nueva importación!
+from controllers.materia_prima_controller import obtener_materia_prima_por_id  # ¡Nueva importación!
 
 
 def mostrar_ventana_ventas():
     ventana = tk.Toplevel()
     ventana.title("Registrar Venta (Ticket)")
-    ventana.geometry("600x650")  # Aumenta el tamaño para acomodar mejor los elementos y scrollbars
+    ventana.geometry("700x850")  # Aumenta el tamaño para acomodar la información de stock
 
     productos_disponibles = listar_productos()
     if not productos_disponibles:
@@ -44,6 +46,11 @@ def mostrar_ventana_ventas():
     scrollbar_productos.pack(side=tk.RIGHT, fill=tk.Y)
     lista_productos.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+    # Etiqueta para mostrar la disponibilidad de stock
+    label_stock_disponible = tk.Label(ventana, text="Stock de Materias Primas: ", font=("Helvetica", 10), fg="gray",
+                                      justify=tk.LEFT)
+    label_stock_disponible.pack(pady=(5, 0), padx=10, anchor="w")
+
     # Lista de productos agregados a la venta actual
     tk.Label(ventana, text="Productos en la venta actual:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
 
@@ -70,13 +77,46 @@ def mostrar_ventana_ventas():
 
     # --- Funciones ---
 
+    def calcular_disponibilidad_producto(producto_id):
+        """
+        Calcula cuántas unidades de un producto se pueden producir
+        basado en el stock de sus materias primas.
+        Retorna un número entero (cantidad máxima) o 0 si no se puede producir.
+        """
+        receta = obtener_receta_por_producto_id(producto_id)
+        if not receta or not receta.ingredientes:
+            return float('inf')  # Si no hay receta, asumimos disponibilidad infinita para la venta
+
+        min_unidades = float('inf')
+        for ingrediente in receta.ingredientes:
+            mp_id = ingrediente["materia_prima_id"]
+            cantidad_necesaria = ingrediente["cantidad_necesaria"]
+
+            materia_prima = obtener_materia_prima_por_id(mp_id)
+            if not materia_prima:
+                # Si una materia prima de la receta no existe, el producto no se puede hacer
+                return 0
+
+            if cantidad_necesaria > 0:
+                unidades_posibles = materia_prima.stock / cantidad_necesaria
+                min_unidades = min(min_unidades, unidades_posibles)
+            else:
+                # Si la cantidad necesaria es 0, no consume stock, no limita la producción
+                pass
+
+        return int(min_unidades) if min_unidades != float('inf') else float('inf')
+
     def cargar_productos_disponibles(filtro=""):
         """
-        Carga los productos disponibles en el Listbox, aplicando un filtro si se proporciona.
+        Carga los productos disponibles en el Listbox, aplicando un filtro y mostrando disponibilidad.
         """
         lista_productos.delete(0, tk.END)
         filtro = filtro.lower()
         productos_filtrados = []
+        # Asegurarse de que productos_disponibles esté actualizado
+        global productos_disponibles
+        productos_disponibles = listar_productos()
+
         for p in productos_disponibles:
             if filtro in p.nombre.lower():
                 productos_filtrados.append(p)
@@ -85,10 +125,22 @@ def mostrar_ventana_ventas():
             lista_productos.insert(tk.END, "No se encontraron productos.")
         else:
             for p in productos_filtrados:
-                lista_productos.insert(tk.END, f"ID: {p.id[:4]}... - {p.nombre} - Gs {p.precio_unitario:.0f}")
+                disponibilidad = calcular_disponibilidad_producto(p.id)
+                stock_info = ""
+                if disponibilidad == float('inf'):
+                    stock_info = "(Stock ilimitado)"
+                elif disponibilidad > 0:
+                    stock_info = f"(Stock: {disponibilidad} unidades)"
+                else:
+                    stock_info = "(SIN STOCK)"
+
+                # Formatear solo el precio, dejando el ID intacto
+                precio_formateado = f"{p.precio_unitario:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lista_productos.insert(tk.END, f"ID: {p.id[:8]}... - {p.nombre} - Gs {precio_formateado} {stock_info}")
 
         if lista_productos.size() > 0:
             lista_productos.selection_set(0)  # Selecciona el primer elemento por defecto
+            on_producto_seleccionado(None)  # Dispara la actualización del stock de MP
 
     def on_buscar(event):
         """
@@ -97,16 +149,59 @@ def mostrar_ventana_ventas():
         """
         cargar_productos_disponibles(entry_buscar.get())
 
+    def on_producto_seleccionado(event):
+        """
+        Actualiza la etiqueta de stock de materias primas cuando se selecciona un producto.
+        """
+        try:
+            seleccion_indices = lista_productos.curselection()
+            if not seleccion_indices:
+                label_stock_disponible.config(text="Stock de Materias Primas: ")
+                return
+
+            linea_seleccionada = lista_productos.get(seleccion_indices[0])
+            # Extraer el ID abreviado de forma segura
+            id_abrev = linea_seleccionada.split(' ')[1].replace('...', '')
+
+            producto_encontrado = None
+            for p in productos_disponibles:
+                if p.id.startswith(id_abrev):
+                    producto_encontrado = p
+                    break
+
+            if not producto_encontrado:
+                label_stock_disponible.config(text="Stock de Materias Primas: Error al cargar.")
+                return
+
+            receta = obtener_receta_por_producto_id(producto_encontrado.id)
+            if not receta or not receta.ingredientes:
+                label_stock_disponible.config(
+                    text=f"Stock de Materias Primas para '{producto_encontrado.nombre}': No tiene receta o no consume MP.")
+                return
+
+            stock_info_text = f"Stock de Materias Primas para '{producto_encontrado.nombre}':\n"
+            for ingrediente in receta.ingredientes:
+                mp = obtener_materia_prima_por_id(ingrediente["materia_prima_id"])
+                if mp:
+                    stock_info_text += f"  - {mp.nombre}: {mp.stock} {mp.unidad_medida} (Necesario por unidad: {ingrediente['cantidad_necesaria']} {mp.unidad_medida})\n"
+                else:
+                    stock_info_text += f"  - {ingrediente['nombre_materia_prima']}: Materia prima no encontrada.\n"
+            label_stock_disponible.config(text=stock_info_text)
+
+        except Exception as e:
+            label_stock_disponible.config(text=f"Stock de Materias Primas: Error ({e})")
+
     def actualizar_total_ticket():
         """
         Calcula y actualiza el total de la venta actual (ticket).
         """
         total = sum(item.total for item in venta_actual_items)
-        label_total.config(text=f"Total: Gs {total:.0f}")
+        label_total.config(text=f"Total: Gs {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
     def agregar_producto_a_venta():
         """
         Agrega el producto seleccionado a la lista de la venta actual (como VentaDetalle).
+        Realiza una verificación de stock antes de añadir.
         """
         try:
             seleccion_indices = lista_productos.curselection()
@@ -115,6 +210,7 @@ def mostrar_ventana_ventas():
                 return
 
             linea_seleccionada = lista_productos.get(seleccion_indices[0])
+            # Extraer el ID abreviado de forma segura
             id_abrev = linea_seleccionada.split(' ')[1].replace('...', '')
 
             producto_encontrado = None
@@ -137,6 +233,13 @@ def mostrar_ventana_ventas():
                 messagebox.showerror("Error de Entrada", "La cantidad debe ser un número positivo.")
                 return
 
+            # --- VERIFICACIÓN DE STOCK ANTES DE AGREGAR AL TICKET TEMPORAL ---
+            disponibilidad = calcular_disponibilidad_producto(producto_encontrado.id)
+            if cantidad > disponibilidad:
+                messagebox.showwarning("Stock Insuficiente",
+                                       f"No hay suficiente stock de materias primas para producir {cantidad} unidades de '{producto_encontrado.nombre}'. Solo se pueden producir {disponibilidad} unidades.")
+                return
+
             # Crea un objeto VentaDetalle y lo añade a la lista de ítems del ticket
             detalle_venta = VentaDetalle(
                 producto_id=producto_encontrado.id,
@@ -146,11 +249,14 @@ def mostrar_ventana_ventas():
             )
             venta_actual_items.append(detalle_venta)
             lista_venta.insert(tk.END,
-                               f"{detalle_venta.nombre_producto} x {detalle_venta.cantidad} = Gs {detalle_venta.total:.0f}")
+                               f"{detalle_venta.nombre_producto} x {detalle_venta.cantidad} = Gs {detalle_venta.total:,.0f}".replace(
+                                   ",", "X").replace(".", ",").replace("X", "."))
 
             actualizar_total_ticket()
             entry_cantidad.delete(0, tk.END)  # Limpia el campo de cantidad
             entry_cantidad.focus_set()  # Vuelve a poner el foco en la cantidad
+            cargar_productos_disponibles(entry_buscar.get())  # Recargar lista para actualizar disponibilidad
+            on_producto_seleccionado(None)  # Actualizar stock de MP para el producto seleccionado
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error al agregar producto al ticket: {e}")
 
@@ -168,7 +274,7 @@ def mostrar_ventana_ventas():
 
         confirmar_factura = messagebox.askyesno(
             "Confirmar Factura",
-            f"¿Desea generar la factura para '{cliente}' con un total de Gs {sum(item.total for item in venta_actual_items):.0f}?"
+            f"¿Desea generar la factura para '{cliente}' con un total de Gs {sum(item.total for item in venta_actual_items):,.0f}?".replace(",", "X").replace(".", ",").replace("X", ".")
         )
         if not confirmar_factura:
             messagebox.showinfo("Cancelado", "Generación de factura cancelada.")
@@ -179,7 +285,7 @@ def mostrar_ventana_ventas():
             ticket_generado = registrar_ticket(cliente, venta_actual_items)
 
             messagebox.showinfo("Factura Generada",
-                                f"Factura generada con éxito para {cliente}.\nTotal: Gs {ticket_generado.total:.0f}\nID Ticket: {ticket_generado.id[:8]}...")
+                                f"Factura generada con éxito para {cliente}.\nTotal: Gs {ticket_generado.total:,.0f}\nID Ticket: {ticket_generado.id[:8]}...".replace(",", "X").replace(".", ",").replace("X", "."))
 
             # Limpiar todo para una nueva venta
             venta_actual_items.clear()
@@ -188,12 +294,16 @@ def mostrar_ventana_ventas():
             entry_cliente.delete(0, tk.END)
             entry_cantidad.delete(0, tk.END)
             entry_cliente.focus_set()  # Pone el foco en el campo del cliente
-            cargar_productos_disponibles()  # Recarga la lista de productos disponibles
+            cargar_productos_disponibles()  # Recarga la lista de productos disponibles para reflejar cambios de stock
+            label_stock_disponible.config(text="Stock de Materias Primas: ")  # Limpiar etiqueta de stock
+        except ValueError as e:  # Captura errores específicos de ValueError (como stock insuficiente)
+            messagebox.showerror("Error al Generar Factura", str(e))
         except Exception as e:
             messagebox.showerror("Error al Generar Factura", f"No se pudo generar la factura.\nDetalle: {str(e)}")
 
     # --- Vinculación de Eventos y Carga Inicial ---
     entry_buscar.bind("<KeyRelease>", on_buscar)
+    lista_productos.bind("<<ListboxSelect>>", on_producto_seleccionado)  # Vincula la selección de producto
 
     tk.Button(ventana, text="Agregar Producto a Venta", command=agregar_producto_a_venta, width=25).pack(pady=5)
     tk.Button(ventana, text="Generar Factura", command=generar_factura, width=25, bg="lightgreen", fg="black").pack(
