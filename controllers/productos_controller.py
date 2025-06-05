@@ -195,3 +195,19 @@ def obtener_rentabilidad_productos():
             "margen_beneficio": margen_beneficio
         })
     return rentabilidad_data
+
+# Faltante: función para obtener la receta por id de producto y exponerla aquí
+def obtener_receta_por_producto_id(producto_id):
+    """
+    Provee la receta de un producto delegando al controlador de recetas.
+    """
+    from controllers.recetas_controller import obtener_receta_por_producto_id as obtener_receta
+    return obtener_receta(producto_id)
+
+# Faltante: función para obtener materia prima por id y exponerla aquí
+def obtener_materia_prima_por_id(materia_prima_id):
+    """
+    Wrapper para exponer la función desde el controlador de materia prima.
+    """
+    from controllers.materia_prima_controller import obtener_materia_prima_por_id as _obtener_materia_prima_por_id
+    return _obtener_materia_prima_por_id(materia_prima_id)

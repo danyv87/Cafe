@@ -1,29 +1,23 @@
-import json
 import os
-import sys  # Importar el módulo sys para PyInstaller
-from datetime import datetime
+import json
+import datetime
 from collections import defaultdict
 from models.ticket import Ticket
 from models.venta_detalle import VentaDetalle
-from controllers.productos_controller import listar_productos
-from controllers.recetas_controller import obtener_receta_por_producto_id  # ¡Nueva importación!
-from controllers.materia_prima_controller import actualizar_stock_materia_prima, \
-    obtener_materia_prima_por_id  # ¡Nuevas importaciones!
+from controllers.recetas_controller import obtener_receta_por_producto_id
+from controllers.materia_prima_controller import (
+    obtener_materia_prima_por_id,
+    listar_materias_primas,
+    guardar_materias_primas,
+)
 
 # Determinar la ruta base de la aplicación.
-# sys._MEIPASS es una variable especial que PyInstaller establece
-# y apunta a la carpeta temporal donde se extraen los archivos empaquetados.
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Estamos en un ejecutable PyInstaller
-    BASE_PATH = sys._MEIPASS
+if getattr(os.sys, 'frozen', False) and hasattr(os.sys, '_MEIPASS'):
+    BASE_PATH = os.sys._MEIPASS
 else:
-    # Estamos en un entorno de desarrollo normal
     BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-# Construir la ruta completa al archivo JSON
 DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
-
-# Asegurarse de que la carpeta 'data' exista
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
@@ -69,130 +63,105 @@ def registrar_ticket(cliente, items_venta_detalle):
         raise ValueError("El ticket debe contener al menos un producto.")
 
     # --- Verificación de stock antes de registrar el ticket ---
-    # Esto es crucial para evitar registrar una venta y luego fallar en la deducción.
+    # Trabajamos sobre una copia de las materias primas para modificar el stock correctamente
+    materias_primas = listar_materias_primas()
+    materias_prima_dict = {mp.id: mp for mp in materias_primas}
+
     for item in items_venta_detalle:
         receta = obtener_receta_por_producto_id(item.producto_id)
         if receta and receta.ingredientes:
+            unidades_por_lote = getattr(receta, 'unidades_por_lote', None)
             for ingrediente in receta.ingredientes:
                 mp_id = ingrediente["materia_prima_id"]
-                cantidad_necesaria_por_unidad = ingrediente["cantidad_necesaria"]
-
-                materia_prima = obtener_materia_prima_por_id(mp_id)
+                cantidad_necesaria = ingrediente["cantidad_necesaria"]
+                if unidades_por_lote and unidades_por_lote > 0:
+                    cantidad_necesaria_por_unidad = cantidad_necesaria / unidades_por_lote
+                else:
+                    cantidad_necesaria_por_unidad = cantidad_necesaria
+                materia_prima = materias_prima_dict.get(mp_id)
                 if not materia_prima:
-                    raise ValueError(f"Materia prima '{ingrediente.get('nombre_materia_prima',mp_id)}' no encontrada para la receta del producto '{item.nombre_producto}'.")
-
+                    raise ValueError(
+                        f"Materia prima '{ingrediente.get('nombre_materia_prima', mp_id)}' no encontrada para la receta del producto '{item.nombre_producto}'."
+                    )
                 cantidad_a_deducir = item.cantidad * cantidad_necesaria_por_unidad
                 if materia_prima.stock < cantidad_a_deducir:
                     raise ValueError(
-                        f"Stock insuficiente de '{materia_prima.nombre}' para producir '{item.nombre_producto}'. Se necesitan {cantidad_a_deducir} {materia_prima.unidad_medida} pero solo hay {materia_prima.stock} {materia_prima.unidad_medida}.")
+                        f"Stock insuficiente de '{materia_prima.nombre}'. Se requieren {cantidad_a_deducir:.2f} {materia_prima.unidad_medida}, pero solo hay {materia_prima.stock:.2f}."
+                    )
 
-    # Si todas las verificaciones de stock pasaron, procedemos a registrar el ticket y deducir el stock
-    tickets = cargar_tickets()
-    nuevo_ticket = Ticket(
-        cliente=cliente.strip(),
-        items_venta=items_venta_detalle
-    )
-    tickets.append(nuevo_ticket)
-    guardar_tickets(tickets)
-
-    # --- Deducción de stock después de registrar el ticket ---
+    # --- Descontar stock y registrar el ticket ---
     for item in items_venta_detalle:
         receta = obtener_receta_por_producto_id(item.producto_id)
         if receta and receta.ingredientes:
+            unidades_por_lote = getattr(receta, 'unidades_por_lote', None)
             for ingrediente in receta.ingredientes:
                 mp_id = ingrediente["materia_prima_id"]
-                cantidad_necesaria_por_unidad = ingrediente["cantidad_necesaria"]
+                cantidad_necesaria = ingrediente["cantidad_necesaria"]
+                if unidades_por_lote and unidades_por_lote > 0:
+                    cantidad_necesaria_por_unidad = cantidad_necesaria / unidades_por_lote
+                else:
+                    cantidad_necesaria_por_unidad = cantidad_necesaria
+                materia_prima = materias_prima_dict.get(mp_id)
                 cantidad_a_deducir = item.cantidad * cantidad_necesaria_por_unidad
+                materia_prima.stock -= cantidad_a_deducir
 
-                # Llamar a la función de actualización de stock para deducir
-                actualizar_stock_materia_prima(mp_id, -cantidad_a_deducir)  # Usar negativo para restar
+    guardar_materias_primas(list(materias_prima_dict.values()))
 
+    # Crear y guardar el ticket
+    tickets = cargar_tickets()
+    nuevo_ticket = Ticket(cliente=cliente, items_venta=items_venta_detalle)
+    tickets.append(nuevo_ticket)
+    guardar_tickets(tickets)
     return nuevo_ticket
 
 
 def listar_tickets():
     """
-    Retorna la lista completa de tickets.
+    Devuelve una lista de todos los tickets registrados.
     """
     return cargar_tickets()
 
 
 def total_vendido_tickets():
     """
-    Calcula y retorna el total de todas las ventas registradas en todos los tickets.
+    Devuelve el total vendido sumando todos los tickets.
     """
     tickets = cargar_tickets()
-    return round(sum(t.total for t in tickets), 2)
+    return sum(t.total for t in tickets)
 
 
 def obtener_ventas_por_mes():
     """
-    Calcula el total de ventas agrupadas por mes y año.
-    Retorna una lista de tuplas (mes_año, total_vendido_ese_mes) ordenada cronológicamente,
-    con el total formateado con separador de miles y signo de moneda.
-    Ejemplo: [('2023-01', 'Gs 150.000,00'), ('2023-02', 'Gs 200.000,00')]
+    Retorna un diccionario {("YYYY-MM"): total_vendido_en_ese_mes}
     """
     tickets = cargar_tickets()
-    ventas_mensuales = defaultdict(float)  # Usamos defaultdict para sumar fácilmente los totales por mes
-
-    for ticket in tickets:
-        try:
-            # Parseamos la fecha del ticket para obtener el mes y año
-            fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
-            mes_año = fecha_dt.strftime("%Y-%m")  # Formato "YYYY-MM"
-            ventas_mensuales[mes_año] += ticket.total
-        except ValueError:
-            # Si la fecha del ticket no tiene el formato esperado, la ignoramos o manejamos el error
-            print(
-                f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas mensuales.")
-            continue
-        except Exception as e:
-            print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")
-            continue
-
-    # Convertimos el defaultdict a una lista de tuplas y la ordenamos cronológicamente
-    ventas_ordenadas = sorted(ventas_mensuales.items())
-
-    # Formatear los totales con separador de miles (punto) y decimales (coma), y signo de moneda "Gs "
-    formatted_ventas = []
-    for mes_año, total in ventas_ordenadas:
-        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        formatted_ventas.append((mes_año, f"Gs {total_str}"))
-
-    return formatted_ventas
+    ventas_por_mes = defaultdict(float)
+    for t in tickets:
+        # Suponemos que t.fecha es un string tipo '2024-06-05 09:41:25'
+        # O bien un datetime, adaptamos ambos casos
+        if hasattr(t, 'fecha') and t.fecha:
+            if isinstance(t.fecha, str):
+                fecha = datetime.datetime.strptime(t.fecha[:19], "%Y-%m-%d %H:%M:%S")
+            else:
+                fecha = t.fecha
+            key = fecha.strftime("%Y-%m")
+            ventas_por_mes[key] += t.total
+    return dict(ventas_por_mes)
 
 
 def obtener_ventas_por_semana():
     """
-    Calcula el total de ventas agrupadas por semana y año.
-    La semana se representa como 'YYYY-WNN' (Año-Número de Semana).
-    Retorna una lista de tuplas (semana_año, total_vendido_esa_semana) ordenada cronológicamente,
-    con el total formateado con separador de miles y signo de moneda.
-    Ejemplo: [('2023-W01', 'Gs 75.000,00'), ('2023-W02', 'Gs 100.000,00')]
+    Retorna un diccionario {("YYYY-WW"): total_vendido_en_esa_semana}
     """
     tickets = cargar_tickets()
-    ventas_semanales = defaultdict(float)
-
-    for ticket in tickets:
-        try:
-            fecha_dt = datetime.strptime(ticket.fecha, "%Y-%m-%d %H:%M:%S")
-            # %G: Año ISO, %V: Número de semana ISO (01-53), %u: Día de la semana ISO (1 para lunes)
-            # Usamos %G-%V para obtener el formato Año-Semana
-            semana_año = fecha_dt.strftime("%G-W%V")
-            ventas_semanales[semana_año] += ticket.total
-        except ValueError:
-            print(
-                f"Advertencia: Fecha de ticket inválida '{ticket.fecha}'. Se ignorará este ticket para estadísticas semanales.")
-            continue
-        except Exception as e:
-            print(f"Error inesperado al procesar fecha del ticket '{ticket.fecha}': {e}")
-            continue
-
-    ventas_ordenadas = sorted(ventas_semanales.items())
-
-    formatted_ventas = []
-    for semana_año, total in ventas_ordenadas:
-        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        formatted_ventas.append((semana_año, f"Gs {total_str}"))
-
-    return formatted_ventas
+    ventas_por_semana = defaultdict(float)
+    for t in tickets:
+        if hasattr(t, 'fecha') and t.fecha:
+            if isinstance(t.fecha, str):
+                fecha = datetime.datetime.strptime(t.fecha[:19], "%Y-%m-%d %H:%M:%S")
+            else:
+                fecha = t.fecha
+            year, weeknum, _ = fecha.isocalendar()
+            key = f"{year}-W{weeknum:02d}"
+            ventas_por_semana[key] += t.total
+    return dict(ventas_por_semana)
