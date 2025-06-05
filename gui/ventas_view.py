@@ -184,9 +184,13 @@ def mostrar_ventana_ventas():
                 return
             disponibilidad = calcular_disponibilidad_producto(producto_encontrado.id)
             if cantidad > disponibilidad:
-                messagebox.showwarning("Stock Insuficiente",
-                                       f"No hay suficiente stock de materias primas para producir {cantidad} unidades de '{producto_encontrado.nombre}'. Solo se pueden producir {disponibilidad} unidades.")
-                return
+                continuar = messagebox.askyesno(
+                    "Stock Insuficiente",
+                    f"No hay suficiente stock de materias primas para producir {cantidad} unidades de '{producto_encontrado.nombre}'. "
+                    f"Solo se pueden producir {disponibilidad} unidades con el stock actual.\n\n¿Desea continuar de todos modos?"
+                )
+                if not continuar:
+                    return
             detalle_venta = VentaDetalle(
                 producto_id=producto_encontrado.id,
                 nombre_producto=producto_encontrado.nombre,
@@ -233,7 +237,31 @@ def mostrar_ventana_ventas():
             cargar_productos_disponibles()
             label_stock_disponible.config(text="Stock de Materias Primas: ")
         except ValueError as e:
-            messagebox.showerror("Error al Generar Factura", str(e))
+            mensaje = str(e)
+            if "Stock insuficiente" in mensaje:
+                continuar = messagebox.askyesno(
+                    "Stock insuficiente",
+                    mensaje + "\n\n¿Desea continuar y registrar la venta de todos modos? El stock de materias primas quedará negativo."
+                )
+                if continuar:
+                    try:
+                        ticket_generado = registrar_ticket(cliente, venta_actual_items, forzar=True)
+                        messagebox.showinfo("Factura Generada",
+                                            f"Factura generada con éxito para {cliente}.\nTotal: Gs {ticket_generado.total:,.0f}\nID Ticket: {ticket_generado.id[:8]}...".replace(",", "X").replace(".", ",").replace("X", "."))
+                        venta_actual_items.clear()
+                        lista_venta.delete(0, tk.END)
+                        label_total.config(text="Total: Gs 0")
+                        entry_cliente.delete(0, tk.END)
+                        entry_cantidad.delete(0, tk.END)
+                        entry_cliente.focus_set()
+                        cargar_productos_disponibles()
+                        label_stock_disponible.config(text="Stock de Materias Primas: ")
+                    except Exception as err:
+                        messagebox.showerror("Error al Generar Factura", f"No se pudo generar la factura forzada.\nDetalle: {str(err)}")
+                else:
+                    messagebox.showinfo("Cancelado", "Generación de factura cancelada.")
+            else:
+                messagebox.showerror("Error al Generar Factura", str(e))
         except Exception as e:
             messagebox.showerror("Error al Generar Factura", f"No se pudo generar la factura.\nDetalle: {str(e)}")
 

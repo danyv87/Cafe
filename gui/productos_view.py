@@ -65,6 +65,8 @@ def mostrar_ventana_productos():
         """
         lista.delete(0, tk.END)
         productos = listar_productos()
+        # Ordenar alfabéticamente por nombre, ignorando mayúsculas/minúsculas
+        productos.sort(key=lambda mp: mp.nombre.lower())
         if not productos:
             lista.insert(tk.END, "No hay productos registrados.")
         else:

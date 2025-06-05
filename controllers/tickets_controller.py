@@ -22,10 +22,6 @@ os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
 def cargar_tickets():
-    """
-    Carga la lista de tickets desde el archivo JSON.
-    Si el archivo no existe, devuelve una lista vacía.
-    """
     if not os.path.exists(DATA_PATH):
         return []
     try:
@@ -38,22 +34,20 @@ def cargar_tickets():
 
 
 def guardar_tickets(tickets):
-    """
-    Guarda la lista de objetos Ticket en el archivo JSON.
-    """
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump([t.to_dict() for t in tickets], f, indent=4)
 
 
-def registrar_ticket(cliente, items_venta_detalle):
+def registrar_ticket(cliente, items_venta_detalle, forzar=False):
     """
     Registra un nuevo ticket de venta con múltiples ítems y deduce el stock de materias primas.
     Args:
         cliente (str): Nombre del cliente.
         items_venta_detalle (list): Lista de objetos VentaDetalle.
+        forzar (bool): Si es True, permite stock negativo y solo advierte.
     Raises:
         ValueError: Si el cliente está vacío, no hay ítems en el ticket,
-                    o si el stock de alguna materia prima es insuficiente.
+                    o si el stock de alguna materia prima es insuficiente y no se fuerza.
     Returns:
         Ticket: El objeto Ticket recién registrado.
     """
@@ -63,7 +57,6 @@ def registrar_ticket(cliente, items_venta_detalle):
         raise ValueError("El ticket debe contener al menos un producto.")
 
     # --- Verificación de stock antes de registrar el ticket ---
-    # Trabajamos sobre una copia de las materias primas para modificar el stock correctamente
     materias_primas = listar_materias_primas()
     materias_prima_dict = {mp.id: mp for mp in materias_primas}
 
@@ -84,7 +77,7 @@ def registrar_ticket(cliente, items_venta_detalle):
                         f"Materia prima '{ingrediente.get('nombre_materia_prima', mp_id)}' no encontrada para la receta del producto '{item.nombre_producto}'."
                     )
                 cantidad_a_deducir = item.cantidad * cantidad_necesaria_por_unidad
-                if materia_prima.stock < cantidad_a_deducir:
+                if materia_prima.stock < cantidad_a_deducir and not forzar:
                     raise ValueError(
                         f"Stock insuficiente de '{materia_prima.nombre}'. Se requieren {cantidad_a_deducir:.2f} {materia_prima.unidad_medida}, pero solo hay {materia_prima.stock:.2f}."
                     )
@@ -116,29 +109,18 @@ def registrar_ticket(cliente, items_venta_detalle):
 
 
 def listar_tickets():
-    """
-    Devuelve una lista de todos los tickets registrados.
-    """
     return cargar_tickets()
 
 
 def total_vendido_tickets():
-    """
-    Devuelve el total vendido sumando todos los tickets.
-    """
     tickets = cargar_tickets()
     return sum(t.total for t in tickets)
 
 
 def obtener_ventas_por_mes():
-    """
-    Retorna un diccionario {("YYYY-MM"): total_vendido_en_ese_mes}
-    """
     tickets = cargar_tickets()
     ventas_por_mes = defaultdict(float)
     for t in tickets:
-        # Suponemos que t.fecha es un string tipo '2024-06-05 09:41:25'
-        # O bien un datetime, adaptamos ambos casos
         if hasattr(t, 'fecha') and t.fecha:
             if isinstance(t.fecha, str):
                 fecha = datetime.datetime.strptime(t.fecha[:19], "%Y-%m-%d %H:%M:%S")
@@ -150,9 +132,6 @@ def obtener_ventas_por_mes():
 
 
 def obtener_ventas_por_semana():
-    """
-    Retorna un diccionario {("YYYY-WW"): total_vendido_en_esa_semana}
-    """
     tickets = cargar_tickets()
     ventas_por_semana = defaultdict(float)
     for t in tickets:
