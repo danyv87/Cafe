@@ -9,12 +9,32 @@ from controllers.materia_prima_controller import (
     eliminar_materia_prima,
     establecer_stock_materia_prima
 )
+from controllers.recetas_controller import listar_recetas
 
+def obtener_materias_primas_faltantes():
+    recetas = listar_recetas()
+    materias_primas = {mp.id: mp for mp in listar_materias_primas()}
+    faltantes = []
+    for receta in recetas:
+        nombre_producto = getattr(receta, "nombre_producto", getattr(receta, "nombre", "Producto"))
+        for ingrediente in receta.ingredientes:
+            mp_id = ingrediente["materia_prima_id"]
+            cantidad_necesaria = ingrediente["cantidad_necesaria"]
+            mp = materias_primas.get(mp_id)
+            if mp and mp.stock < cantidad_necesaria:
+                faltantes.append({
+                    "materia_prima": mp.nombre,
+                    "producto": nombre_producto,
+                    "stock": mp.stock,
+                    "necesario": cantidad_necesaria,
+                    "unidad": mp.unidad_medida
+                })
+    return faltantes
 
 def mostrar_ventana_materias_primas():
     ventana = tk.Toplevel()
     ventana.title("Gestión de Materias Primas")
-    ventana.geometry("950x750")  # Ajusta el tamaño para acomodar los nuevos campos y explicaciones
+    ventana.geometry("950x850")  # Aumentado para mostrar sección de faltantes
 
     # --- Variables para los campos de edición ---
     materia_prima_seleccionada_id = tk.StringVar()
@@ -40,36 +60,26 @@ def mostrar_ventana_materias_primas():
     tk.Label(frame_form_agregar, text="Nombre:").grid(row=0, column=0, padx=5, pady=2, sticky="w")
     entry_nombre = tk.Entry(frame_form_agregar, width=40)
     entry_nombre.grid(row=0, column=1, padx=5, pady=2)
-    tk.Label(frame_form_agregar, text="Ej: Granos de Café, Leche, Azúcar", fg="gray").grid(row=0, column=2, padx=5,
-                                                                                           pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Ej: Granos de Café, Leche, Azúcar", fg="gray").grid(row=0, column=2, padx=5, pady=2, sticky="w")
 
     # Unidad de Medida
     tk.Label(frame_form_agregar, text="Unidad de Medida:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
     entry_unidad_medida = tk.Entry(frame_form_agregar, width=40)
     entry_unidad_medida.grid(row=1, column=1, padx=5, pady=2)
-    tk.Label(frame_form_agregar, text="Ej: kg, litros, unidades, gramos", fg="gray").grid(row=1, column=2, padx=5,
-                                                                                          pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Ej: kg, litros, unidades, gramos", fg="gray").grid(row=1, column=2, padx=5, pady=2, sticky="w")
 
     # Costo Unitario (Gs)
     tk.Label(frame_form_agregar, text="Costo Unitario (Gs):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
     entry_costo_unitario = tk.Entry(frame_form_agregar, width=40)
     entry_costo_unitario.grid(row=2, column=1, padx=5, pady=2)
-    tk.Label(frame_form_agregar, text="Costo por unidad de compra. Ej: 5000 (para 1 kg)", fg="gray").grid(row=2,
-                                                                                                          column=2,
-                                                                                                          padx=5,
-                                                                                                          pady=2,
-                                                                                                          sticky="w")
+    tk.Label(frame_form_agregar, text="Costo por unidad de compra. Ej: 5000 (para 1 kg)", fg="gray").grid(row=2, column=2, padx=5, pady=2, sticky="w")
 
     # Stock Inicial
     tk.Label(frame_form_agregar, text="Stock Inicial:").grid(row=3, column=0, padx=5, pady=2, sticky="w")
     entry_stock_inicial = tk.Entry(frame_form_agregar, width=40)
     entry_stock_inicial.grid(row=3, column=1, padx=5, pady=2)
     entry_stock_inicial.insert(0, "0")  # Valor por defecto
-    tk.Label(frame_form_agregar, text="Cantidad inicial en inventario. Ej: 10 (para 10 kg)", fg="gray").grid(row=3,
-                                                                                                             column=2,
-                                                                                                             padx=5,
-                                                                                                             pady=2,
-                                                                                                             sticky="w")
+    tk.Label(frame_form_agregar, text="Cantidad inicial en inventario. Ej: 10 (para 10 kg)", fg="gray").grid(row=3, column=2, padx=5, pady=2, sticky="w")
 
     # Frame para el formulario de Editar/Eliminar
     frame_form_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Materia Prima Seleccionada", padx=10, pady=10)
@@ -99,6 +109,23 @@ def mostrar_ventana_materias_primas():
     entry_forzar_stock = tk.Entry(frame_forzar_stock, width=20)
     entry_forzar_stock.grid(row=0, column=1, padx=5, pady=2, sticky="ew")
 
+    # --- Sección de materias primas faltantes para recetas ---
+    frame_faltantes = tk.LabelFrame(ventana, text="⚠️ Materias Primas Insuficientes para Recetas", padx=10, pady=8)
+    frame_faltantes.pack(pady=8, fill=tk.X)
+
+    label_faltantes = tk.Label(frame_faltantes, text="", fg="red", justify="left", anchor="w")
+    label_faltantes.pack(anchor="w")
+
+    def actualizar_faltantes():
+        faltantes = obtener_materias_primas_faltantes()
+        if faltantes:
+            texto = ""
+            for f in faltantes:
+                texto += f"- {f['materia_prima']} (stock: {f['stock']} {f['unidad']}), se necesita {f['necesario']} para '{f['producto']}'\n"
+            label_faltantes.config(text=texto, fg="red")
+        else:
+            label_faltantes.config(text="Todas las materias primas alcanzan para al menos una unidad de cada producto.", fg="green")
+
     # --- Funciones ---
 
     def cargar_materias_primas():
@@ -115,6 +142,7 @@ def mostrar_ventana_materias_primas():
                 costo_formateado = f"{mp.costo_unitario:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 stock_formateado = f"{mp.stock:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 lista.insert(tk.END, f"ID: {mp.id[:8]}... - {mp.nombre} ({mp.unidad_medida}) - Costo: Gs {costo_formateado} - Stock: {stock_formateado}")
+        actualizar_faltantes()
 
     def agregar():
         """
@@ -177,17 +205,12 @@ def mostrar_ventana_materias_primas():
                 return
 
             linea_seleccionada = lista.get(seleccion_indices[0])
-            print(f"DEBUG: Línea seleccionada: {linea_seleccionada}")  # DEBUG PRINT
             id_abrev = linea_seleccionada.split(' ')[1].replace('...', '')
-            print(f"DEBUG: ID abreviado extraído: {id_abrev}")  # DEBUG PRINT
 
             materias_primas_cargadas = listar_materias_primas()
-            print(f"DEBUG: IDs de materias primas cargadas del controlador: {[mp.id for mp in materias_primas_cargadas]}")  # DEBUG PRINT
 
             mp_encontrada = None
             for mp in materias_primas_cargadas:
-                print(
-                    f"DEBUG: Comparando '{mp.id}' (completo) con '{id_abrev}' (abreviado). startswith: {mp.id.startswith(id_abrev)}")  # DEBUG PRINT
                 if mp.id.startswith(id_abrev):
                     mp_encontrada = mp
                     break
@@ -245,8 +268,7 @@ def mostrar_ventana_materias_primas():
             messagebox.showerror("Error de Entrada", "El costo unitario y el stock deben ser números válidos.")
             return
 
-        es_valido, mensaje_error = validar_materia_prima(nuevo_nombre, nueva_unidad_medida, nuevo_costo_unitario,
-                                                         nuevo_stock)
+        es_valido, mensaje_error = validar_materia_prima(nuevo_nombre, nueva_unidad_medida, nuevo_costo_unitario, nuevo_stock)
         if not es_valido:
             messagebox.showerror("Error de Validación", mensaje_error)
             return
@@ -349,23 +371,12 @@ def mostrar_ventana_materias_primas():
             messagebox.showinfo("Cancelado", "Ajuste de stock cancelado.")
 
     # --- Botones de acción ---
-    tk.Button(frame_form_agregar, text="Agregar Materia Prima", command=agregar, width=25).grid(row=4, column=0,
-                                                                                                columnspan=2, pady=5)
+    tk.Button(frame_form_agregar, text="Agregar Materia Prima", command=agregar, width=25).grid(row=4, column=0, columnspan=2, pady=5)
 
-    tk.Button(frame_form_editar, text="Editar Materia Prima", command=editar, width=20, bg="lightblue").grid(row=4,
-                                                                                                             column=0,
-                                                                                                             pady=5,
-                                                                                                             padx=5)
-    tk.Button(frame_form_editar, text="Eliminar Materia Prima", command=eliminar, width=20, bg="lightcoral").grid(row=4,
-                                                                                                                  column=1,
-                                                                                                                  pady=5,
-                                                                                                                  padx=5)
+    tk.Button(frame_form_editar, text="Editar Materia Prima", command=editar, width=20, bg="lightblue").grid(row=4, column=0, pady=5, padx=5)
+    tk.Button(frame_form_editar, text="Eliminar Materia Prima", command=eliminar, width=20, bg="lightcoral").grid(row=4, column=1, pady=5, padx=5)
 
-    tk.Button(frame_forzar_stock, text="Forzar Stock", command=forzar_stock, width=20, bg="lightgoldenrod").grid(row=0,
-                                                                                                                 column=2,
-                                                                                                                 padx=5,
-                                                                                                                 pady=2,
-                                                                                                                 sticky="ew")
+    tk.Button(frame_forzar_stock, text="Forzar Stock", command=forzar_stock, width=20, bg="lightgoldenrod").grid(row=0, column=2, padx=5, pady=2, sticky="ew")
 
     # Carga inicial de materias primas
     cargar_materias_primas()
