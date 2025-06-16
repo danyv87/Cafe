@@ -47,7 +47,9 @@ def mostrar_ventana_estadisticas():
     if not ventas_por_mes_raw:
         tree_ventas_mensual.insert("", tk.END, values=("No hay datos de ventas mensuales para mostrar.", ""))
     else:
-        for mes_año, total in ventas_por_mes_raw:
+        print("Tipo de ventas_por_mes_raw:", type(ventas_por_mes_raw))
+        print("Contenido de ventas_por_mes_raw:", ventas_por_mes_raw)
+        for mes_año, total in ventas_por_mes_raw.items():
             tree_ventas_mensual.insert("", tk.END, values=(mes_año, total))
 
     # --- Sección de Estadísticas Semanales de Ventas ---
@@ -64,7 +66,7 @@ def mostrar_ventana_estadisticas():
     if not ventas_por_semana:
         tree_ventas_semanal.insert("", tk.END, values=("No hay datos de ventas semanales para mostrar.", ""))
     else:
-        for semana_año, total in ventas_por_semana:
+        for semana_año, total in ventas_por_semana.items():
             tree_ventas_semanal.insert("", tk.END, values=(semana_año, total))
 
     # --- Sección de Estadísticas Mensuales de Compras ---

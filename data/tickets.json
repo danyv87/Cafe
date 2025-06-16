@@ -70,5 +70,21 @@
             }
         ],
         "total": 150000.0
+    },
+    {
+        "id": "f09462d1-55a0-4e83-9a9b-cf0977ca3004",
+        "fecha": "2025-06-16 16:56:05",
+        "cliente": "Pepe Cuenca",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-16 16:56:02",
+                "producto_id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
+                "nombre_producto": "alfajor",
+                "cantidad": 1,
+                "precio_unitario": 5000.0,
+                "total": 5000.0
+            }
+        ],
+        "total": 5000.0
     }
 ]

@@ -3,16 +3,12 @@ import os
 import sys  # Importar el módulo sys para PyInstaller
 from models.materia_prima import MateriaPrima
 
-# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    BASE_PATH = sys._MEIPASS
+if getattr(sys, 'frozen', False):
+    BASE_PATH = os.path.dirname(sys.executable)
 else:
-    # En ambiente de desarrollo, queremos el directorio raíz del proyecto
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 DATA_PATH = os.path.join(BASE_PATH, "data", "materias_primas.json")
-
-# Asegurarse de que la carpeta 'data' exista
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 

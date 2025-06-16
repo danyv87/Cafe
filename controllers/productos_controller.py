@@ -3,20 +3,14 @@ import os
 import sys  # Importar el módulo sys para PyInstaller
 from models.producto import Producto
 
-# Las siguientes importaciones se moverán dentro de las funciones para evitar el ciclo de importación
-# from controllers.recetas_controller import obtener_receta_por_producto_id
-# from controllers.materia_prima_controller import obtener_materia_prima_por_id
-
 # Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Estamos en un ejecutable PyInstaller
-    BASE_PATH = sys._MEIPASS
+if getattr(sys, 'frozen', False):
+    # Al estar congelado, usar la carpeta donde está el ejecutable
+    BASE_PATH = os.path.dirname(sys.executable)
 else:
-    # Estamos en un entorno de desarrollo normal, la ruta base es el directorio padre
-    # del directorio actual (controllers)
+    # En ambiente de desarrollo, usar el directorio raíz del proyecto
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-# Construir la ruta completa al archivo JSON
 DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
 
 # Asegurarse de que la carpeta 'data' exista

@@ -1,24 +1,20 @@
-import os
 import json
-import datetime
+import os
+import sys  # Importar el módulo sys para PyInstaller
+from models.ticket import Ticket  # Ajusta según tus imports reales
 from collections import defaultdict
-from models.ticket import Ticket
-from models.venta_detalle import VentaDetalle
-from controllers.recetas_controller import obtener_receta_por_producto_id
-from controllers.materia_prima_controller import (
-    obtener_materia_prima_por_id,
-    listar_materias_primas,
-    guardar_materias_primas,
-)
+from controllers.materia_prima_controller import listar_materias_primas, guardar_materias_primas
+from controllers.recetas_controller import obtener_receta_por_producto_id  # <-- IMPORT NECESARIO
+import datetime
 
-# Determinar la ruta base de la aplicación.
-if getattr(os.sys, 'frozen', False) and hasattr(os.sys, '_MEIPASS'):
-    BASE_PATH = os.sys._MEIPASS
+if getattr(sys, 'frozen', False):
+    BASE_PATH = os.path.dirname(sys.executable)
 else:
-    BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+
 
 
 def cargar_tickets():
