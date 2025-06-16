@@ -4,7 +4,7 @@ import sys  # Importar el módulo sys para PyInstaller
 from models.ticket import Ticket  # Ajusta según tus imports reales
 from collections import defaultdict
 from controllers.materia_prima_controller import listar_materias_primas, guardar_materias_primas
-from controllers.recetas_controller import obtener_receta_por_producto_id  # <-- IMPORT NECESARIO
+from controllers.recetas_controller import obtener_receta_por_producto_id
 import datetime
 
 if getattr(sys, 'frozen', False):
@@ -16,6 +16,13 @@ DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
+def eliminar_ticket(ticket_id):
+    tickets = cargar_tickets()
+    tickets_filtrados = [t for t in tickets if t.id != ticket_id]
+    if len(tickets_filtrados) == len(tickets):
+        raise ValueError(f"No se encontró el ticket con ID {ticket_id}.")
+    guardar_tickets(tickets_filtrados)
+    return True
 
 def cargar_tickets():
     if not os.path.exists(DATA_PATH):
@@ -28,19 +35,19 @@ def cargar_tickets():
         print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
         return []
 
-
 def guardar_tickets(tickets):
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump([t.to_dict() for t in tickets], f, indent=4)
 
-
-def registrar_ticket(cliente, items_venta_detalle, forzar=False):
+def registrar_ticket(cliente, items_venta_detalle, forzar=False, fecha=None):
     """
     Registra un nuevo ticket de venta con múltiples ítems y deduce el stock de materias primas.
     Args:
         cliente (str): Nombre del cliente.
         items_venta_detalle (list): Lista de objetos VentaDetalle.
         forzar (bool): Si es True, permite stock negativo y solo advierte.
+        fecha (str, opcional): Fecha y hora de la venta en formato 'YYYY-MM-DD HH:MM:SS'.
+                               Si es None o vacío, se usará la fecha/hora actual.
     Raises:
         ValueError: Si el cliente está vacío, no hay ítems en el ticket,
                     o si el stock de alguna materia prima es insuficiente y no se fuerza.
@@ -96,22 +103,23 @@ def registrar_ticket(cliente, items_venta_detalle, forzar=False):
 
     guardar_materias_primas(list(materias_prima_dict.values()))
 
+    # Si la fecha es None o vacía, usar la fecha/hora actual
+    if not fecha or (isinstance(fecha, str) and fecha.strip() == ""):
+        fecha = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # Crear y guardar el ticket
     tickets = cargar_tickets()
-    nuevo_ticket = Ticket(cliente=cliente, items_venta=items_venta_detalle)
+    nuevo_ticket = Ticket(cliente=cliente, items_venta=items_venta_detalle, fecha=fecha)
     tickets.append(nuevo_ticket)
     guardar_tickets(tickets)
     return nuevo_ticket
 
-
 def listar_tickets():
     return cargar_tickets()
-
 
 def total_vendido_tickets():
     tickets = cargar_tickets()
     return sum(t.total for t in tickets)
-
 
 def obtener_ventas_por_mes():
     tickets = cargar_tickets()
@@ -126,7 +134,6 @@ def obtener_ventas_por_mes():
             ventas_por_mes[key] += t.total
     return dict(ventas_por_mes)
 
-
 def obtener_ventas_por_semana():
     tickets = cargar_tickets()
     ventas_por_semana = defaultdict(float)
@@ -140,3 +147,26 @@ def obtener_ventas_por_semana():
             key = f"{year}-W{weeknum:02d}"
             ventas_por_semana[key] += t.total
     return dict(ventas_por_semana)
+
+def obtener_ventas_por_dia():
+    """
+    Calcula el total de ventas agrupadas por día.
+    Retorna una lista de tuplas (YYYY-MM-DD, total_ventas_dia) ordenada,
+    con el total formateado como string de moneda.
+    """
+    tickets = cargar_tickets()
+    ventas_dia = defaultdict(float)
+    for t in tickets:
+        if hasattr(t, 'fecha') and t.fecha:
+            if isinstance(t.fecha, str):
+                fecha = datetime.datetime.strptime(t.fecha[:19], "%Y-%m-%d %H:%M:%S")
+            else:
+                fecha = t.fecha
+            dia = fecha.strftime("%Y-%m-%d")
+            ventas_dia[dia] += t.total
+    ventas_ordenadas = sorted(ventas_dia.items())
+    formatted = []
+    for dia, total in ventas_ordenadas:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted.append((dia, f"Gs {total_str}"))
+    return formatted

@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
+from tkcalendar import DateEntry
+import datetime
+
 from controllers.productos_controller import listar_productos
 from controllers.tickets_controller import registrar_ticket
 from models.venta_detalle import VentaDetalle
@@ -9,7 +12,7 @@ from controllers.materia_prima_controller import obtener_materia_prima_por_id
 def mostrar_ventana_ventas():
     ventana = tk.Toplevel()
     ventana.title("Registrar Venta (Ticket)")
-    ventana.geometry("700x850")  # Aumenta el tamaño para acomodar la información de stock
+    ventana.geometry("700x900")  # Aumenta el tamaño para acomodar la información de stock y el campo fecha
 
     productos_disponibles = listar_productos()
     if not productos_disponibles:
@@ -25,6 +28,22 @@ def mostrar_ventana_ventas():
     tk.Label(ventana, text="Nombre del Cliente:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
     entry_cliente = tk.Entry(ventana, width=50)
     entry_cliente.pack()
+
+    # Fecha de la venta (opcional, con calendario y autocompletada con hoy)
+    tk.Label(ventana, text="Fecha de la venta (opcional):", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
+    fecha_hoy = datetime.date.today()
+    date_entry = DateEntry(
+        ventana,
+        width=50,
+        background='darkblue',
+        foreground='white',
+        borderwidth=2,
+        date_pattern='yyyy-mm-dd',
+        year=fecha_hoy.year,
+        month=fecha_hoy.month,
+        day=fecha_hoy.day
+    )
+    date_entry.pack()
 
     # Buscador producto
     tk.Label(ventana, text="Buscar producto:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
@@ -211,6 +230,14 @@ def mostrar_ventana_ventas():
 
     def generar_factura():
         cliente = entry_cliente.get().strip()
+        # Tomar la fecha seleccionada y sumarle la hora actual si el usuario seleccionó una fecha
+        fecha_seleccionada = date_entry.get().strip()
+        hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
+        if fecha_seleccionada:
+            fecha = f"{fecha_seleccionada} {hora_actual}"
+        else:
+            fecha = ""  # O None, según lo maneje tu backend
+
         if not cliente:
             messagebox.showwarning("Atención", "Por favor, ingrese el nombre del cliente.")
             return
@@ -225,13 +252,15 @@ def mostrar_ventana_ventas():
             messagebox.showinfo("Cancelado", "Generación de factura cancelada.")
             return
         try:
-            ticket_generado = registrar_ticket(cliente, venta_actual_items)
+            ticket_generado = registrar_ticket(cliente, venta_actual_items, fecha=fecha)
             messagebox.showinfo("Factura Generada",
                                 f"Factura generada con éxito para {cliente}.\nTotal: Gs {ticket_generado.total:,.0f}\nID Ticket: {ticket_generado.id[:8]}...".replace(",", "X").replace(".", ",").replace("X", "."))
             venta_actual_items.clear()
             lista_venta.delete(0, tk.END)
             label_total.config(text="Total: Gs 0")
             entry_cliente.delete(0, tk.END)
+            # date_entry no tiene delete, se puede poner en blanco con set_date(datetime.date.today())
+            date_entry.set_date(datetime.date.today())
             entry_cantidad.delete(0, tk.END)
             entry_cliente.focus_set()
             cargar_productos_disponibles()
@@ -245,13 +274,14 @@ def mostrar_ventana_ventas():
                 )
                 if continuar:
                     try:
-                        ticket_generado = registrar_ticket(cliente, venta_actual_items, forzar=True)
+                        ticket_generado = registrar_ticket(cliente, venta_actual_items, forzar=True, fecha=fecha)
                         messagebox.showinfo("Factura Generada",
                                             f"Factura generada con éxito para {cliente}.\nTotal: Gs {ticket_generado.total:,.0f}\nID Ticket: {ticket_generado.id[:8]}...".replace(",", "X").replace(".", ",").replace("X", "."))
                         venta_actual_items.clear()
                         lista_venta.delete(0, tk.END)
                         label_total.config(text="Total: Gs 0")
                         entry_cliente.delete(0, tk.END)
+                        date_entry.set_date(datetime.date.today())
                         entry_cantidad.delete(0, tk.END)
                         entry_cliente.focus_set()
                         cargar_productos_disponibles()

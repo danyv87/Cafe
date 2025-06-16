@@ -2,7 +2,11 @@ import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 from models.producto import Producto
+from models.compra import Compra
 from collections import defaultdict
+from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
+
+# ... Tus otras importaciones y definiciones de modelos, como Compra, CompraDetalle, actualizar_stock_materia_prima ...
 
 if getattr(sys, 'frozen', False):
     BASE_PATH = os.path.dirname(sys.executable)
@@ -157,3 +161,27 @@ def obtener_compras_por_semana():
         formatted_compras.append((semana_año, f"Gs {total_str}"))
 
     return formatted_compras
+
+def obtener_compras_por_dia():
+    """
+    Calcula el total de compras agrupadas por día.
+    Retorna una lista de tuplas (YYYY-MM-DD, total_compras_dia) ordenada,
+    con el total formateado con separador de miles y signo de moneda.
+    Ejemplo: [('2025-06-15', 'Gs 120.000'), ...]
+    """
+    compras = cargar_compras()
+    compras_dia = defaultdict(float)
+    for compra in compras:
+        try:
+            fecha_dt = datetime.strptime(compra.fecha, "%Y-%m-%d %H:%M:%S")
+            dia = fecha_dt.strftime("%Y-%m-%d")
+            compras_dia[dia] += compra.total
+        except Exception as e:
+            print(f"Error procesando fecha de compra: {e}")
+            continue
+    compras_ordenadas = sorted(compras_dia.items())
+    formatted = []
+    for dia, total in compras_ordenadas:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted.append((dia, f"Gs {total_str}"))
+    return formatted

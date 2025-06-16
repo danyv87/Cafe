@@ -1,9 +1,11 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+from collections import defaultdict
+from datetime import datetime
 
 # Importa tus modelos según corresponda, por ejemplo:
-# from models.gasto_adicional import GastoAdicional
+from models.gasto_adicional import GastoAdicional
 
 if getattr(sys, 'frozen', False):
     BASE_PATH = os.path.dirname(sys.executable)
@@ -145,9 +147,31 @@ def obtener_gastos_adicionales_por_semana():
     gastos_ordenados = sorted(gastos_semanales.items())
 
     formatted_gastos = []
-    for semana_año, total in gastos_ordenadas:
+    for semana_año, total in gastos_ordenados:
         total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
         formatted_gastos.append((semana_año, f"Gs {total_str}"))
 
     return formatted_gastos
 
+def obtener_gastos_adicionales_por_dia():
+    """
+    Calcula el total de gastos adicionales agrupados por día.
+    Retorna una lista de tuplas (YYYY-MM-DD, total_gastos_dia) ordenada,
+    con el total formateado como string de moneda.
+    """
+    gastos = cargar_gastos_adicionales()
+    gastos_dia = defaultdict(float)
+    for gasto in gastos:
+        try:
+            fecha_dt = datetime.strptime(gasto.fecha, "%Y-%m-%d %H:%M:%S")
+            dia = fecha_dt.strftime("%Y-%m-%d")
+            gastos_dia[dia] += gasto.monto
+        except Exception as e:
+            print(f"Error procesando fecha de gasto adicional: {e}")
+            continue
+    gastos_ordenados = sorted(gastos_dia.items())
+    formatted = []
+    for dia, total in gastos_ordenados:
+        total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        formatted.append((dia, f"Gs {total_str}"))
+    return formatted

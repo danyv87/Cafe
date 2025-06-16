@@ -10,13 +10,14 @@ from gui.materia_prima_view import mostrar_ventana_materias_primas
 from gui.recetas_view import mostrar_ventana_recetas
 from gui.rentabilidad_view import mostrar_ventana_rentabilidad
 from gui.gastos_adicionales_view import mostrar_ventana_gastos_adicionales
-from gui.costos_operativos_view import mostrar_ventana_costos_operativos # ¡Nueva importación!
+from gui.costos_operativos_view import mostrar_ventana_costos_operativos
+from gui.gestion_ventas import mostrar_ventana_gestion_ventas  # <-- NUEVA IMPORTACIÓN
 
 def iniciar_app():
     root = tk.Tk()
     root.title("Sistema de Ventas - Cafetería")
     root.geometry("600x950") # Tamaño aumentado para una mejor distribución y el nuevo botón
-    root.resizable(False, False) # Hace la ventana no redimensionable
+    root.resizable(True, True) # Hace la ventana no redimensionable
     root.configure(bg="#F0F0F0") # Un gris claro para un fondo minimalista
 
     # --- Configuración de Estilos (ttk.Style) ---
@@ -36,7 +37,7 @@ def iniciar_app():
                     font=("Segoe UI", 11, "bold"),
                     foreground="#333333",
                     background="#E0E0E0",
-                    padding=[15, 10],
+                    padding=[8, 6],
                     relief="flat",
                     borderwidth=0,
                     focuscolor="#D0D0D0")
@@ -81,11 +82,12 @@ def iniciar_app():
     frame_reports = ttk.LabelFrame(main_button_container, text="Informes y Análisis", padding=15)
     frame_reports.pack(pady=10, fill=tk.X)
     ttk.Button(frame_reports, text="Ver Historial de Ventas", command=mostrar_ventana_informes).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_reports, text="Eliminar Ventas (Tickets)", command=mostrar_ventana_gestion_ventas).pack(pady=5, fill=tk.X)  # <-- NUEVO BOTÓN
     ttk.Button(frame_reports, text="Ver Historial de Compras", command=mostrar_ventana_historial_compras).pack(pady=5, fill=tk.X)
     ttk.Button(frame_reports, text="Ver Estadísticas", command=mostrar_ventana_estadisticas).pack(pady=5, fill=tk.X)
     ttk.Button(frame_reports, text="Ver Rentabilidad", command=mostrar_ventana_rentabilidad).pack(pady=5, fill=tk.X)
     ttk.Button(frame_reports, text="Gestionar Gastos Adicionales", command=mostrar_ventana_gastos_adicionales).pack(pady=5, fill=tk.X)
-    ttk.Button(frame_reports, text="Ver Costos Operativos", command=mostrar_ventana_costos_operativos).pack(pady=5, fill=tk.X) # ¡Nuevo botón para costos operativos!
+    ttk.Button(frame_reports, text="Ver Costos Operativos", command=mostrar_ventana_costos_operativos).pack(pady=5, fill=tk.X)
 
     # Botón de Salir
     ttk.Button(root, text="Salir", command=root.destroy, style="Exit.TButton").pack(pady=(30, 20), fill=tk.X, padx=50)
