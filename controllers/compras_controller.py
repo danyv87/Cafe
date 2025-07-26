@@ -1,10 +1,10 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
-from models.producto import Producto
 from models.compra import Compra
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
+from controllers.materia_prima_controller import actualizar_stock_materia_prima
 
 # ... Tus otras importaciones y definiciones de modelos, como Compra, CompraDetalle, actualizar_stock_materia_prima ...
 
@@ -13,7 +13,7 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
+DATA_PATH = os.path.join(BASE_PATH, "data", "compras.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
 
