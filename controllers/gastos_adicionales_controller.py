@@ -1,6 +1,7 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+import logging
 from collections import defaultdict
 from datetime import datetime
 
@@ -15,6 +16,9 @@ else:
 DATA_PATH = os.path.join(BASE_PATH, "data", "gastos_adicionales.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 def cargar_gastos_adicionales():
     """
     Carga la lista de gastos adicionales desde el archivo JSON.
@@ -27,10 +31,12 @@ def cargar_gastos_adicionales():
             data = json.load(f)
             return [GastoAdicional.from_dict(ga) for ga in data]
     except json.JSONDecodeError:
-        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        logger.error(
+            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
+        )
         return []
     except Exception as e:
-        print(f"Error inesperado al cargar gastos adicionales: {e}")
+        logger.error(f"Error inesperado al cargar gastos adicionales: {e}")
         return []
 
 def guardar_gastos_adicionales(gastos_adicionales):
@@ -106,10 +112,14 @@ def obtener_gastos_adicionales_por_mes():
             mes_año = fecha_dt.strftime("%Y-%m")
             gastos_mensuales[mes_año] += gasto.monto
         except ValueError:
-            print(f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas mensuales.")
+            logger.error(
+                f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas mensuales."
+            )
             continue
         except Exception as e:
-            print(f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}")
+            logger.error(
+                f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}"
+            )
             continue
 
     gastos_ordenados = sorted(gastos_mensuales.items())
@@ -138,10 +148,14 @@ def obtener_gastos_adicionales_por_semana():
             semana_año = fecha_dt.strftime("%G-W%V") # Formato Año-Semana ISO
             gastos_semanales[semana_año] += gasto.monto
         except ValueError:
-            print(f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas semanales.")
+            logger.error(
+                f"Advertencia: Fecha de gasto inválida '{gasto.fecha}'. Se ignorará este gasto para estadísticas semanales."
+            )
             continue
         except Exception as e:
-            print(f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}")
+            logger.error(
+                f"Error inesperado al procesar fecha del gasto '{gasto.fecha}': {e}"
+            )
             continue
 
     gastos_ordenados = sorted(gastos_semanales.items())
@@ -167,7 +181,7 @@ def obtener_gastos_adicionales_por_dia():
             dia = fecha_dt.strftime("%Y-%m-%d")
             gastos_dia[dia] += gasto.monto
         except Exception as e:
-            print(f"Error procesando fecha de gasto adicional: {e}")
+            logger.error(f"Error procesando fecha de gasto adicional: {e}")
             continue
     gastos_ordenados = sorted(gastos_dia.items())
     formatted = []

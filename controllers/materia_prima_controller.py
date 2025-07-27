@@ -1,6 +1,7 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+import logging
 from models.materia_prima import MateriaPrima
 
 if getattr(sys, 'frozen', False):
@@ -11,26 +12,31 @@ else:
 DATA_PATH = os.path.join(BASE_PATH, "data", "materias_primas.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 def cargar_materias_primas():
     """
     Carga la lista de materias primas desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
-    print(f"DEBUG: Intentando cargar materias primas desde: {DATA_PATH}")  # DEBUG LINE
+    logger.debug(f"Intentando cargar materias primas desde: {DATA_PATH}")
     if not os.path.exists(DATA_PATH):
-        print(f"DEBUG: Archivo de materias primas no encontrado: {DATA_PATH}")  # DEBUG LINE
+        logger.debug(f"Archivo de materias primas no encontrado: {DATA_PATH}")
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Materias primas cargadas (raw data): {data}")  # DEBUG LINE
+            logger.debug(f"Materias primas cargadas (raw data): {data}")
             return [MateriaPrima.from_dict(mp) for mp in data]
     except json.JSONDecodeError:
-        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        logger.error(
+            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
+        )
         return []
     except Exception as e:
-        print(f"DEBUG: Error inesperado al cargar materias primas: {e}")  # DEBUG LINE
+        logger.error(f"Error inesperado al cargar materias primas: {e}")
         return []
 
 
@@ -38,10 +44,12 @@ def guardar_materias_primas(materias_primas):
     """
     Guarda la lista de objetos MateriaPrima en el archivo JSON.
     """
-    print(f"DEBUG: Intentando guardar {len(materias_primas)} materias primas en: {DATA_PATH}")  # DEBUG LINE
+    logger.debug(
+        f"Intentando guardar {len(materias_primas)} materias primas en: {DATA_PATH}"
+    )
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump([mp.to_dict() for mp in materias_primas], f, indent=4)
-    print("DEBUG: Materias primas guardadas con éxito.")  # DEBUG LINE
+    logger.debug("Materias primas guardadas con éxito.")
 
 
 def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock):

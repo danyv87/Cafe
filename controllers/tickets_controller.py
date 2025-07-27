@@ -1,6 +1,7 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+import logging
 from models.ticket import Ticket  # Ajusta según tus imports reales
 from collections import defaultdict
 from controllers.materia_prima_controller import listar_materias_primas, guardar_materias_primas
@@ -14,6 +15,9 @@ else:
 
 DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def eliminar_ticket(ticket_id):
@@ -32,7 +36,9 @@ def cargar_tickets():
             data = json.load(f)
             return [Ticket.from_dict(t) for t in data]
     except json.JSONDecodeError:
-        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        logger.error(
+            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
+        )
         return []
 
 def guardar_tickets(tickets):
