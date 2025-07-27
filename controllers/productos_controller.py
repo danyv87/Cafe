@@ -1,21 +1,11 @@
 import json
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from models.producto import Producto
+import config
 
-# Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
-if getattr(sys, 'frozen', False):
-    # Al estar congelado, usar la carpeta donde está el ejecutable
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    # En ambiente de desarrollo, usar el directorio raíz del proyecto
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
-
-# Asegurarse de que la carpeta 'data' exista
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+# Ruta por defecto de almacenamiento de productos
+DATA_PATH = config.get_data_path("productos.json")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

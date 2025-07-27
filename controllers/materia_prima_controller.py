@@ -1,16 +1,10 @@
 import json
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from models.materia_prima import MateriaPrima
+import config
 
-if getattr(sys, 'frozen', False):
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-DATA_PATH = os.path.join(BASE_PATH, "data", "materias_primas.json")
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+DATA_PATH = config.get_data_path("materias_primas.json")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

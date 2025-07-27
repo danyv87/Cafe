@@ -1,8 +1,8 @@
 import json
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from models.compra import Compra
+import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 from controllers.materia_prima_controller import actualizar_stock_materia_prima
@@ -12,14 +12,8 @@ logger = logging.getLogger(__name__)
 
 # ... Tus otras importaciones y definiciones de modelos, como Compra, CompraDetalle, actualizar_stock_materia_prima ...
 
-if getattr(sys, 'frozen', False):
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
 # Ruta por defecto donde se almacenarán las compras
-DATA_PATH = os.path.join(BASE_PATH, "data", "compras.json")
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+DATA_PATH = config.get_data_path("compras.json")
 
 
 def cargar_compras():

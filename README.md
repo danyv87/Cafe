@@ -19,6 +19,8 @@ pip install -r requirements.txt
 - **views/** – command line interface utilities (legacy).
 - **utils/** – helper functions used across the project.
 - **data/** – JSON files where all application data is stored.
+You can change this directory by setting the `CAFE_DATA_PATH` environment
+variable before running the application.
 
 ## Usage
 
@@ -29,5 +31,17 @@ python main.py
 ```
 
 This command opens the main window of the system. To close the application simply click the **Salir** button or close the window normally.
+
+### Custom data directory
+
+By default all JSON data files are stored in the `data/` directory of the
+project. You can change this location by setting the `CAFE_DATA_PATH`
+environment variable to another directory before launching the program.
+For example:
+
+```bash
+export CAFE_DATA_PATH=/path/to/my/data
+python main.py
+```
 
 
