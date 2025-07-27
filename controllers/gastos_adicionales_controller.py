@@ -1,7 +1,7 @@
-import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 import logging
+from utils.json_utils import read_json, write_json
 from collections import defaultdict
 from datetime import datetime
 
@@ -24,27 +24,14 @@ def cargar_gastos_adicionales():
     Carga la lista de gastos adicionales desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
-    if not os.path.exists(DATA_PATH):
-        return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return [GastoAdicional.from_dict(ga) for ga in data]
-    except json.JSONDecodeError:
-        logger.error(
-            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
-        )
-        return []
-    except Exception as e:
-        logger.error(f"Error inesperado al cargar gastos adicionales: {e}")
-        return []
+    data = read_json(DATA_PATH)
+    return [GastoAdicional.from_dict(ga) for ga in data]
 
 def guardar_gastos_adicionales(gastos_adicionales):
     """
     Guarda la lista de objetos GastoAdicional en el archivo JSON.
     """
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump([ga.to_dict() for ga in gastos_adicionales], f, indent=4)
+    write_json(DATA_PATH, [ga.to_dict() for ga in gastos_adicionales])
 
 def validar_gasto_adicional(nombre, monto):
     """

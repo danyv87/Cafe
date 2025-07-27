@@ -1,7 +1,7 @@
-import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 import logging
+from utils.json_utils import read_json, write_json
 from models.compra import Compra
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
@@ -28,22 +28,9 @@ def cargar_compras():
     Si el archivo no existe, devuelve una lista vacía.
     """
     logger.debug(f"Intentando cargar compras desde: {DATA_PATH}")
-    if not os.path.exists(DATA_PATH):
-        logger.debug(f"Archivo de compras no encontrado: {DATA_PATH}")
-        return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            logger.debug(f"Compras cargadas (raw data): {data}")
-            return [Compra.from_dict(c) for c in data]
-    except json.JSONDecodeError:
-        logger.error(
-            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
-        )
-        return []
-    except Exception as e:
-        logger.error(f"Error inesperado al cargar compras: {e}")
-        return []
+    data = read_json(DATA_PATH)
+    logger.debug(f"Compras cargadas (raw data): {data}")
+    return [Compra.from_dict(c) for c in data]
 
 
 def guardar_compras(compras):
@@ -51,8 +38,7 @@ def guardar_compras(compras):
     Guarda la lista de objetos Compra en el archivo JSON.
     """
     logger.debug(f"Intentando guardar {len(compras)} compras en: {DATA_PATH}")
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump([c.to_dict() for c in compras], f, indent=4)
+    write_json(DATA_PATH, [c.to_dict() for c in compras])
     logger.debug("Compras guardadas con éxito.")
 
 

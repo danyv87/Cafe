@@ -1,7 +1,7 @@
-import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 import logging
+from utils.json_utils import read_json, write_json
 from models.receta import Receta
 from controllers.productos_controller import listar_productos, obtener_producto_por_id
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
@@ -24,22 +24,9 @@ def cargar_recetas():
     Si el archivo no existe, devuelve una lista vacía.
     """
     logger.debug(f"Intentando cargar recetas desde: {DATA_PATH}")
-    if not os.path.exists(DATA_PATH):
-        logger.debug(f"Archivo de recetas no encontrado: {DATA_PATH}")
-        return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            logger.debug(f"Recetas cargadas (raw data): {data}")
-            return [Receta.from_dict(r) for r in data]
-    except json.JSONDecodeError:
-        logger.error(
-            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
-        )
-        return []
-    except Exception as e:
-        logger.error(f"Error inesperado al cargar recetas: {e}")
-        return []
+    data = read_json(DATA_PATH)
+    logger.debug(f"Recetas cargadas (raw data): {data}")
+    return [Receta.from_dict(r) for r in data]
 
 
 def guardar_recetas(recetas):
@@ -47,8 +34,7 @@ def guardar_recetas(recetas):
     Guarda la lista de objetos Receta en el archivo JSON.
     """
     logger.debug(f"Intentando guardar {len(recetas)} recetas en: {DATA_PATH}")
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump([r.to_dict() for r in recetas], f, indent=4)
+    write_json(DATA_PATH, [r.to_dict() for r in recetas])
     logger.debug("Recetas guardadas con éxito.")
 
 
