@@ -18,3 +18,10 @@ Run the application with:
 python main.py
 ```
 
+## Testing
+
+The project includes unit tests located in the `tests/` directory. You can run them all with Python's `unittest` discovery:
+
+```bash
+python -m unittest discover
+```
