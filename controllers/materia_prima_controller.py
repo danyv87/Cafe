@@ -1,7 +1,7 @@
-import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 import logging
+from utils.json_utils import read_json, write_json
 from models.materia_prima import MateriaPrima
 
 if getattr(sys, 'frozen', False):
@@ -22,22 +22,9 @@ def cargar_materias_primas():
     Si el archivo no existe, devuelve una lista vacía.
     """
     logger.debug(f"Intentando cargar materias primas desde: {DATA_PATH}")
-    if not os.path.exists(DATA_PATH):
-        logger.debug(f"Archivo de materias primas no encontrado: {DATA_PATH}")
-        return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            logger.debug(f"Materias primas cargadas (raw data): {data}")
-            return [MateriaPrima.from_dict(mp) for mp in data]
-    except json.JSONDecodeError:
-        logger.error(
-            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
-        )
-        return []
-    except Exception as e:
-        logger.error(f"Error inesperado al cargar materias primas: {e}")
-        return []
+    data = read_json(DATA_PATH)
+    logger.debug(f"Materias primas cargadas (raw data): {data}")
+    return [MateriaPrima.from_dict(mp) for mp in data]
 
 
 def guardar_materias_primas(materias_primas):
@@ -47,8 +34,7 @@ def guardar_materias_primas(materias_primas):
     logger.debug(
         f"Intentando guardar {len(materias_primas)} materias primas en: {DATA_PATH}"
     )
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        json.dump([mp.to_dict() for mp in materias_primas], f, indent=4)
+    write_json(DATA_PATH, [mp.to_dict() for mp in materias_primas])
     logger.debug("Materias primas guardadas con éxito.")
 
 

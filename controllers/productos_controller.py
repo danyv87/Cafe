@@ -1,7 +1,7 @@
-import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
 import logging
+from utils.json_utils import read_json, write_json
 from models.producto import Producto
 
 # Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
@@ -27,24 +27,9 @@ def cargar_productos():
     Si el archivo no existe, devuelve una lista vacía.
     """
     logger.debug(f"Intentando cargar productos desde: {DATA_PATH}")
-    if not os.path.exists(DATA_PATH):
-        logger.debug(f"Archivo de productos no encontrado: {DATA_PATH}")
-        return []
-    try:
-        with open(DATA_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            logger.debug(f"Productos cargados (raw data): {data}")
-            # Convierte los diccionarios cargados en objetos Producto
-            return [Producto.from_dict(p) for p in data]
-    except json.JSONDecodeError:
-        # Maneja el caso de un archivo JSON vacío o malformado
-        logger.error(
-            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
-        )
-        return []
-    except Exception as e:
-        logger.error(f"Error inesperado al cargar productos: {e}")
-        return []
+    data = read_json(DATA_PATH)
+    logger.debug(f"Productos cargados (raw data): {data}")
+    return [Producto.from_dict(p) for p in data]
 
 
 def guardar_productos(productos):
@@ -54,9 +39,7 @@ def guardar_productos(productos):
     logger.debug(
         f"Intentando guardar {len(productos)} productos en: {DATA_PATH}"
     )
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
-        # Convierte los objetos Producto a diccionarios para guardarlos como JSON
-        json.dump([p.to_dict() for p in productos], f, indent=4)
+    write_json(DATA_PATH, [p.to_dict() for p in productos])
     logger.debug("Productos guardados con éxito.")
 
 
