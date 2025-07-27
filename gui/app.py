@@ -12,7 +12,6 @@ from gui.rentabilidad_view import mostrar_ventana_rentabilidad
 from gui.gastos_adicionales_view import mostrar_ventana_gastos_adicionales
 from gui.costos_operativos_view import mostrar_ventana_costos_operativos
 from gui.gestion_ventas import mostrar_ventana_gestion_ventas  # <-- NUEVA IMPORTACIÓN
-
 def iniciar_app():
     root = tk.Tk()
     root.title("Sistema de Ventas - Cafetería")
