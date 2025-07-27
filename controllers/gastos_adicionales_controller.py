@@ -1,20 +1,14 @@
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from utils.json_utils import read_json, write_json
 from collections import defaultdict
 from datetime import datetime
+import config
 
 # Importa tus modelos según corresponda, por ejemplo:
 from models.gasto_adicional import GastoAdicional
 
-if getattr(sys, 'frozen', False):
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-DATA_PATH = os.path.join(BASE_PATH, "data", "gastos_adicionales.json")
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+DATA_PATH = config.get_data_path("gastos_adicionales.json")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

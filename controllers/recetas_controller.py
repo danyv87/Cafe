@@ -1,18 +1,12 @@
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from utils.json_utils import read_json, write_json
 from models.receta import Receta
+import config
 from controllers.productos_controller import listar_productos, obtener_producto_por_id
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
 
-if getattr(sys, 'frozen', False):
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-DATA_PATH = os.path.join(BASE_PATH, "data", "recetas.json")
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+DATA_PATH = config.get_data_path("recetas.json")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

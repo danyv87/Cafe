@@ -1,20 +1,14 @@
 import os
-import sys  # Importar el módulo sys para PyInstaller
 import logging
 from utils.json_utils import read_json, write_json
 from models.ticket import Ticket  # Ajusta según tus imports reales
+import config
 from collections import defaultdict
 from controllers.materia_prima_controller import listar_materias_primas, guardar_materias_primas
 from controllers.recetas_controller import obtener_receta_por_producto_id
 import datetime
 
-if getattr(sys, 'frozen', False):
-    BASE_PATH = os.path.dirname(sys.executable)
-else:
-    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-
-DATA_PATH = os.path.join(BASE_PATH, "data", "tickets.json")
-os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
+DATA_PATH = config.get_data_path("tickets.json")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
