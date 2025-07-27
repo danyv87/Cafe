@@ -13,6 +13,7 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
+# Ruta por defecto donde se almacenarán las compras
 DATA_PATH = os.path.join(BASE_PATH, "data", "compras.json")
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
