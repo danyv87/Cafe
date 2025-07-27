@@ -1,6 +1,7 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+import logging
 from models.producto import Producto
 
 # Determinar la ruta base de la aplicación para compatibilidad con PyInstaller.
@@ -16,28 +17,33 @@ DATA_PATH = os.path.join(BASE_PATH, "data", "productos.json")
 # Asegurarse de que la carpeta 'data' exista
 os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 def cargar_productos():
     """
     Carga la lista de productos desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
-    print(f"DEBUG: Intentando cargar productos desde: {DATA_PATH}")  # DEBUG LINE
+    logger.debug(f"Intentando cargar productos desde: {DATA_PATH}")
     if not os.path.exists(DATA_PATH):
-        print(f"DEBUG: Archivo de productos no encontrado: {DATA_PATH}")  # DEBUG LINE
+        logger.debug(f"Archivo de productos no encontrado: {DATA_PATH}")
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Productos cargados (raw data): {data}")  # DEBUG LINE
+            logger.debug(f"Productos cargados (raw data): {data}")
             # Convierte los diccionarios cargados en objetos Producto
             return [Producto.from_dict(p) for p in data]
     except json.JSONDecodeError:
         # Maneja el caso de un archivo JSON vacío o malformado
-        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        logger.error(
+            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
+        )
         return []
     except Exception as e:
-        print(f"DEBUG: Error inesperado al cargar productos: {e}")  # DEBUG LINE
+        logger.error(f"Error inesperado al cargar productos: {e}")
         return []
 
 
@@ -45,11 +51,13 @@ def guardar_productos(productos):
     """
     Guarda la lista de objetos Producto en el archivo JSON.
     """
-    print(f"DEBUG: Intentando guardar {len(productos)} productos en: {DATA_PATH}")  # DEBUG LINE
+    logger.debug(
+        f"Intentando guardar {len(productos)} productos en: {DATA_PATH}"
+    )
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         # Convierte los objetos Producto a diccionarios para guardarlos como JSON
         json.dump([p.to_dict() for p in productos], f, indent=4)
-    print("DEBUG: Productos guardados con éxito.")  # DEBUG LINE
+    logger.debug("Productos guardados con éxito.")
 
 
 def validar_producto(nombre, precio_unitario):
@@ -161,8 +169,9 @@ def calcular_costo_produccion_producto(producto_id):
         if materia_prima:
             costo_total += (cantidad_necesaria * materia_prima.costo_unitario)
         else:
-            print(
-                f"Advertencia: Materia prima con ID '{mp_id}' no encontrada para la receta del producto '{receta.nombre_producto}'. No se incluirá en el costo.")
+            logger.error(
+                f"Advertencia: Materia prima con ID '{mp_id}' no encontrada para la receta del producto '{receta.nombre_producto}'. No se incluirá en el costo."
+            )
             # Podrías lanzar un error aquí si quieres una validación más estricta
     return costo_total
 

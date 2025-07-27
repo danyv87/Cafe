@@ -1,10 +1,14 @@
 import json
 import os
 import sys  # Importar el módulo sys para PyInstaller
+import logging
 from models.compra import Compra
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 from controllers.materia_prima_controller import actualizar_stock_materia_prima
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # ... Tus otras importaciones y definiciones de modelos, como Compra, CompraDetalle, actualizar_stock_materia_prima ...
 
@@ -22,20 +26,22 @@ def cargar_compras():
     Carga la lista de compras desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
-    print(f"DEBUG: Intentando cargar compras desde: {DATA_PATH}") # DEBUG LINE
+    logger.debug(f"Intentando cargar compras desde: {DATA_PATH}")
     if not os.path.exists(DATA_PATH):
-        print(f"DEBUG: Archivo de compras no encontrado: {DATA_PATH}") # DEBUG LINE
+        logger.debug(f"Archivo de compras no encontrado: {DATA_PATH}")
         return []
     try:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            print(f"DEBUG: Compras cargadas (raw data): {data}") # DEBUG LINE
+            logger.debug(f"Compras cargadas (raw data): {data}")
             return [Compra.from_dict(c) for c in data]
     except json.JSONDecodeError:
-        print(f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía.")
+        logger.error(
+            f"Advertencia: El archivo {DATA_PATH} está vacío o malformado. Se devolverá una lista vacía."
+        )
         return []
     except Exception as e:
-        print(f"DEBUG: Error inesperado al cargar compras: {e}") # DEBUG LINE
+        logger.error(f"Error inesperado al cargar compras: {e}")
         return []
 
 
@@ -43,10 +49,10 @@ def guardar_compras(compras):
     """
     Guarda la lista de objetos Compra en el archivo JSON.
     """
-    print(f"DEBUG: Intentando guardar {len(compras)} compras en: {DATA_PATH}") # DEBUG LINE
+    logger.debug(f"Intentando guardar {len(compras)} compras en: {DATA_PATH}")
     with open(DATA_PATH, "w", encoding="utf-8") as f:
         json.dump([c.to_dict() for c in compras], f, indent=4)
-    print("DEBUG: Compras guardadas con éxito.") # DEBUG LINE
+    logger.debug("Compras guardadas con éxito.")
 
 
 def registrar_compra(proveedor, items_compra_detalle):
@@ -79,7 +85,9 @@ def registrar_compra(proveedor, items_compra_detalle):
             # El producto_id en CompraDetalle ahora es el ID de la MateriaPrima
             actualizar_stock_materia_prima(item.producto_id, item.cantidad)
         except ValueError as e:
-            print(f"Error al actualizar stock de materia prima '{item.nombre_producto}': {e}")
+            logger.error(
+                f"Error al actualizar stock de materia prima '{item.nombre_producto}': {e}"
+            )
             raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
@@ -115,10 +123,14 @@ def obtener_compras_por_mes():
             mes_año = fecha_dt.strftime("%Y-%m")
             compras_mensuales[mes_año] += compra.total
         except ValueError:
-            print(f"Advertencia: Fecha de compra inválida '{compra.fecha}'. Se ignorará esta compra para estadísticas mensuales.")
+            logger.error(
+                f"Advertencia: Fecha de compra inválida '{compra.fecha}'. Se ignorará esta compra para estadísticas mensuales."
+            )
             continue
         except Exception as e:
-            print(f"Error inesperado al procesar fecha de compra '{compra.fecha}': {e}")
+            logger.error(
+                f"Error inesperado al procesar fecha de compra '{compra.fecha}': {e}"
+            )
             continue
 
     compras_ordenadas = sorted(compras_mensuales.items())
@@ -147,10 +159,14 @@ def obtener_compras_por_semana():
             semana_año = fecha_dt.strftime("%G-W%V") # Formato Año-Semana ISO
             compras_semanales[semana_año] += compra.total
         except ValueError:
-            print(f"Advertencia: Fecha de compra inválida '{compra.fecha}'. Se ignorará esta compra para estadísticas semanales.")
+            logger.error(
+                f"Advertencia: Fecha de compra inválida '{compra.fecha}'. Se ignorará esta compra para estadísticas semanales."
+            )
             continue
         except Exception as e:
-            print(f"Error inesperado al procesar fecha de compra '{compra.fecha}': {e}")
+            logger.error(
+                f"Error inesperado al procesar fecha de compra '{compra.fecha}': {e}"
+            )
             continue
 
     compras_ordenadas = sorted(compras_semanales.items())
@@ -177,7 +193,7 @@ def obtener_compras_por_dia():
             dia = fecha_dt.strftime("%Y-%m-%d")
             compras_dia[dia] += compra.total
         except Exception as e:
-            print(f"Error procesando fecha de compra: {e}")
+            logger.error(f"Error procesando fecha de compra: {e}")
             continue
     compras_ordenadas = sorted(compras_dia.items())
     formatted = []
