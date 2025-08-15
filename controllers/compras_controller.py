@@ -37,12 +37,14 @@ def guardar_compras(compras):
     logger.debug("Compras guardadas con éxito.")
 
 
-def registrar_compra(proveedor, items_compra_detalle):
+def registrar_compra(proveedor, items_compra_detalle, fecha=None):
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
         proveedor (str): Nombre del proveedor.
         items_compra_detalle (list): Lista de objetos CompraDetalle (ahora representando materias primas).
+        fecha (str, optional): Fecha y hora de la compra en formato "YYYY-MM-DD HH:MM:SS". Si no se
+            proporciona, se utilizará la fecha y hora actuales.
     Raises:
         ValueError: Si el proveedor está vacío o no hay ítems en la compra.
     Returns:
@@ -56,7 +58,8 @@ def registrar_compra(proveedor, items_compra_detalle):
     compras = cargar_compras()
     nueva_compra = Compra(
         proveedor=proveedor.strip(),
-        items_compra=items_compra_detalle
+        items_compra=items_compra_detalle,
+        fecha=fecha
     )
     compras.append(nueva_compra)
     guardar_compras(compras)
