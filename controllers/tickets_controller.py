@@ -1,5 +1,6 @@
 import os
 import logging
+import pandas as pd
 from utils.json_utils import read_json, write_json
 from models.ticket import Ticket  # Ajusta según tus imports reales
 import config
@@ -26,8 +27,16 @@ def cargar_tickets():
     data = read_json(DATA_PATH)
     return [Ticket.from_dict(t) for t in data]
 
+
+def exportar_tickets_excel(tickets):
+    df = pd.DataFrame([t.to_dict() for t in tickets])
+    excel_path = os.path.join(os.path.dirname(DATA_PATH), "tickets.xlsx")
+    df.to_excel(excel_path, index=False)
+
+
 def guardar_tickets(tickets):
     write_json(DATA_PATH, [t.to_dict() for t in tickets])
+    exportar_tickets_excel(tickets)
 
 def registrar_ticket(cliente, items_venta_detalle, forzar=False, fecha=None):
     """
