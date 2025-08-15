@@ -1,12 +1,28 @@
 import tkinter as tk
 from tkinter import ttk  # Importar ttk para Treeview
-from controllers.tickets_controller import obtener_ventas_por_mes, obtener_ventas_por_semana, total_vendido_tickets
-from controllers.compras_controller import obtener_compras_por_mes, obtener_compras_por_semana, total_comprado
+
+from controllers.report_service import ventas_agrupadas, compras_agrupadas
+from controllers.tickets_controller import total_vendido_tickets
+from controllers.compras_controller import total_comprado
 
 # Importaciones para el gráfico
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk  # ¡Importación corregida!
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk,
+)
 import numpy as np  # Necesario para el arreglo de posiciones de las barras
+
+
+def format_currency(value: float) -> str:
+    """Devuelve ``value`` formateado como moneda paraguaya."""
+
+    return (
+        f"Gs {value:,.0f}"
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+    )
 
 
 def mostrar_ventana_estadisticas():
@@ -36,107 +52,132 @@ def mostrar_ventana_estadisticas():
     # --- Sección de Estadísticas Mensuales de Ventas ---
     tk.Label(content_frame, text="Ventas Agrupadas por Mes", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
 
-    tree_ventas_mensual = ttk.Treeview(content_frame, columns=("Mes", "Total Vendido"), show="headings", height=8)
+    tree_ventas_mensual = ttk.Treeview(
+        content_frame, columns=("Mes", "Total Vendido"), show="headings", height=8
+    )
     tree_ventas_mensual.heading("Mes", text="Mes (YYYY-MM)")
     tree_ventas_mensual.heading("Total Vendido", text="Total Vendido (Gs)")
     tree_ventas_mensual.column("Mes", width=150, anchor="center")
     tree_ventas_mensual.column("Total Vendido", width=200, anchor="e")
     tree_ventas_mensual.pack(pady=5, fill=tk.X, padx=10)
 
-    ventas_por_mes_raw = obtener_ventas_por_mes()
-    if not ventas_por_mes_raw:
-        tree_ventas_mensual.insert("", tk.END, values=("No hay datos de ventas mensuales para mostrar.", ""))
+    ventas_por_mes = ventas_agrupadas("mensual")
+    if not ventas_por_mes:
+        tree_ventas_mensual.insert(
+            "", tk.END, values=("No hay datos de ventas mensuales para mostrar.", "")
+        )
     else:
-        print("Tipo de ventas_por_mes_raw:", type(ventas_por_mes_raw))
-        print("Contenido de ventas_por_mes_raw:", ventas_por_mes_raw)
-        for mes_año, total in ventas_por_mes_raw.items():
-            tree_ventas_mensual.insert("", tk.END, values=(mes_año, total))
+        for mes_año, total in ventas_por_mes.items():
+            tree_ventas_mensual.insert(
+                "", tk.END, values=(mes_año, format_currency(total))
+            )
 
     # --- Sección de Estadísticas Semanales de Ventas ---
     tk.Label(content_frame, text="Ventas Agrupadas por Semana", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
 
-    tree_ventas_semanal = ttk.Treeview(content_frame, columns=("Semana", "Total Vendido"), show="headings", height=8)
+    tree_ventas_semanal = ttk.Treeview(
+        content_frame, columns=("Semana", "Total Vendido"), show="headings", height=8
+    )
     tree_ventas_semanal.heading("Semana", text="Semana (YYYY-WNN)")
     tree_ventas_semanal.heading("Total Vendido", text="Total Vendido (Gs)")
     tree_ventas_semanal.column("Semana", width=150, anchor="center")
     tree_ventas_semanal.column("Total Vendido", width=200, anchor="e")
     tree_ventas_semanal.pack(pady=5, fill=tk.X, padx=10)
 
-    ventas_por_semana = obtener_ventas_por_semana()
+    ventas_por_semana = ventas_agrupadas("semanal")
     if not ventas_por_semana:
-        tree_ventas_semanal.insert("", tk.END, values=("No hay datos de ventas semanales para mostrar.", ""))
+        tree_ventas_semanal.insert(
+            "", tk.END, values=("No hay datos de ventas semanales para mostrar.", "")
+        )
     else:
         for semana_año, total in ventas_por_semana.items():
-            tree_ventas_semanal.insert("", tk.END, values=(semana_año, total))
+            tree_ventas_semanal.insert(
+                "", tk.END, values=(semana_año, format_currency(total))
+            )
 
     # --- Sección de Estadísticas Mensuales de Compras ---
     tk.Label(content_frame, text="Compras Agrupadas por Mes", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
 
-    tree_compras_mensual = ttk.Treeview(content_frame, columns=("Mes", "Total Comprado"), show="headings", height=8)
+    tree_compras_mensual = ttk.Treeview(
+        content_frame, columns=("Mes", "Total Comprado"), show="headings", height=8
+    )
     tree_compras_mensual.heading("Mes", text="Mes (YYYY-MM)")
     tree_compras_mensual.heading("Total Comprado", text="Total Comprado (Gs)")
     tree_compras_mensual.column("Mes", width=150, anchor="center")
     tree_compras_mensual.column("Total Comprado", width=200, anchor="e")
     tree_compras_mensual.pack(pady=5, fill=tk.X, padx=10)
 
-    compras_por_mes_raw = obtener_compras_por_mes()
-    if not compras_por_mes_raw:
-        tree_compras_mensual.insert("", tk.END, values=("No hay datos de compras mensuales para mostrar.", ""))
+    compras_por_mes = compras_agrupadas("mensual")
+    if not compras_por_mes:
+        tree_compras_mensual.insert(
+            "", tk.END, values=("No hay datos de compras mensuales para mostrar.", "")
+        )
     else:
-        for mes_año, total in compras_por_mes_raw:
-            tree_compras_mensual.insert("", tk.END, values=(mes_año, total))
+        for mes_año, total in compras_por_mes.items():
+            tree_compras_mensual.insert(
+                "", tk.END, values=(mes_año, format_currency(total))
+            )
 
     # --- Sección de Estadísticas Semanales de Compras ---
     tk.Label(content_frame, text="Compras Agrupadas por Semana", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
 
-    tree_compras_semanal = ttk.Treeview(content_frame, columns=("Semana", "Total Comprado"), show="headings", height=8)
+    tree_compras_semanal = ttk.Treeview(
+        content_frame, columns=("Semana", "Total Comprado"), show="headings", height=8
+    )
     tree_compras_semanal.heading("Semana", text="Semana (YYYY-WNN)")
     tree_compras_semanal.heading("Total Comprado", text="Total Comprado (Gs)")
     tree_compras_semanal.column("Semana", width=150, anchor="center")
     tree_compras_semanal.column("Total Comprado", width=200, anchor="e")
     tree_compras_semanal.pack(pady=5, fill=tk.X, padx=10)
 
-    compras_por_semana = obtener_compras_por_semana()
+    compras_por_semana = compras_agrupadas("semanal")
     if not compras_por_semana:
-        tree_compras_semanal.insert("", tk.END, values=("No hay datos de compras semanales para mostrar.", ""))
+        tree_compras_semanal.insert(
+            "", tk.END, values=("No hay datos de compras semanales para mostrar.", "")
+        )
     else:
-        for semana_año, total in compras_por_semana:
-            tree_compras_semanal.insert("", tk.END, values=(semana_año, total))
+        for semana_año, total in compras_por_semana.items():
+            tree_compras_semanal.insert(
+                "", tk.END, values=(semana_año, format_currency(total))
+            )
 
     # --- Sección de Balance General ---
     total_ventas_general = total_vendido_tickets()
     total_compras_general = total_comprado()
     balance_general = total_ventas_general - total_compras_general
 
-    # Formatear el balance con separador de miles y signo de moneda
-    balance_formateado = f"{balance_general:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
     color_balance = "green" if balance_general >= 0 else "red"
 
-    tk.Label(content_frame, text="--- Balance General ---", font=("Helvetica", 14, "bold")).pack(pady=(20, 5))
-    tk.Label(content_frame,
-             text=f"Total Ventas: Gs {total_ventas_general:,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
-             font=("Helvetica", 12)).pack()
-    tk.Label(content_frame,
-             text=f"Total Compras: Gs {total_compras_general:,.0f}".replace(",", "X").replace(".", ",").replace("X",
-                                                                                                                "."),
-             font=("Helvetica", 12)).pack()
-    tk.Label(content_frame, text=f"Balance Neto: Gs {balance_formateado}", font=("Helvetica", 14, "bold"),
-             fg=color_balance).pack(pady=5)
+    tk.Label(
+        content_frame, text="--- Balance General ---", font=("Helvetica", 14, "bold")
+    ).pack(pady=(20, 5))
+    tk.Label(
+        content_frame,
+        text=f"Total Ventas: {format_currency(total_ventas_general)}",
+        font=("Helvetica", 12),
+    ).pack()
+    tk.Label(
+        content_frame,
+        text=f"Total Compras: {format_currency(total_compras_general)}",
+        font=("Helvetica", 12),
+    ).pack()
+    tk.Label(
+        content_frame,
+        text=f"Balance Neto: {format_currency(balance_general)}",
+        font=("Helvetica", 14, "bold"),
+        fg=color_balance,
+    ).pack(pady=5)
 
     # --- Sección del Gráfico ---
     tk.Label(content_frame, text="Gráfico de Ventas y Compras Mensuales", font=("Helvetica", 12, "bold")).pack(
         pady=(20, 5))
 
     # Preparar datos para el gráfico
-    meses_ventas = [item[0] for item in ventas_por_mes_raw]
-    # Eliminar "Gs " y reemplazar separadores para convertir a float
-    valores_ventas = [float(item[1].replace("Gs ", "").replace(".", "").replace(",", ".")) for item in
-                      ventas_por_mes_raw]
+    meses_ventas = list(ventas_por_mes.keys())
+    valores_ventas = list(ventas_por_mes.values())
 
-    meses_compras = [item[0] for item in compras_por_mes_raw]
-    valores_compras = [float(item[1].replace("Gs ", "").replace(".", "").replace(",", ".")) for item in
-                       compras_por_mes_raw]
+    meses_compras = list(compras_por_mes.keys())
+    valores_compras = list(compras_por_mes.values())
 
     # Combinar meses únicos y ordenarlos
     all_meses = sorted(list(set(meses_ventas + meses_compras)))

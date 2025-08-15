@@ -1,19 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-from controllers.compras_controller import (
-    obtener_compras_por_mes,
-    obtener_compras_por_semana,
-    obtener_compras_por_dia
-)
-from controllers.gastos_adicionales_controller import (
-    obtener_gastos_adicionales_por_mes,
-    obtener_gastos_adicionales_por_semana,
-    obtener_gastos_adicionales_por_dia
-)
-from controllers.tickets_controller import (
-    obtener_ventas_por_mes,
-    obtener_ventas_por_semana,
-    obtener_ventas_por_dia
+
+from controllers.report_service import (
+    ventas_agrupadas,
+    compras_agrupadas,
+    gastos_adicionales_agrupados,
 )
 
 def mostrar_ventana_costos_operativos():
@@ -122,70 +113,73 @@ def mostrar_ventana_costos_operativos():
 
     # --- Funciones de Carga de Datos ---
 
-    def parse_formatted_currency(value_str):
-        if isinstance(value_str, (int, float)):
-            return value_str
-        try:
-            return float(value_str.replace("Gs ", "").replace(".", "").replace(",", "."))
-        except ValueError:
-            return 0.0
+    def format_currency(value: float) -> str:
+        return (
+            f"Gs {value:,.0f}"
+            .replace(",", "X")
+            .replace(".", ",")
+            .replace("X", ".")
+        )
 
-    def format_currency(value):
-        if isinstance(value, str):
-            return value
-        return f"Gs {value:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    def cargar_datos(tree, ventas, compras, gastos_adicionales, periodo_label):
-        all_periods = sorted(list(set(ventas.keys()) | set(compras.keys()) | set(gastos_adicionales.keys())))
+    def cargar_datos(tree, ventas, compras, gastos_adicionales):
+        all_periods = sorted(
+            list(set(ventas.keys()) | set(compras.keys()) | set(gastos_adicionales.keys()))
+        )
         tree.delete(*tree.get_children())
         if not all_periods:
-            tree.insert("", tk.END, values=("No hay datos para mostrar.", "", "", "", "", ""), tags=('no_data',))
-            tree.tag_configure('no_data', foreground='gray')
+            tree.insert(
+                "",
+                tk.END,
+                values=("No hay datos para mostrar.", "", "", "", "", ""),
+                tags=("no_data",),
+            )
+            tree.tag_configure("no_data", foreground="gray")
             return
 
         for periodo in all_periods:
-            ingresos_str = ventas.get(periodo, "Gs 0")
-            costo_mp_str = compras.get(periodo, "Gs 0")
-            gastos_ad_str = gastos_adicionales.get(periodo, "Gs 0")
-
-            ingresos_val = parse_formatted_currency(ingresos_str)
-            costo_mp_val = parse_formatted_currency(costo_mp_str)
-            gastos_ad_val = parse_formatted_currency(gastos_ad_str)
+            ingresos_val = ventas.get(periodo, 0.0)
+            costo_mp_val = compras.get(periodo, 0.0)
+            gastos_ad_val = gastos_adicionales.get(periodo, 0.0)
 
             costo_total_val = costo_mp_val + gastos_ad_val
             ganancia_perdida_val = ingresos_val - costo_total_val
 
-            row_tag = 'positive' if ganancia_perdida_val >= 0 else 'negative'
+            row_tag = "positive" if ganancia_perdida_val >= 0 else "negative"
 
-            tree.insert("", tk.END, values=(
-                periodo,
-                format_currency(ingresos_val),
-                format_currency(costo_mp_val),
-                format_currency(gastos_ad_val),
-                format_currency(costo_total_val),
-                format_currency(ganancia_perdida_val)
-            ), tags=(row_tag,))
+            tree.insert(
+                "",
+                tk.END,
+                values=(
+                    periodo,
+                    format_currency(ingresos_val),
+                    format_currency(costo_mp_val),
+                    format_currency(gastos_ad_val),
+                    format_currency(costo_total_val),
+                    format_currency(ganancia_perdida_val),
+                ),
+                tags=(row_tag,),
+            )
 
-        tree.tag_configure('positive', foreground='green')
-        tree.tag_configure('negative', foreground='red')
+        tree.tag_configure("positive", foreground="green")
+        tree.tag_configure("negative", foreground="red")
 
     def cargar_datos_mensuales():
-        ventas_mes = dict(obtener_ventas_por_mes())
-        compras_mes = dict(obtener_compras_por_mes())
-        gastos_adicionales_mes = dict(obtener_gastos_adicionales_por_mes())
-        cargar_datos(tree_mensual, ventas_mes, compras_mes, gastos_adicionales_mes, "Periodo (YYYY-MM)")
+        ventas_mes = ventas_agrupadas("mensual")
+        compras_mes = compras_agrupadas("mensual")
+        gastos_adicionales_mes = gastos_adicionales_agrupados("mensual")
+        cargar_datos(tree_mensual, ventas_mes, compras_mes, gastos_adicionales_mes)
 
     def cargar_datos_semanales():
-        ventas_semana = dict(obtener_ventas_por_semana())
-        compras_semana = dict(obtener_compras_por_semana())
-        gastos_adicionales_semana = dict(obtener_gastos_adicionales_por_semana())
-        cargar_datos(tree_semanal, ventas_semana, compras_semana, gastos_adicionales_semana, "Periodo (YYYY-WNN)")
+        ventas_semana = ventas_agrupadas("semanal")
+        compras_semana = compras_agrupadas("semanal")
+        gastos_adicionales_semana = gastos_adicionales_agrupados("semanal")
+        cargar_datos(tree_semanal, ventas_semana, compras_semana, gastos_adicionales_semana)
 
     def cargar_datos_diarios():
-        ventas_dia = dict(obtener_ventas_por_dia())
-        compras_dia = dict(obtener_compras_por_dia())
-        gastos_adicionales_dia = dict(obtener_gastos_adicionales_por_dia())
-        cargar_datos(tree_diario, ventas_dia, compras_dia, gastos_adicionales_dia, "Periodo (YYYY-MM-DD)")
+        ventas_dia = ventas_agrupadas("diario")
+        compras_dia = compras_agrupadas("diario")
+        gastos_adicionales_dia = gastos_adicionales_agrupados("diario")
+        cargar_datos(tree_diario, ventas_dia, compras_dia, gastos_adicionales_dia)
 
     def on_tab_selected(event):
         selected_tab = notebook.tab(notebook.select(), "text")
