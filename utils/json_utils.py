@@ -4,6 +4,8 @@ import os
 import shutil
 from datetime import datetime
 
+from utils.history_utils import guardar_version
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +51,10 @@ def write_json(path, data):
     Any exception during the write process is logged.
     """
     try:
+        if os.path.exists(path):
+            # Guardar la versión actual antes de sobrescribir
+            datos_previos = read_json(path)
+            guardar_version(path, datos_previos)
         crear_backup(path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
