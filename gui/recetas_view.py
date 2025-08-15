@@ -470,6 +470,22 @@ def mostrar_ventana_recetas():
     text_procedimiento = tk.Text(frame_ingredientes_receta, height=5, width=70)
     text_procedimiento.pack(fill=tk.BOTH, padx=5, pady=(0, 10))
 
+    def abrir_editor_procedimiento():
+        editor = tk.Toplevel(ventana)
+        editor.title("Editar procedimiento")
+        text_editor = tk.Text(editor, height=20, width=80)
+        text_editor.pack(padx=10, pady=10)
+        text_editor.insert("1.0", text_procedimiento.get("1.0", tk.END))
+
+        def guardar():
+            text_procedimiento.delete("1.0", tk.END)
+            text_procedimiento.insert("1.0", text_editor.get("1.0", tk.END))
+            editor.destroy()
+
+        tk.Button(editor, text="Guardar", command=guardar).pack(pady=5)
+
+    tk.Button(frame_ingredientes_receta, text="Editar en ventana…", command=abrir_editor_procedimiento).pack(pady=(0, 10))
+
     tk.Button(
         frame_ingredientes_receta,
         text="Eliminar Ingrediente Seleccionado",
