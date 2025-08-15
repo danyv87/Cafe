@@ -2,6 +2,7 @@ import os
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from controllers import compras_controller
 from models.compra import Compra
@@ -36,6 +37,16 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(compra.items_compra[0].nombre_producto, "Cafe")
         # Ensure the controller's path points to compras.json
         self.assertEqual(os.path.basename(compras_controller.DATA_PATH), "compras.json")
+
+    @patch("controllers.compras_controller.actualizar_stock_materia_prima")
+    def test_registrar_compra_con_fecha(self, mock_actualizar_stock):
+        detalle = CompraDetalle(producto_id=2, nombre_producto="Azucar", cantidad=1, costo_unitario=5)
+        fecha_custom = "2024-05-01 10:30:00"
+        nueva_compra = compras_controller.registrar_compra("Proveedor Y", [detalle], fecha=fecha_custom)
+        self.assertEqual(nueva_compra.fecha, fecha_custom)
+        compras = compras_controller.cargar_compras()
+        self.assertEqual(len(compras), 2)
+        self.assertTrue(any(c.fecha == fecha_custom for c in compras))
 
 if __name__ == "__main__":
     unittest.main()

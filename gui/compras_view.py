@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
+from tkcalendar import DateEntry
+import datetime
 from controllers.compras_controller import registrar_compra
 from models.compra_detalle import CompraDetalle
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
@@ -20,6 +22,22 @@ def mostrar_ventana_compras():
     tk.Label(ventana, text="Nombre del Proveedor:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
     entry_proveedor = tk.Entry(ventana, width=50)
     entry_proveedor.pack()
+
+    # Fecha de la compra (opcional)
+    tk.Label(ventana, text="Fecha de la compra (opcional):", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
+    fecha_hoy = datetime.date.today()
+    date_entry = DateEntry(
+        ventana,
+        width=50,
+        background='darkblue',
+        foreground='white',
+        borderwidth=2,
+        date_pattern='yyyy-mm-dd',
+        year=fecha_hoy.year,
+        month=fecha_hoy.month,
+        day=fecha_hoy.day
+    )
+    date_entry.pack()
 
     # Buscador de Materia Prima
     tk.Label(ventana, text="Buscar Materia Prima:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
@@ -278,6 +296,12 @@ def mostrar_ventana_compras():
         Registra la compra completa.
         """
         proveedor = entry_proveedor.get().strip()
+        fecha_seleccionada = date_entry.get().strip()
+        hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
+        if fecha_seleccionada:
+            fecha = f"{fecha_seleccionada} {hora_actual}"
+        else:
+            fecha = ""
         if not proveedor:
             messagebox.showwarning("Atención", "Por favor, ingrese el nombre del proveedor.")
             return
@@ -294,7 +318,7 @@ def mostrar_ventana_compras():
             return
 
         try:
-            compra_registrada = registrar_compra(proveedor, compra_actual_items)
+            compra_registrada = registrar_compra(proveedor, compra_actual_items, fecha=fecha)
 
             messagebox.showinfo("Compra Registrada",
                                 f"Compra registrada con éxito para {proveedor}.\nTotal: Gs {compra_registrada.total:,.0f}".replace(
@@ -305,6 +329,7 @@ def mostrar_ventana_compras():
             actualizar_lista_compra_gui()  # Refrescar la lista vacía
             label_total.config(text="Total Compra: Gs 0")
             entry_proveedor.delete(0, tk.END)
+            date_entry.set_date(fecha_hoy)
             entry_cantidad.delete(0, tk.END)
             entry_descripcion_adicional.delete(0, tk.END)
             entry_costo_unitario.delete(0, tk.END)
