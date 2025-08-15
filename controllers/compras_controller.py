@@ -7,6 +7,7 @@ import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 from controllers.materia_prima_controller import actualizar_stock_materia_prima
+import pandas as pd
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -35,6 +36,14 @@ def guardar_compras(compras):
     logger.debug(f"Intentando guardar {len(compras)} compras en: {DATA_PATH}")
     write_json(DATA_PATH, [c.to_dict() for c in compras])
     logger.debug("Compras guardadas con éxito.")
+    exportar_compras_excel(compras)
+
+
+def exportar_compras_excel(compras):
+    """Exporta la lista de compras a un archivo Excel."""
+    df = pd.DataFrame([c.to_dict() for c in compras])
+    excel_path = config.get_data_path("compras.xlsx")
+    df.to_excel(excel_path, index=False)
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):
