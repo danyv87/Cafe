@@ -62,10 +62,8 @@ def validar_ingredientes_receta(ingredientes):
     return True, ""
 
 
-def validar_receta_completa(ingredientes, rendimiento):
-    """
-    Valida los ingredientes y el rendimiento de una receta.
-    """
+def validar_receta_completa(ingredientes, rendimiento, procedimiento=None):
+    """Valida los ingredientes, el rendimiento y opcionalmente el procedimiento."""
     es_valido_ingredientes, mensaje_ingredientes = validar_ingredientes_receta(ingredientes)
     if not es_valido_ingredientes:
         return False, mensaje_ingredientes
@@ -73,21 +71,26 @@ def validar_receta_completa(ingredientes, rendimiento):
     if rendimiento is None or not isinstance(rendimiento, (int, float)) or rendimiento <= 0:
         return False, "El rendimiento de la receta debe ser un número positivo."
 
+    if procedimiento is not None:
+        if not isinstance(procedimiento, str) or not procedimiento.strip():
+            return False, "El procedimiento de la receta debe ser un texto no vacío."
+
     return True, ""
 
 
-def agregar_receta(producto_id, nombre_producto, ingredientes, rendimiento):
-    """
-    Agrega una nueva receta a la lista y la guarda.
-    Valida que el producto exista, que los ingredientes sean válidos y el rendimiento.
-    """
+def agregar_receta(producto_id, nombre_producto, ingredientes, rendimiento, procedimiento=None):
+    """Agrega una nueva receta a la lista y la guarda."""
     # 1. Validar que el producto al que se asigna la receta exista
     producto = obtener_producto_por_id(producto_id)
     if not producto:
-        raise ValueError(f"Producto con ID '{producto_id}' no encontrado. No se puede crear la receta.")
+        raise ValueError(
+            f"Producto con ID '{producto_id}' no encontrado. No se puede crear la receta."
+        )
 
-    # 2. Validar los ingredientes y el rendimiento de la receta
-    es_valido, mensaje_error = validar_receta_completa(ingredientes, rendimiento)
+    # 2. Validar los ingredientes, el rendimiento y el procedimiento de la receta
+    es_valido, mensaje_error = validar_receta_completa(
+        ingredientes, rendimiento, procedimiento
+    )
     if not es_valido:
         raise ValueError(mensaje_error)
 
@@ -96,9 +99,11 @@ def agregar_receta(producto_id, nombre_producto, ingredientes, rendimiento):
     # Opcional: Verificar si ya existe una receta para este producto (una receta por producto)
     for r in recetas:
         if r.producto_id == producto_id:
-            raise ValueError(f"Ya existe una receta para el producto '{nombre_producto}'. Edítela en su lugar.")
+            raise ValueError(
+                f"Ya existe una receta para el producto '{nombre_producto}'. Edítela en su lugar."
+            )
 
-    nueva_receta = Receta(producto_id, nombre_producto, ingredientes, rendimiento)
+    nueva_receta = Receta(producto_id, nombre_producto, ingredientes, rendimiento, procedimiento)
     recetas.append(nueva_receta)
     guardar_recetas(recetas)
     return nueva_receta
@@ -123,12 +128,11 @@ def obtener_receta_por_producto_id(producto_id):
     return None
 
 
-def editar_receta(receta_id, nuevos_ingredientes, nuevo_rendimiento):
-    """
-    Edita una receta existente por su ID.
-    Valida los nuevos ingredientes y el rendimiento.
-    """
-    es_valido, mensaje_error = validar_receta_completa(nuevos_ingredientes, nuevo_rendimiento)
+def editar_receta(receta_id, nuevos_ingredientes, nuevo_rendimiento, nuevo_procedimiento=None):
+    """Edita una receta existente por su ID."""
+    es_valido, mensaje_error = validar_receta_completa(
+        nuevos_ingredientes, nuevo_rendimiento, nuevo_procedimiento
+    )
     if not es_valido:
         raise ValueError(mensaje_error)
 
@@ -137,6 +141,7 @@ def editar_receta(receta_id, nuevos_ingredientes, nuevo_rendimiento):
         if r.id == receta_id:
             recetas[i].ingredientes = nuevos_ingredientes
             recetas[i].rendimiento = nuevo_rendimiento  # Actualizar el rendimiento
+            recetas[i].procedimiento = nuevo_procedimiento
             guardar_recetas(recetas)
             return recetas[i]
     raise ValueError(f"Receta con ID '{receta_id}' no encontrada para edición.")
