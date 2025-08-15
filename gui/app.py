@@ -7,7 +7,7 @@ from gui.materia_prima_view import mostrar_ventana_materias_primas
 from gui.recetas_view import mostrar_ventana_recetas
 from gui.gastos_adicionales_view import mostrar_ventana_gastos_adicionales
 from gui.gestion_ventas import mostrar_ventana_gestion_ventas
-from gui.reportes_menu import mostrar_reportes_menu
+from gui.informes_menu import mostrar_informes_menu
 def iniciar_app():
     root = tk.Tk()
     root.title("Sistema de Ventas - Cafetería")
@@ -76,7 +76,7 @@ def iniciar_app():
     # --- Grupo: Informes y Análisis ---
     frame_reports = ttk.LabelFrame(main_button_container, text="Informes y Análisis", padding=15)
     frame_reports.pack(pady=10, fill=tk.X)
-    ttk.Button(frame_reports, text="Informes y Análisis", command=mostrar_reportes_menu).pack(pady=5, fill=tk.X)
+    ttk.Button(frame_reports, text="Informes y Análisis", command=mostrar_informes_menu).pack(pady=5, fill=tk.X)
     ttk.Button(frame_reports, text="Eliminar Ventas (Tickets)", command=mostrar_ventana_gestion_ventas).pack(pady=5, fill=tk.X)
     ttk.Button(frame_reports, text="Gestionar Gastos Adicionales", command=mostrar_ventana_gastos_adicionales).pack(pady=5, fill=tk.X)
 
