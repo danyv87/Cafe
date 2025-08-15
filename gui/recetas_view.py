@@ -131,6 +131,7 @@ def mostrar_ventana_recetas():
                 ingredientes_receta_actual.clear()
                 receta_actual_id.set("")
                 rendimiento_var.set("1")  # Resetear rendimiento por defecto
+                text_procedimiento.delete("1.0", tk.END)
 
                 if receta_existente:
                     receta_actual_id.set(receta_existente.id)
@@ -145,6 +146,9 @@ def mostrar_ventana_recetas():
                     if receta_existente.rendimiento is not None:
                         rendimiento_var.set(str(receta_existente.rendimiento))
 
+                    if receta_existente.procedimiento:
+                        text_procedimiento.insert(tk.END, receta_existente.procedimiento)
+
                     messagebox.showinfo("Receta Cargada", f"Receta para '{prod_encontrado.nombre}' cargada.")
                 else:
                     messagebox.showinfo("Nueva Receta",
@@ -156,6 +160,7 @@ def mostrar_ventana_recetas():
                 producto_seleccionado_id.set("")
                 ingredientes_receta_actual.clear()
                 rendimiento_var.set("1")  # Resetear rendimiento
+                text_procedimiento.delete("1.0", tk.END)
                 actualizar_lista_receta_ingredientes()
         except Exception as e:
             messagebox.showerror("Error de Selección", f"Ocurrió un error al seleccionar el producto: {e}")
@@ -291,6 +296,7 @@ def mostrar_ventana_recetas():
             entry_buscar_mp.delete(0, tk.END)
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
+            text_procedimiento.delete("1.0", tk.END)
             cargar_productos_en_lista(filtro_texto="", filtro_tipo=filtro_receta_var.get())
             messagebox.showinfo("Receta Limpiada", "La receta actual ha sido limpiada.")
         else:
@@ -328,17 +334,34 @@ def mostrar_ventana_recetas():
             for item in ingredientes_receta_actual
         ]
 
-        es_valido, mensaje_error = validar_receta_completa(ingredientes_para_guardar, rendimiento)
+        procedimiento = text_procedimiento.get("1.0", tk.END).strip()
+        if not procedimiento:
+            procedimiento = None
+
+        es_valido, mensaje_error = validar_receta_completa(
+            ingredientes_para_guardar, rendimiento, procedimiento
+        )
         if not es_valido:
             messagebox.showerror("Error de Validación de Receta", mensaje_error)
             return
 
         try:
             if receta_actual_id.get():
-                editar_receta(receta_actual_id.get(), ingredientes_para_guardar, rendimiento)
+                editar_receta(
+                    receta_actual_id.get(),
+                    ingredientes_para_guardar,
+                    rendimiento,
+                    procedimiento,
+                )
                 messagebox.showinfo("Éxito", f"Receta para '{nombre_prod}' actualizada correctamente.")
             else:
-                agregar_receta(prod_id, nombre_prod, ingredientes_para_guardar, rendimiento)
+                agregar_receta(
+                    prod_id,
+                    nombre_prod,
+                    ingredientes_para_guardar,
+                    rendimiento,
+                    procedimiento,
+                )
                 messagebox.showinfo("Éxito", f"Receta para '{nombre_prod}' creada correctamente.")
 
             producto_seleccionado_id.set("")
@@ -351,6 +374,7 @@ def mostrar_ventana_recetas():
             entry_buscar_mp.delete(0, tk.END)
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
+            text_procedimiento.delete("1.0", tk.END)
 
         except ValueError as e:
             messagebox.showerror("Error al Guardar Receta", str(e))
@@ -442,10 +466,22 @@ def mostrar_ventana_recetas():
     scrollbar_receta_ingredientes.pack(side=tk.RIGHT, fill=tk.Y)
     lista_receta_ingredientes.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
-    tk.Button(frame_ingredientes_receta, text="Eliminar Ingrediente Seleccionado", command=eliminar_ingrediente,
-              width=30).pack(pady=5)
-    tk.Button(frame_ingredientes_receta, text="Limpiar Receta Actual", command=limpiar_receta_actual, width=30).pack(
-        pady=5)
+    tk.Label(frame_ingredientes_receta, text="Procedimiento:").pack(pady=(10, 0), anchor="w")
+    text_procedimiento = tk.Text(frame_ingredientes_receta, height=5, width=70)
+    text_procedimiento.pack(fill=tk.BOTH, padx=5, pady=(0, 10))
+
+    tk.Button(
+        frame_ingredientes_receta,
+        text="Eliminar Ingrediente Seleccionado",
+        command=eliminar_ingrediente,
+        width=30,
+    ).pack(pady=5)
+    tk.Button(
+        frame_ingredientes_receta,
+        text="Limpiar Receta Actual",
+        command=limpiar_receta_actual,
+        width=30,
+    ).pack(pady=5)
 
     # --- Sección de Añadir Materia Prima a Receta ---
     frame_add_mp = tk.LabelFrame(ventana, text="3. Añadir Materia Prima a Receta", padx=10, pady=10)
