@@ -44,4 +44,34 @@ export CAFE_DATA_PATH=/path/to/my/data
 python main.py
 ```
 
+## Respaldo y restauración
+
+Los archivos JSON con los datos de la aplicación se pueden respaldar y
+restaurar manualmente.
+
+### Crear un respaldo
+
+Los respaldos se almacenan en `data/backups`. Para generar uno, copie el
+contenido del directorio de datos actual a un subdirectorio con la fecha:
+
+```bash
+mkdir -p data/backups
+cp -r data/*.json data/backups/$(date +%F)/
+```
+
+### Restaurar una versión histórica
+
+Las versiones anteriores del contenido se guardan en `data/backups` y en
+`data/history`. Para volver a un estado previo copie los archivos JSON del
+subdirectorio deseado a `data/`:
+
+```bash
+cp data/backups/2024-06-15/*.json data/
+# o
+cp data/history/2024-01-30/*.json data/
+```
+
+⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
+aplicación para que cargue la información actualizada.
+
 
