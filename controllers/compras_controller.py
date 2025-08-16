@@ -9,7 +9,6 @@ import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 from controllers.materia_prima_controller import actualizar_stock_materia_prima
-import pandas as pd
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -40,18 +39,24 @@ def guardar_compras(compras):
 
 
 def exportar_compras_excel(compras):
-    """Exporta la lista de compras a un archivo Excel.
+    """Exporta la lista de compras a ``compras.xlsx``.
 
-    La exportación se omite silenciosamente si no están disponibles las
-    dependencias necesarias (por ejemplo, ``openpyxl``) o si ocurre un error
-    durante el proceso.
+    Si ``pandas``/``openpyxl`` no están instalados o ocurre algún otro error
+    durante la exportación, se registra una advertencia y la aplicación sigue
+    funcionando con normalidad.
     """
 
-    try:
+    try:  # pragma: no cover - la exportación es best effort
+        import pandas as pd
+
         df = pd.DataFrame([c.to_dict() for c in compras])
         excel_path = config.get_data_path("compras.xlsx")
         df.to_excel(excel_path, index=False)
-    except Exception as e:  # pragma: no cover - best effort only
+    except ImportError as e:
+        logger.warning(
+            f"No se pudo exportar las compras a Excel por falta de dependencias: {e}"
+        )
+    except Exception as e:
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
