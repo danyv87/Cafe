@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 import datetime
+import os
 from controllers.compras_controller import registrar_compra, registrar_compra_desde_imagen
 from models.compra_detalle import CompraDetalle
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
@@ -157,12 +158,17 @@ def mostrar_ventana_compras():
 
         ruta = filedialog.askopenfilename(
             title="Seleccionar comprobante",
-            filetypes=[
-                ("Imagen o JSON", "*.png *.jpg *.jpeg *.json"),
-                ("Todos los archivos", "*.*"),
-            ],
+            filetypes=[("Imagen o JSON", "*.png *.jpg *.jpeg *.json")],
         )
         if not ruta:
+            return
+
+        extensiones_permitidas = {".png", ".jpg", ".jpeg", ".json"}
+        if os.path.splitext(ruta)[1].lower() not in extensiones_permitidas:
+            messagebox.showerror(
+                "Error",
+                "Formato de archivo no soportado. Solo se permiten imágenes .png, .jpg, .jpeg o archivos .json.",
+            )
             return
 
         try:
