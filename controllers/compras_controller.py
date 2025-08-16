@@ -1,4 +1,3 @@
-import os
 import logging
 from utils.json_utils import read_json, write_json
 from utils.history_utils import listar_versiones
