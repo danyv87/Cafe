@@ -1,8 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 import datetime
-from controllers.compras_controller import registrar_compra
+from controllers.compras_controller import registrar_compra, registrar_compra_desde_imagen
 from models.compra_detalle import CompraDetalle
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
 
@@ -147,6 +147,71 @@ def mostrar_ventana_compras():
             display_text += f" = Gs {item.total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             lista_compra.insert(tk.END, display_text)
         actualizar_total_compra()
+
+    def importar_items_desde_imagen():
+        """Permite al usuario importar ítems desde una imagen o archivo JSON."""
+        proveedor = entry_proveedor.get().strip()
+        if not proveedor:
+            messagebox.showwarning("Atención", "Por favor, ingrese el nombre del proveedor antes de importar.")
+            return
+
+        ruta = filedialog.askopenfilename(
+            title="Seleccionar comprobante",
+            filetypes=[
+                ("Imagen o JSON", "*.png *.jpg *.jpeg *.json"),
+                ("Todos los archivos", "*.*"),
+            ],
+        )
+        if not ruta:
+            return
+
+        try:
+            items = registrar_compra_desde_imagen(proveedor, ruta)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            return
+
+        if not items:
+            messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")
+            return
+
+        ventana_items = tk.Toplevel(ventana)
+        ventana_items.title("Ítems importados")
+        ventana_items.geometry("600x400")
+
+        frame_items = tk.Frame(ventana_items)
+        frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(frame_items, orient=tk.VERTICAL)
+        lista_items = tk.Listbox(frame_items, yscrollcommand=scrollbar.set, width=80)
+        scrollbar.config(command=lista_items.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        lista_items.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        for item in items:
+            total_item = item["cantidad"] * item["costo_unitario"]
+            linea = (
+                f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
+                .replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            lista_items.insert(tk.END, linea)
+
+        def aceptar_items():
+            for item in items:
+                detalle = CompraDetalle(
+                    producto_id=item["producto_id"],
+                    nombre_producto=item["nombre_producto"],
+                    cantidad=item["cantidad"],
+                    costo_unitario=item["costo_unitario"],
+                    descripcion_adicional=item.get("descripcion_adicional", ""),
+                )
+                compra_actual_items.append(detalle)
+            actualizar_lista_compra_gui()
+            ventana_items.destroy()
+            messagebox.showinfo("Éxito", f"Se agregaron {len(items)} ítems importados.")
+
+        tk.Button(ventana_items, text="Agregar a la compra", command=aceptar_items, bg="lightgreen").pack(pady=5)
+        tk.Button(ventana_items, text="Cancelar", command=ventana_items.destroy, bg="lightcoral").pack(pady=5)
 
     def agregar_o_editar_item_a_compra():
         """
@@ -348,6 +413,8 @@ def mostrar_ventana_compras():
 
     tk.Button(ventana, text="Agregar/Editar Item", command=agregar_o_editar_item_a_compra, width=25,
               bg="lightgray").pack(pady=5)
+    tk.Button(ventana, text="Importar desde imagen", command=importar_items_desde_imagen, width=25,
+              bg="lightyellow").pack(pady=5)
     tk.Button(ventana, text="Quitar Item Seleccionado", command=quitar_item_compra, width=25, bg="lightcoral").pack(
         pady=5)
     tk.Button(ventana, text="Registrar Compra", command=registrar_nueva_compra, width=25, bg="lightblue",
