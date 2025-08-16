@@ -17,7 +17,9 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
         }
     ]
 
-    compra = compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+    compra = compras_controller.registrar_compra_desde_imagen(
+        "Proveedor", "img.jpg", como_compra=True
+    )
     assert isinstance(compra, Compra)
     assert len(compra.items_compra) == 1
     detalle = compra.items_compra[0]
