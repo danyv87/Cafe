@@ -3,6 +3,8 @@ import logging
 from utils.json_utils import read_json, write_json
 from utils.history_utils import listar_versiones
 from models.compra import Compra
+from models.compra_detalle import CompraDetalle
+from utils import gpt_receipt_parser
 import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
@@ -44,6 +46,41 @@ def exportar_compras_excel(compras):
     df = pd.DataFrame([c.to_dict() for c in compras])
     excel_path = config.get_data_path("compras.xlsx")
     df.to_excel(excel_path, index=False)
+
+
+def validar_items(items):
+    """Valida los ítems utilizando un servicio externo.
+
+    Esta función actúa como un punto de integración con servicios de
+    validación. Se deja una implementación mínima para que las pruebas puedan
+    simular diferentes escenarios mediante *patching*.
+    """
+    return True
+
+
+def registrar_compra_desde_imagen(proveedor, ruta_imagen, fecha=None):
+    """Registra una compra a partir de una imagen de factura.
+
+    La imagen es procesada por GPT para obtener los ítems de la compra. Luego
+    se validan los ítems y, si todos son válidos, se delega en
+    :func:`registrar_compra` para almacenar la información.
+    """
+    items = gpt_receipt_parser.parse_receipt(ruta_imagen)
+    if not validar_items(items):
+        raise ValueError("Ítems inválidos")
+
+    detalles = [
+        CompraDetalle(
+            producto_id=item["producto_id"],
+            nombre_producto=item["nombre_producto"],
+            cantidad=item["cantidad"],
+            costo_unitario=item["costo_unitario"],
+            descripcion_adicional=item.get("descripcion_adicional", ""),
+        )
+        for item in items
+    ]
+
+    return registrar_compra(proveedor, detalles, fecha=fecha)
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):

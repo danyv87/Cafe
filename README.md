@@ -11,6 +11,17 @@ This project is a simple GUI-based application for managing a cafe. It is built 
 pip install -r requirements.txt
 ```
 
+### OpenAI SDK
+
+Algunas funcionalidades, como el registro de compras desde imágenes, utilizan
+el SDK de OpenAI. Instálalo y configura tu clave de API antes de ejecutar la
+aplicación:
+
+```bash
+pip install openai
+export OPENAI_API_KEY="tu_clave"
+```
+
 ## Modules Overview
 
 - **controllers/** – business logic for products, purchases, recipes and more.
