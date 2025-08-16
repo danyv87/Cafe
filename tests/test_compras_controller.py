@@ -114,5 +114,15 @@ class TestCargarCompras(unittest.TestCase):
         with self.assertRaises(ValueError):
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
 
+    @patch(
+        "controllers.compras_controller.parse_receipt_image",
+        side_effect=NotImplementedError("backend no disponible"),
+    )
+    def test_registrar_compra_desde_imagen_backend_no_disponible(self, mock_parse):
+        with self.assertRaises(ValueError) as ctx:
+            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        # The controller should propagate the original message
+        self.assertEqual("backend no disponible", str(ctx.exception))
+
 if __name__ == "__main__":
     unittest.main()
