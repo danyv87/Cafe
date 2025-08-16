@@ -91,6 +91,9 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         raise ValueError(
             "No se pudo procesar la imagen por un problema de conexión."
         ) from e
+    except ValueError as e:
+        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+        raise ValueError(str(e)) from e
     except Exception as e:
         logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
         raise ValueError(
