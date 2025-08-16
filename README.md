@@ -11,6 +11,10 @@ This project is a simple GUI-based application for managing a cafe. It is built 
 pip install -r requirements.txt
 ```
 
+To enable receipt parsing powered by OpenAI models you must define the
+`OPENAI_API_KEY` environment variable with a valid API key before running the
+application.
+
 ## Modules Overview
 
 - **controllers/** – business logic for products, purchases, recipes and more.
