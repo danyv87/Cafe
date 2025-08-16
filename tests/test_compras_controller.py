@@ -99,7 +99,7 @@ class TestCargarCompras(unittest.TestCase):
     def test_registrar_compra_desde_imagen_error_parseo(self, mock_parse):
         with self.assertRaises(ValueError) as ctx:
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
-        self.assertIn("interpretar", str(ctx.exception).lower())
+        self.assertEqual("formato inválido", str(ctx.exception))
 
     @patch("controllers.compras_controller.parse_receipt_image")
     def test_registrar_compra_desde_imagen_datos_invalidos(self, mock_parse):

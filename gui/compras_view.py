@@ -167,8 +167,11 @@ def mostrar_ventana_compras():
 
         try:
             items = registrar_compra_desde_imagen(proveedor, ruta)
-        except Exception as e:
+        except ValueError as e:
             messagebox.showerror("Error", str(e))
+            return
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
             return
 
         if not items:
