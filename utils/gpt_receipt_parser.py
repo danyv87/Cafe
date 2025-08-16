@@ -20,7 +20,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     Parameters
     ----------
     path:
-        Path to a ``.jpeg`` image containing the receipt.
+        Path to an image (``.jpeg``, ``.jpg`` or ``.png``) containing the receipt.
 
     Returns
     -------
@@ -32,14 +32,16 @@ def parse_receipt_image(path: str) -> List[Dict]:
     FileNotFoundError
         If the file does not exist.
     ValueError
-        If the path does not end with ``.jpeg``.
+        If the path does not end with ``.jpeg``, ``.jpg`` or ``.png``.
     """
 
     if not os.path.isfile(path):
         raise FileNotFoundError(f"File not found: {path}")
 
-    if not path.lower().endswith(".jpeg"):
-        raise ValueError("Unsupported format: only .jpeg images are allowed")
+    if not path.lower().endswith((".jpeg", ".jpg", ".png")):
+        raise ValueError(
+            "Unsupported format: only .jpeg, .jpg or .png images are allowed"
+        )
 
     with open(path, "rb") as f:
         image_bytes = f.read()

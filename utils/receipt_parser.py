@@ -79,7 +79,7 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
     1. **JSON fallback** – If ``path_imagen`` ends with ``.json`` the file is
        loaded and assumed to contain the list of item dictionaries.
     2. **GPT based parser** – Delegates to :mod:`utils.gpt_receipt_parser` which
-       uses the OpenAI API to process ``.jpeg`` images.
+       uses the OpenAI API to process ``.jpeg``, ``.jpg`` or ``.png`` images.
 
     Returns
     -------
