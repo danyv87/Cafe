@@ -3,6 +3,8 @@ import logging
 from utils.json_utils import read_json, write_json
 from utils.history_utils import listar_versiones
 from models.compra import Compra
+from models.compra_detalle import CompraDetalle
+from utils.receipt_parser import parse_receipt_image
 import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
@@ -11,8 +13,6 @@ import pandas as pd
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-# ... Tus otras importaciones y definiciones de modelos, como Compra, CompraDetalle, actualizar_stock_materia_prima ...
 
 # Ruta por defecto donde se almacenarán las compras
 DATA_PATH = config.get_data_path("compras.json")
@@ -40,10 +40,75 @@ def guardar_compras(compras):
 
 
 def exportar_compras_excel(compras):
-    """Exporta la lista de compras a un archivo Excel."""
-    df = pd.DataFrame([c.to_dict() for c in compras])
-    excel_path = config.get_data_path("compras.xlsx")
-    df.to_excel(excel_path, index=False)
+    """Exporta la lista de compras a un archivo Excel.
+
+    La exportación se omite silenciosamente si no están disponibles las
+    dependencias necesarias (por ejemplo, ``openpyxl``) o si ocurre un error
+    durante el proceso.
+    """
+
+    try:
+        df = pd.DataFrame([c.to_dict() for c in compras])
+        excel_path = config.get_data_path("compras.xlsx")
+        df.to_excel(excel_path, index=False)
+    except Exception as e:  # pragma: no cover - best effort only
+        logger.warning(f"No se pudo exportar las compras a Excel: {e}")
+
+
+def registrar_compra_desde_imagen(proveedor, path_imagen):
+    """Procesa un comprobante en *path_imagen* y construye una ``Compra``.
+
+    La compra resultante **no** se persiste ni actualiza el stock hasta que
+    los ítems sean confirmados. Para guardar definitivamente la compra debe
+    llamarse a :func:`registrar_compra` con los datos retornados.
+
+    Args:
+        proveedor (str): Nombre del proveedor.
+        path_imagen (str): Ruta del archivo de imagen del comprobante.
+
+    Returns:
+        Compra: Compra con los ítems obtenidos desde la imagen.
+
+    Raises:
+        ValueError: Si ocurre un problema de conexión o si los datos del
+            comprobante no pueden interpretarse.
+    """
+
+    if not proveedor or len(proveedor.strip()) == 0:
+        raise ValueError("El nombre del proveedor no puede estar vacío.")
+
+    try:
+        items_dict = parse_receipt_image(path_imagen)
+    except (ConnectionError, TimeoutError) as e:
+        logger.error(f"Error de red al procesar '{path_imagen}': {e}")
+        raise ValueError(
+            "No se pudo procesar la imagen por un problema de conexión."
+        ) from e
+    except Exception as e:
+        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+        raise ValueError(
+            "No se pudo interpretar la imagen del comprobante."
+        ) from e
+
+    if not isinstance(items_dict, list):
+        raise ValueError("Formato de datos inválido del comprobante.")
+
+    try:
+        detalles = [
+            CompraDetalle(
+                producto_id=item.get("producto_id"),
+                nombre_producto=item.get("nombre_producto"),
+                cantidad=item.get("cantidad"),
+                costo_unitario=item.get("costo_unitario"),
+                descripcion_adicional=item.get("descripcion_adicional", ""),
+            )
+            for item in items_dict
+        ]
+    except Exception as e:
+        logger.error(f"Error al convertir datos del comprobante: {e}")
+        raise ValueError("Datos de compra inválidos en la imagen.") from e
+
+    return Compra(proveedor=proveedor.strip(), items_compra=detalles)
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):
