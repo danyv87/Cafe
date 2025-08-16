@@ -41,3 +41,19 @@ def test_registrar_compra_desde_imagen_datos_malos(mock_parse):
     mock_parse.return_value = {"producto": "mal"}  # no es una lista
     with pytest.raises(ValueError):
         compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+
+
+@patch("controllers.compras_controller.parse_receipt_image")
+@pytest.mark.parametrize("producto_id", [None, "", 0, "abc"])
+def test_registrar_compra_desde_imagen_producto_id_invalido(mock_parse, producto_id):
+    mock_parse.return_value = [
+        {
+            "producto_id": producto_id,
+            "nombre_producto": "Cafe",
+            "cantidad": 1,
+            "costo_unitario": 5,
+        }
+    ]
+
+    with pytest.raises(ValueError):
+        compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
