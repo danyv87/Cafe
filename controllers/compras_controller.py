@@ -124,7 +124,7 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     items_validados = []
     for item in items_dict:
         try:
-            producto_id = item["producto_id"]
+            producto_id = int(item["producto_id"])
             nombre = item["nombre_producto"].strip()
             cantidad = float(item["cantidad"])
             costo_unitario = float(item["costo_unitario"])
@@ -133,7 +133,7 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             logger.error(f"Error al convertir datos del comprobante: {e}")
             raise ValueError("Datos de compra inválidos en la imagen.") from e
 
-        if not producto_id and producto_id != 0:
+        if not producto_id:
             raise ValueError("producto_id inválido en la imagen.")
         if not isinstance(nombre, str) or not nombre:
             raise ValueError("nombre_producto inválido en la imagen.")
