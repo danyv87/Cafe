@@ -48,5 +48,58 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(len(compras), 2)
         self.assertTrue(any(c.fecha == fecha_custom for c in compras))
 
+    @patch("controllers.compras_controller.parse_receipt_image")
+    def test_registrar_compra_desde_imagen(self, mock_parse):
+        mock_parse.return_value = [
+            {
+                "producto_id": 3,
+                "nombre_producto": "Leche",
+                "cantidad": 2,
+                "costo_unitario": 4,
+            }
+        ]
+
+        compra_temp = compras_controller.registrar_compra_desde_imagen(
+            "Proveedor Z", "dummy.jpg"
+        )
+        self.assertIsInstance(compra_temp, Compra)
+        self.assertEqual(len(compra_temp.items_compra), 1)
+        detalle = compra_temp.items_compra[0]
+        self.assertIsInstance(detalle, CompraDetalle)
+        self.assertEqual(detalle.nombre_producto, "Leche")
+
+        # Aún no se guardó en el archivo
+        compras = compras_controller.cargar_compras()
+        self.assertEqual(len(compras), 1)
+
+        with patch(
+            "controllers.compras_controller.actualizar_stock_materia_prima"
+        ) as mock_actualizar:
+            compras_controller.registrar_compra(
+                compra_temp.proveedor, compra_temp.items_compra, fecha=compra_temp.fecha
+            )
+            mock_actualizar.assert_called_once()
+
+        compras = compras_controller.cargar_compras()
+        self.assertEqual(len(compras), 2)
+
+    @patch(
+        "controllers.compras_controller.parse_receipt_image",
+        side_effect=ConnectionError("fallo de red"),
+    )
+    def test_registrar_compra_desde_imagen_error_red(self, mock_parse):
+        with self.assertRaises(ValueError) as ctx:
+            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        self.assertIn("conexión", str(ctx.exception).lower())
+
+    @patch(
+        "controllers.compras_controller.parse_receipt_image",
+        side_effect=ValueError("formato inválido"),
+    )
+    def test_registrar_compra_desde_imagen_error_parseo(self, mock_parse):
+        with self.assertRaises(ValueError) as ctx:
+            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        self.assertIn("interpretar", str(ctx.exception).lower())
+
 if __name__ == "__main__":
     unittest.main()
