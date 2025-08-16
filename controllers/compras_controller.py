@@ -43,7 +43,23 @@ def exportar_compras_excel(compras):
     """Exporta la lista de compras a un archivo Excel."""
     df = pd.DataFrame([c.to_dict() for c in compras])
     excel_path = config.get_data_path("compras.xlsx")
-    df.to_excel(excel_path, index=False)
+    try:
+        df.to_excel(excel_path, index=False)
+    except ModuleNotFoundError:
+        logger.warning("openpyxl no está instalado. Se omite la exportación a Excel.")
+    except Exception as e:
+        logger.error(f"No se pudo exportar a Excel: {e}")
+
+
+def registrar_compra_desde_imagen(ruta_imagen):
+    """Procesa una imagen de factura y propone ítems para la compra.
+
+    Esta es una implementación básica que debe ser reemplazada por el
+    procesamiento real de la imagen. Actualmente solo registra la llamada y
+    devuelve una lista vacía.
+    """
+    logger.debug(f"registrar_compra_desde_imagen invocado con: {ruta_imagen}")
+    return []
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):

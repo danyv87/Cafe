@@ -1,8 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 import datetime
-from controllers.compras_controller import registrar_compra
+from controllers.compras_controller import registrar_compra, registrar_compra_desde_imagen
 from models.compra_detalle import CompraDetalle
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
 
@@ -147,6 +147,83 @@ def mostrar_ventana_compras():
             display_text += f" = Gs {item.total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             lista_compra.insert(tk.END, display_text)
         actualizar_total_compra()
+
+    def importar_factura():
+        """Permite seleccionar una imagen de factura y propone ítems para la compra."""
+
+        ruta_imagen = filedialog.askopenfilename(
+            title="Seleccionar factura",
+            filetypes=[("JPEG", "*.jpeg")]
+        )
+        if not ruta_imagen:
+            return
+
+        try:
+            items_propuestos = registrar_compra_desde_imagen(ruta_imagen)
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo importar la factura: {e}")
+            return
+
+        if not items_propuestos:
+            messagebox.showinfo("Sin ítems", "No se detectaron ítems en la factura.")
+            return
+
+        def mostrar_dialogo_item(item):
+            dialog = tk.Toplevel(ventana)
+            dialog.title("Confirmar Ítem")
+
+            tk.Label(dialog, text="Nombre:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+            entry_nombre = tk.Entry(dialog, width=30)
+            entry_nombre.grid(row=0, column=1, padx=5, pady=5)
+            entry_nombre.insert(0, item.get("nombre_producto", ""))
+
+            tk.Label(dialog, text="Cantidad:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+            entry_cantidad = tk.Entry(dialog, width=10)
+            entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
+            entry_cantidad.insert(0, str(item.get("cantidad", "")))
+
+            tk.Label(dialog, text="Descripción:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
+            entry_desc = tk.Entry(dialog, width=30)
+            entry_desc.grid(row=2, column=1, padx=5, pady=5)
+            entry_desc.insert(0, item.get("descripcion_adicional", ""))
+
+            tk.Label(dialog, text="Costo Unitario:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
+            entry_costo = tk.Entry(dialog, width=10)
+            entry_costo.grid(row=3, column=1, padx=5, pady=5)
+            entry_costo.insert(0, str(item.get("costo_unitario", "")))
+
+            def aceptar():
+                try:
+                    cantidad_val = int(entry_cantidad.get())
+                    costo_val = float(entry_costo.get())
+                except ValueError:
+                    messagebox.showerror("Error", "Cantidad o costo inválidos.", parent=dialog)
+                    return
+
+                detalle = CompraDetalle(
+                    producto_id=item.get("producto_id", ""),
+                    nombre_producto=entry_nombre.get().strip(),
+                    cantidad=cantidad_val,
+                    costo_unitario=costo_val,
+                    descripcion_adicional=entry_desc.get().strip()
+                )
+                compra_actual_items.append(detalle)
+                actualizar_lista_compra_gui()
+                dialog.destroy()
+
+            def rechazar():
+                dialog.destroy()
+
+            btn_frame = tk.Frame(dialog)
+            btn_frame.grid(row=4, column=0, columnspan=2, pady=10)
+            tk.Button(btn_frame, text="Aceptar", command=aceptar, width=10).pack(side=tk.LEFT, padx=5)
+            tk.Button(btn_frame, text="Rechazar", command=rechazar, width=10).pack(side=tk.LEFT, padx=5)
+
+            dialog.grab_set()
+            ventana.wait_window(dialog)
+
+        for item in items_propuestos:
+            mostrar_dialogo_item(item)
 
     def agregar_o_editar_item_a_compra():
         """
@@ -346,6 +423,8 @@ def mostrar_ventana_compras():
     entry_buscar_mp.bind("<KeyRelease>", on_buscar_mp)
     lista_compra.bind("<<ListboxSelect>>", seleccionar_item_compra)  # Vincula la selección de ítem
 
+    tk.Button(ventana, text="Importar factura (.jpeg)", command=importar_factura, width=25,
+              bg="khaki").pack(pady=5)
     tk.Button(ventana, text="Agregar/Editar Item", command=agregar_o_editar_item_a_compra, width=25,
               bg="lightgray").pack(pady=5)
     tk.Button(ventana, text="Quitar Item Seleccionado", command=quitar_item_compra, width=25, bg="lightcoral").pack(
