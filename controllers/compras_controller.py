@@ -77,8 +77,19 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             temporal si ``como_compra`` es ``True``.
 
     Raises:
-        ValueError: Si ocurre un problema de conexión o si los datos del
-            comprobante no pueden interpretarse o son inválidos.
+        ValueError: Se propaga con alguno de los siguientes mensajes para
+            facilitar el diagnóstico del problema:
+
+            - ``"El nombre del proveedor no puede estar vacío."``
+            - ``"No se pudo procesar la imagen por un problema de conexión."``
+            - ``"No hay backend disponible para procesar imágenes de recibo."``
+            - Mensajes emitidos por :func:`parse_receipt_image` (por ejemplo,
+              ``"Materia prima 'X' no encontrada"`` o
+              ``"Cantidad o precio inválidos en el comprobante"``).
+            - ``"No se pudo interpretar la imagen del comprobante."`` cuando
+              ocurre un error inesperado.
+            - Mensajes de validación como ``"producto_id inválido en la
+              imagen"`` o ``"cantidad debe ser un número positivo."``.
     """
 
     if not proveedor or len(proveedor.strip()) == 0:
@@ -91,8 +102,15 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         raise ValueError(
             "No se pudo procesar la imagen por un problema de conexión."
         ) from e
+    except NotImplementedError as e:
+        logger.error(
+            f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
+        )
+        # Re-raise preserving the original message so the GUI can mostrarlo
+        raise ValueError(str(e)) from e
     except ValueError as e:
         logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+        # Propagate the original message for precise feedback
         raise ValueError(str(e)) from e
     except Exception as e:
         logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
