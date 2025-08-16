@@ -49,19 +49,28 @@ def parse_receipt_image(path: str) -> List[Dict]:
         "'cantidad' y 'precio' presentes en este recibo."
     )
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "input_text", "text": prompt},
-                    {"type": "input_image", "image": image_bytes},
-                ],
-            }
-        ],
-        response_format={"type": "json_object"},
-    )
+    inputs = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": prompt},
+                {"type": "input_image", "image": image_bytes},
+            ],
+        }
+    ]
+
+    try:
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=inputs,
+            response_format={"type": "json_object"},
+        )
+    except TypeError:
+        # Fallback for legacy SDKs lacking ``response_format`` support.
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=inputs,
+        )
 
     try:
         content = response.output[0].content[0].text
