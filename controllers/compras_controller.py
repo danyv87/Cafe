@@ -59,23 +59,26 @@ def exportar_compras_excel(compras):
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
-def registrar_compra_desde_imagen(proveedor, path_imagen):
-    """Procesa un comprobante en *path_imagen* y construye una ``Compra``.
+def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
+    """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
-    La compra resultante **no** se persiste ni actualiza el stock hasta que
-    los ítems sean confirmados. Para guardar definitivamente la compra debe
-    llamarse a :func:`registrar_compra` con los datos retornados.
+    La información recuperada **no** se persiste ni actualiza el stock hasta
+    que los ítems sean confirmados y registrados mediante
+    :func:`registrar_compra`.
 
     Args:
         proveedor (str): Nombre del proveedor.
         path_imagen (str): Ruta del archivo de imagen del comprobante.
+        como_compra (bool): Si es ``True`` se devuelve un objeto :class:`Compra`;
+            en caso contrario, se retorna la lista de diccionarios de ítems.
 
     Returns:
-        Compra: Compra con los ítems obtenidos desde la imagen.
+        list[dict] | Compra: Ítems validados del comprobante o una ``Compra``
+            temporal si ``como_compra`` es ``True``.
 
     Raises:
         ValueError: Si ocurre un problema de conexión o si los datos del
-            comprobante no pueden interpretarse.
+            comprobante no pueden interpretarse o son inválidos.
     """
 
     if not proveedor or len(proveedor.strip()) == 0:
@@ -97,22 +100,53 @@ def registrar_compra_desde_imagen(proveedor, path_imagen):
     if not isinstance(items_dict, list):
         raise ValueError("Formato de datos inválido del comprobante.")
 
-    try:
+    items_validados = []
+    for item in items_dict:
+        try:
+            producto_id = item["producto_id"]
+            nombre = item["nombre_producto"].strip()
+            cantidad = float(item["cantidad"])
+            costo_unitario = float(item["costo_unitario"])
+            descripcion = item.get("descripcion_adicional", "")
+        except Exception as e:  # pragma: no cover - fallthrough validation
+            logger.error(f"Error al convertir datos del comprobante: {e}")
+            raise ValueError("Datos de compra inválidos en la imagen.") from e
+
+        if not producto_id and producto_id != 0:
+            raise ValueError("producto_id inválido en la imagen.")
+        if not isinstance(nombre, str) or not nombre:
+            raise ValueError("nombre_producto inválido en la imagen.")
+        if cantidad <= 0:
+            raise ValueError("cantidad debe ser un número positivo.")
+        if costo_unitario <= 0:
+            raise ValueError("costo_unitario debe ser un número positivo.")
+        if not isinstance(descripcion, str):
+            raise ValueError("descripcion_adicional debe ser texto.")
+
+        items_validados.append(
+            {
+                "producto_id": producto_id,
+                "nombre_producto": nombre,
+                "cantidad": cantidad,
+                "costo_unitario": costo_unitario,
+                "descripcion_adicional": descripcion,
+            }
+        )
+
+    if como_compra:
         detalles = [
             CompraDetalle(
-                producto_id=item.get("producto_id"),
-                nombre_producto=item.get("nombre_producto"),
-                cantidad=item.get("cantidad"),
-                costo_unitario=item.get("costo_unitario"),
+                producto_id=item["producto_id"],
+                nombre_producto=item["nombre_producto"],
+                cantidad=item["cantidad"],
+                costo_unitario=item["costo_unitario"],
                 descripcion_adicional=item.get("descripcion_adicional", ""),
             )
-            for item in items_dict
+            for item in items_validados
         ]
-    except Exception as e:
-        logger.error(f"Error al convertir datos del comprobante: {e}")
-        raise ValueError("Datos de compra inválidos en la imagen.") from e
+        return Compra(proveedor=proveedor.strip(), items_compra=detalles)
 
-    return Compra(proveedor=proveedor.strip(), items_compra=detalles)
+    return items_validados
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):

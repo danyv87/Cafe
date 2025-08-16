@@ -59,14 +59,14 @@ class TestCargarCompras(unittest.TestCase):
             }
         ]
 
-        compra_temp = compras_controller.registrar_compra_desde_imagen(
+        items = compras_controller.registrar_compra_desde_imagen(
             "Proveedor Z", "dummy.jpg"
         )
-        self.assertIsInstance(compra_temp, Compra)
-        self.assertEqual(len(compra_temp.items_compra), 1)
-        detalle = compra_temp.items_compra[0]
-        self.assertIsInstance(detalle, CompraDetalle)
-        self.assertEqual(detalle.nombre_producto, "Leche")
+        self.assertIsInstance(items, list)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["nombre_producto"], "Leche")
+
+        detalles = [CompraDetalle(**item) for item in items]
 
         # Aún no se guardó en el archivo
         compras = compras_controller.cargar_compras()
@@ -76,7 +76,7 @@ class TestCargarCompras(unittest.TestCase):
             "controllers.compras_controller.actualizar_stock_materia_prima"
         ) as mock_actualizar:
             compras_controller.registrar_compra(
-                compra_temp.proveedor, compra_temp.items_compra, fecha=compra_temp.fecha
+                "Proveedor Z", detalles, fecha=""
             )
             mock_actualizar.assert_called_once()
 
@@ -100,6 +100,19 @@ class TestCargarCompras(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
         self.assertIn("interpretar", str(ctx.exception).lower())
+
+    @patch("controllers.compras_controller.parse_receipt_image")
+    def test_registrar_compra_desde_imagen_datos_invalidos(self, mock_parse):
+        mock_parse.return_value = [
+            {
+                "producto_id": 1,
+                "nombre_producto": "",
+                "cantidad": 0,
+                "costo_unitario": 1,
+            }
+        ]
+        with self.assertRaises(ValueError):
+            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
 
 if __name__ == "__main__":
     unittest.main()
