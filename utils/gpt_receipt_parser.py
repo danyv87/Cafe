@@ -5,7 +5,12 @@ from typing import List, Dict
 
 from openai import OpenAI
 
-client = OpenAI()
+
+def _get_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is not set")
+    return OpenAI(api_key=api_key)
 
 
 def parse_receipt_image(path: str) -> List[Dict]:
@@ -63,6 +68,8 @@ def parse_receipt_image(path: str) -> List[Dict]:
             ],
         }
     ]
+
+    client = _get_client()
 
     try:
         response = client.responses.create(
