@@ -1,37 +1,67 @@
 [
     {
-        "id": "0193e1f6-6e81-4b1c-b9d9-402424916c7f",
-        "nombre": "medialunas de dulce de leche",
-        "precio_unitario": 6000.0
-    },
-    {
-        "id": "50f4231a-ce87-4e0b-b8be-a18191eed061",
-        "nombre": "alfajor",
-        "precio_unitario": 5000.0
-    },
-    {
         "id": "4c11be36-3200-48d6-94da-c16fdd6f7da6",
         "nombre": "pastafrola (porci\u00f3n)",
         "precio_unitario": 7000.0
     },
     {
-        "id": "c405d3db-b788-4ec9-972b-b76a86f4781d",
-        "nombre": "mbeju",
-        "precio_unitario": 15000.0
-    },
-    {
         "id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
         "nombre": "Medialunas con relleno de dulce de leche",
-        "precio_unitario": 7000.0
+        "precio_unitario": 6000.0
     },
     {
         "id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
         "nombre": "Medialunas con relleno de dulce de guayaba",
+        "precio_unitario": 6000.0
+    },
+    {
+        "id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+        "nombre": "Medialunas sin relleno",
+        "precio_unitario": 6000.0
+    },
+    {
+        "id": "5dfffca7-a119-4939-a02f-423d9600f837",
+        "nombre": "Rolls de Canela",
         "precio_unitario": 7000.0
     },
     {
-        "id": "570883ff-ad36-4ec6-8f38-83d0ea8a5dac",
-        "nombre": "Mixto de Jam\u00f3n y Queso",
-        "precio_unitario": 15000.0
+        "id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+        "nombre": "Chocolate caliente chico",
+        "precio_unitario": 5000.0
+    },
+    {
+        "id": "7b29d7a4-2982-4641-8bf0-2ec5753e8035",
+        "nombre": "Cafe Largo",
+        "precio_unitario": 10000.0
+    },
+    {
+        "id": "1c336938-ca04-4b97-a28a-2411b15d29c6",
+        "nombre": "Cafe con Leche",
+        "precio_unitario": 12000.0
+    },
+    {
+        "id": "32ac75f5-cc64-4357-be0b-b281f4cee866",
+        "nombre": "Salsa Criolla",
+        "precio_unitario": 25000.0
+    },
+    {
+        "id": "8f781e30-1544-4d30-9e7d-5fab27bb918c",
+        "nombre": "Box de Dulces",
+        "precio_unitario": 65000.0
+    },
+    {
+        "id": "c115747a-fa6f-4c29-9b89-8b264bcdfe0c",
+        "nombre": "Cookies medianos",
+        "precio_unitario": 5000.0
+    },
+    {
+        "id": "fdf4d966-e3a9-4da6-bacd-c085669f31a5",
+        "nombre": "Pizzetas Calabresa 10cm",
+        "precio_unitario": 10000.0
+    },
+    {
+        "id": "aaa8763c-c510-4480-a4ee-ed85662c9eff",
+        "nombre": "Pizzetas Muzzarella 10cm",
+        "precio_unitario": 10000.0
     }
 ]

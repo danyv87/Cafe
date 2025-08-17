@@ -1,1 +1,818 @@
-[]
+[
+    {
+        "id": "30d618ca-f9d4-4264-a6e6-ed49036bff1d",
+        "fecha": "2025-06-14 17:01:11",
+        "cliente": "Silvana Baratto",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:00:50",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:01:03",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 2,
+                "precio_unitario": 6000.0,
+                "total": 12000.0
+            }
+        ],
+        "total": 30000.0
+    },
+    {
+        "id": "94a51362-0490-43a3-9a00-b97254bd8e01",
+        "fecha": "2025-06-14 17:02:38",
+        "cliente": "Yeni",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:02:24",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:02:34",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "9f8eb453-ae02-40ae-974b-1a63ad38e6e1",
+        "fecha": "2025-06-14 17:03:23",
+        "cliente": "Lourdes Valdez",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:03:12",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:03:19",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            }
+        ],
+        "total": 60000.0
+    },
+    {
+        "id": "6e637b1a-bda4-4a75-97e3-e2e182f43089",
+        "fecha": "2025-06-14 17:04:01",
+        "cliente": "Bibi Hammer",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:03:58",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 6,
+                "precio_unitario": 6000.0,
+                "total": 36000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "3c290935-f838-42f4-92b7-097364718bc9",
+        "fecha": "2025-06-14 17:05:31",
+        "cliente": "Fanny",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:05:07",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:05:22",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "bda43b5e-56e1-4d60-912c-1f995ef9183c",
+        "fecha": "2025-06-14 17:06:18",
+        "cliente": "Eli Catatldi",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:06:08",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:06:15",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 2,
+                "precio_unitario": 6000.0,
+                "total": 12000.0
+            }
+        ],
+        "total": 30000.0
+    },
+    {
+        "id": "3fc23f71-26ed-42fc-8878-22f9ae898710",
+        "fecha": "2025-06-15 17:07:18",
+        "cliente": "Liza Ayala",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:07:00",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:07:07",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:07:15",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            }
+        ],
+        "total": 90000.0
+    },
+    {
+        "id": "06ad5345-a8e1-4f3b-92c2-6e35c4e81463",
+        "fecha": "2025-06-15 17:09:21",
+        "cliente": "Antonio Zarza",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:09:18",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 10,
+                "precio_unitario": 6000.0,
+                "total": 60000.0
+            }
+        ],
+        "total": 60000.0
+    },
+    {
+        "id": "17cb8b1d-00fa-40be-83f4-2659a3695088",
+        "fecha": "2025-06-15 17:10:16",
+        "cliente": "Debora Livi",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:10:05",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:10:13",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "cd222282-ed38-45c6-b9fc-b79ae45d5fa2",
+        "fecha": "2025-06-15 17:11:06",
+        "cliente": "Carol Musolino",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:10:55",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:11:05",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "3bc0149a-0e91-4b4d-90a0-d03525bb0799",
+        "fecha": "2025-06-16 17:13:11",
+        "cliente": "Diego Benitez",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:12:59",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:13:07",
+                "producto_id": "5dfffca7-a119-4939-a02f-423d9600f837",
+                "nombre_producto": "Rolls de Canela",
+                "cantidad": 3,
+                "precio_unitario": 7000.0,
+                "total": 21000.0
+            }
+        ],
+        "total": 51000.0
+    },
+    {
+        "id": "68a76b8e-e8de-4ff2-b422-8239488d4cf9",
+        "fecha": "2025-06-16 17:14:18",
+        "cliente": "Perla",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 17:13:42",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:13:55",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 17:14:10",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 4,
+                "precio_unitario": 6000.0,
+                "total": 24000.0
+            }
+        ],
+        "total": 60000.0
+    },
+    {
+        "id": "a0d7b648-04b9-4a56-8944-67ed0549a971",
+        "fecha": "2025-06-16 18:08:59",
+        "cliente": "Jose Silvero",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 18:08:32",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 3,
+                "precio_unitario": 6000.0,
+                "total": 18000.0
+            },
+            {
+                "fecha_item": "2025-06-17 18:08:41",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            },
+            {
+                "fecha_item": "2025-06-17 18:08:55",
+                "producto_id": "5dfffca7-a119-4939-a02f-423d9600f837",
+                "nombre_producto": "Rolls de Canela",
+                "cantidad": 3,
+                "precio_unitario": 7000.0,
+                "total": 21000.0
+            }
+        ],
+        "total": 69000.0
+    },
+    {
+        "id": "2b950ed9-e39e-49a8-b556-1692e42910b6",
+        "fecha": "2025-06-16 19:22:26",
+        "cliente": "Edith Marzal",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 19:21:19",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 4,
+                "precio_unitario": 6000.0,
+                "total": 24000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:21:31",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 4,
+                "precio_unitario": 6000.0,
+                "total": 24000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:21:42",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 2,
+                "precio_unitario": 6000.0,
+                "total": 12000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:21:49",
+                "producto_id": "5dfffca7-a119-4939-a02f-423d9600f837",
+                "nombre_producto": "Rolls de Canela",
+                "cantidad": 2,
+                "precio_unitario": 7000.0,
+                "total": 14000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:21:56",
+                "producto_id": "7b29d7a4-2982-4641-8bf0-2ec5753e8035",
+                "nombre_producto": "Cafe Largo",
+                "cantidad": 1,
+                "precio_unitario": 10000.0,
+                "total": 10000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:22:04",
+                "producto_id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+                "nombre_producto": "Chocolate caliente chico",
+                "cantidad": 2,
+                "precio_unitario": 5000.0,
+                "total": 10000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:22:15",
+                "producto_id": "1c336938-ca04-4b97-a28a-2411b15d29c6",
+                "nombre_producto": "Cafe con Leche",
+                "cantidad": 1,
+                "precio_unitario": 12000.0,
+                "total": 12000.0
+            }
+        ],
+        "total": 106000.0
+    },
+    {
+        "id": "62f7ad26-ad4c-47bb-bc91-56df45fd6d49",
+        "fecha": "2025-06-16 19:25:56",
+        "cliente": "Diana Sanabria",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 19:25:30",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 6,
+                "precio_unitario": 6000.0,
+                "total": 36000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:25:38",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 6,
+                "precio_unitario": 6000.0,
+                "total": 36000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:25:44",
+                "producto_id": "7b29d7a4-2982-4641-8bf0-2ec5753e8035",
+                "nombre_producto": "Cafe Largo",
+                "cantidad": 1,
+                "precio_unitario": 10000.0,
+                "total": 10000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:25:51",
+                "producto_id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+                "nombre_producto": "Chocolate caliente chico",
+                "cantidad": 2,
+                "precio_unitario": 5000.0,
+                "total": 10000.0
+            }
+        ],
+        "total": 92000.0
+    },
+    {
+        "id": "f50e8353-3495-46da-91bd-242ffde44724",
+        "fecha": "2025-06-17 19:36:23",
+        "cliente": "Marcelo Pineda",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 19:36:11",
+                "producto_id": "8f781e30-1544-4d30-9e7d-5fab27bb918c",
+                "nombre_producto": "Box de Dulces",
+                "cantidad": 1,
+                "precio_unitario": 65000.0,
+                "total": 65000.0
+            },
+            {
+                "fecha_item": "2025-06-17 19:36:21",
+                "producto_id": "32ac75f5-cc64-4357-be0b-b281f4cee866",
+                "nombre_producto": "Salsa Criolla",
+                "cantidad": 1,
+                "precio_unitario": 25000.0,
+                "total": 25000.0
+            }
+        ],
+        "total": 90000.0
+    },
+    {
+        "id": "34ae6c12-56b2-44ce-b802-f6380a361e30",
+        "fecha": "2025-06-17 19:36:40",
+        "cliente": "Yeni",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 19:36:38",
+                "producto_id": "32ac75f5-cc64-4357-be0b-b281f4cee866",
+                "nombre_producto": "Salsa Criolla",
+                "cantidad": 1,
+                "precio_unitario": 25000.0,
+                "total": 25000.0
+            }
+        ],
+        "total": 25000.0
+    },
+    {
+        "id": "c084d82e-1f94-4fa6-889b-a349f0e426b0",
+        "fecha": "2025-06-17 19:37:01",
+        "cliente": "Aantonio Zarza",
+        "items_venta": [
+            {
+                "fecha_item": "2025-06-17 19:36:57",
+                "producto_id": "32ac75f5-cc64-4357-be0b-b281f4cee866",
+                "nombre_producto": "Salsa Criolla",
+                "cantidad": 1,
+                "precio_unitario": 25000.0,
+                "total": 25000.0
+            }
+        ],
+        "total": 25000.0
+    },
+    {
+        "id": "23c1758e-a327-42cf-af24-df253cf57f42",
+        "fecha": "2025-06-22 15:56:15",
+        "cliente": "San Juan",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-06 15:56:07",
+                "producto_id": "c115747a-fa6f-4c29-9b89-8b264bcdfe0c",
+                "nombre_producto": "Cookies medianos",
+                "cantidad": 20,
+                "precio_unitario": 5000.0,
+                "total": 100000.0
+            }
+        ],
+        "total": 100000.0
+    },
+    {
+        "id": "ef95d006-9ff0-4f52-8986-755b87cbec0c",
+        "fecha": "2025-06-22 15:58:03",
+        "cliente": "San Juan",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-06 15:57:21",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 25,
+                "precio_unitario": 6000.0,
+                "total": 150000.0
+            },
+            {
+                "fecha_item": "2025-07-06 15:57:38",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 50,
+                "precio_unitario": 6000.0,
+                "total": 300000.0
+            },
+            {
+                "fecha_item": "2025-07-06 15:57:57",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 25,
+                "precio_unitario": 6000.0,
+                "total": 150000.0
+            }
+        ],
+        "total": 600000.0
+    },
+    {
+        "id": "6a2f6514-d8c2-493e-abb1-6e8dd21b1ac2",
+        "fecha": "2025-06-28 00:37:39",
+        "cliente": "Lizbel Martinez Silva",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:37:36",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 10,
+                "precio_unitario": 6000.0,
+                "total": 60000.0
+            }
+        ],
+        "total": 60000.0
+    },
+    {
+        "id": "42485381-584b-4ee1-99a2-d9f08182fe55",
+        "fecha": "2025-06-30 00:39:47",
+        "cliente": "Delma Maria Benitez",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:39:09",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 15,
+                "precio_unitario": 6000.0,
+                "total": 90000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:39:44",
+                "producto_id": "5dfffca7-a119-4939-a02f-423d9600f837",
+                "nombre_producto": "Rolls de Canela",
+                "cantidad": 3,
+                "precio_unitario": 7000.0,
+                "total": 21000.0
+            }
+        ],
+        "total": 111000.0
+    },
+    {
+        "id": "0053b362-8e78-42c4-81d1-bc586ff08b23",
+        "fecha": "2025-06-30 00:41:40",
+        "cliente": "Pmela Arnold",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:40:55",
+                "producto_id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+                "nombre_producto": "Chocolate caliente chico",
+                "cantidad": 6,
+                "precio_unitario": 5000.0,
+                "total": 30000.0
+            }
+        ],
+        "total": 30000.0
+    },
+    {
+        "id": "98f27789-e457-438c-b14b-9dfa7f879b3d",
+        "fecha": "2025-07-01 00:43:37",
+        "cliente": "Lisa Ayala",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:43:16",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 20,
+                "precio_unitario": 6000.0,
+                "total": 120000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:43:34",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 10,
+                "precio_unitario": 6000.0,
+                "total": 60000.0
+            }
+        ],
+        "total": 180000.0
+    },
+    {
+        "id": "0f5bfc79-6d36-41a4-8e7a-22abe90c28e0",
+        "fecha": "2025-07-01 00:44:32",
+        "cliente": "Diana Pesaole",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:44:16",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 10,
+                "precio_unitario": 6000.0,
+                "total": 60000.0
+            }
+        ],
+        "total": 60000.0
+    },
+    {
+        "id": "a4a9b31e-010a-4ec9-a14b-8f502699a7f8",
+        "fecha": "2025-07-01 00:47:35",
+        "cliente": "Milta Bobadilla",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:47:18",
+                "producto_id": "fdf4d966-e3a9-4da6-bacd-c085669f31a5",
+                "nombre_producto": "Pizzetas Calabresa 10cm",
+                "cantidad": 30,
+                "precio_unitario": 10000.0,
+                "total": 300000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:47:30",
+                "producto_id": "aaa8763c-c510-4480-a4ee-ed85662c9eff",
+                "nombre_producto": "Pizzetas Muzzarella 10cm",
+                "cantidad": 30,
+                "precio_unitario": 10000.0,
+                "total": 300000.0
+            }
+        ],
+        "total": 600000.0
+    },
+    {
+        "id": "7089112f-c417-486a-bf35-4ec571d909e4",
+        "fecha": "2025-07-06 00:49:55",
+        "cliente": "Miriam Melgarejo",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:49:47",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 6,
+                "precio_unitario": 6000.0,
+                "total": 36000.0
+            }
+        ],
+        "total": 36000.0
+    },
+    {
+        "id": "c4a9166c-ba75-42bd-9bb1-541b0e0752d2",
+        "fecha": "2025-07-04 00:51:18",
+        "cliente": "Vanessa Paredes",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:51:07",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 5,
+                "precio_unitario": 6000.0,
+                "total": 30000.0
+            }
+        ],
+        "total": 30000.0
+    },
+    {
+        "id": "a28019bc-7cb7-4c35-9c54-81d1653dce95",
+        "fecha": "2025-07-05 00:51:46",
+        "cliente": "Vanessa Paredes",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:51:43",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 12,
+                "precio_unitario": 6000.0,
+                "total": 72000.0
+            }
+        ],
+        "total": 72000.0
+    },
+    {
+        "id": "7659e7db-c0a1-4f81-897e-443374c90071",
+        "fecha": "2025-07-07 00:52:40",
+        "cliente": "Mirta Martinez",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:52:39",
+                "producto_id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+                "nombre_producto": "Chocolate caliente chico",
+                "cantidad": 10,
+                "precio_unitario": 5000.0,
+                "total": 50000.0
+            }
+        ],
+        "total": 50000.0
+    },
+    {
+        "id": "456ed4f7-b643-4c35-9598-b736f1fda4fe",
+        "fecha": "2025-07-11 00:54:55",
+        "cliente": "Diana Sanabria",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:54:27",
+                "producto_id": "4c11be36-3200-48d6-94da-c16fdd6f7da6",
+                "nombre_producto": "pastafrola (porci\u00f3n)",
+                "cantidad": 15,
+                "precio_unitario": 7000.0,
+                "total": 105000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:54:43",
+                "producto_id": "7b29d7a4-2982-4641-8bf0-2ec5753e8035",
+                "nombre_producto": "Cafe Largo",
+                "cantidad": 2,
+                "precio_unitario": 10000.0,
+                "total": 20000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:54:52",
+                "producto_id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
+                "nombre_producto": "Chocolate caliente chico",
+                "cantidad": 1,
+                "precio_unitario": 5000.0,
+                "total": 5000.0
+            }
+        ],
+        "total": 130000.0
+    },
+    {
+        "id": "17b90006-75cf-439b-80ee-b64620e71a86",
+        "fecha": "2025-07-13 00:56:32",
+        "cliente": "Rocio Barrios",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:56:28",
+                "producto_id": "392cbbdc-afbe-4d15-bafe-64859be4b66e",
+                "nombre_producto": "Medialunas sin relleno",
+                "cantidad": 15,
+                "precio_unitario": 6000.0,
+                "total": 90000.0
+            }
+        ],
+        "total": 90000.0
+    },
+    {
+        "id": "9d408919-911a-4f4e-b1a5-fc2f7c18eca5",
+        "fecha": "2025-07-12 00:57:32",
+        "cliente": "Neusa Soares",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:57:16",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 6,
+                "precio_unitario": 6000.0,
+                "total": 36000.0
+            },
+            {
+                "fecha_item": "2025-07-12 00:57:30",
+                "producto_id": "5dfffca7-a119-4939-a02f-423d9600f837",
+                "nombre_producto": "Rolls de Canela",
+                "cantidad": 2,
+                "precio_unitario": 7000.0,
+                "total": 14000.0
+            }
+        ],
+        "total": 50000.0
+    },
+    {
+        "id": "cd9bd29c-e3c1-4b84-9eb1-98e654b57039",
+        "fecha": "2025-07-12 00:58:14",
+        "cliente": "Mariela Meza",
+        "items_venta": [
+            {
+                "fecha_item": "2025-07-12 00:58:06",
+                "producto_id": "168ced5a-d8e4-430d-8716-fb9c428c3bba",
+                "nombre_producto": "Medialunas con relleno de dulce de guayaba",
+                "cantidad": 24,
+                "precio_unitario": 6000.0,
+                "total": 144000.0
+            }
+        ],
+        "total": 144000.0
+    },
+    {
+        "id": "a5946a8b-a322-4211-be50-a03f7e7f7b59",
+        "fecha": "2025-08-15 15:53:40",
+        "cliente": "test",
+        "items_venta": [
+            {
+                "fecha_item": "2025-08-15 15:53:37",
+                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+                "nombre_producto": "Medialunas con relleno de dulce de leche",
+                "cantidad": 1,
+                "precio_unitario": 6000.0,
+                "total": 6000.0
+            }
+        ],
+        "total": 6000.0
+    }
+]

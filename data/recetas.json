@@ -1,1 +1,116 @@
-[]
+[
+    {
+        "id": "16409f84-684f-442b-b2d1-d21d38053f12",
+        "producto_id": "570883ff-ad36-4ec6-8f38-83d0ea8a5dac",
+        "nombre_producto": "Mixto de Jam\u00f3n y Queso",
+        "ingredientes": [
+            {
+                "materia_prima_id": "475d6203-e22a-48b2-bd66-52588b1837cf",
+                "cantidad_necesaria": 2.0,
+                "nombre_materia_prima": "Pan de miga",
+                "unidad_medida": "unidades"
+            },
+            {
+                "materia_prima_id": "47137b03-8206-43fe-a404-ec7ef204a52f",
+                "cantidad_necesaria": 50.0,
+                "nombre_materia_prima": "Jam\u00f3n",
+                "unidad_medida": "gramos"
+            },
+            {
+                "materia_prima_id": "ee4e55cc-81c8-4223-a280-12cb0d94e671",
+                "cantidad_necesaria": 30.0,
+                "nombre_materia_prima": "Queso",
+                "unidad_medida": "gramos"
+            }
+        ],
+        "rendimiento": null
+    },
+    {
+        "id": "d064f654-19d9-4a9c-abb8-22e63bd6d5c0",
+        "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
+        "nombre_producto": "Medialunas con relleno de dulce de leche",
+        "ingredientes": [
+            {
+                "materia_prima_id": "f8b9b1f0-8273-4f64-aaa3-a46246e6b801",
+                "nombre_materia_prima": "Harina de Trigo 000",
+                "cantidad_necesaria": 0.5,
+                "unidad_medida": "kg"
+            },
+            {
+                "materia_prima_id": "03c63f71-d76a-4483-823c-3473330ae4d9",
+                "nombre_materia_prima": "Az\u00facar",
+                "cantidad_necesaria": 0.1,
+                "unidad_medida": "kg"
+            },
+            {
+                "materia_prima_id": "7954094c-1062-4ddc-a416-55ce7207ff30",
+                "nombre_materia_prima": "Mantequilla",
+                "cantidad_necesaria": 100.0,
+                "unidad_medida": "gramos"
+            },
+            {
+                "materia_prima_id": "f3647770-93ff-4321-afab-a869c9152dbb",
+                "nombre_materia_prima": "Dulce de leche",
+                "cantidad_necesaria": 0.2,
+                "unidad_medida": "kg"
+            },
+            {
+                "materia_prima_id": "04f33c28-da94-465c-9122-2eac9ea8d06d",
+                "nombre_materia_prima": "Huevos",
+                "cantidad_necesaria": 2.0,
+                "unidad_medida": "unidades"
+            },
+            {
+                "materia_prima_id": "4f27f8f6-db72-4cf4-a2e4-b3b6842304a3",
+                "nombre_materia_prima": "Levadura seca instantanea",
+                "cantidad_necesaria": 10.0,
+                "unidad_medida": "sobres"
+            },
+            {
+                "materia_prima_id": "741e1729-e352-4489-b888-74fc58b00e0d",
+                "nombre_materia_prima": "Leche entera UHT",
+                "cantidad_necesaria": 0.15,
+                "unidad_medida": "litros"
+            }
+        ],
+        "rendimiento": 12.0
+    },
+    {
+        "id": "d4e91c62-9a17-4e88-9772-0e64d24eb4e2",
+        "producto_id": "4c11be36-3200-48d6-94da-c16fdd6f7da6",
+        "nombre_producto": "pastafrola (porci\u00f3n)",
+        "ingredientes": [
+            {
+                "materia_prima_id": "f8b9b1f0-8273-4f64-aaa3-a46246e6b801",
+                "cantidad_necesaria": 0.2,
+                "nombre_materia_prima": "Harina de Trigo 000",
+                "unidad_medida": "kg"
+            },
+            {
+                "materia_prima_id": "04f33c28-da94-465c-9122-2eac9ea8d06d",
+                "cantidad_necesaria": 4.0,
+                "nombre_materia_prima": "Huevos",
+                "unidad_medida": "unidades"
+            },
+            {
+                "materia_prima_id": "4f27f8f6-db72-4cf4-a2e4-b3b6842304a3",
+                "cantidad_necesaria": 1.0,
+                "nombre_materia_prima": "Levadura seca instantanea",
+                "unidad_medida": "sobres"
+            },
+            {
+                "materia_prima_id": "741e1729-e352-4489-b888-74fc58b00e0d",
+                "cantidad_necesaria": 0.3,
+                "nombre_materia_prima": "Leche entera UHT",
+                "unidad_medida": "litros"
+            },
+            {
+                "materia_prima_id": "03c63f71-d76a-4483-823c-3473330ae4d9",
+                "cantidad_necesaria": 0.25,
+                "nombre_materia_prima": "Az\u00facar",
+                "unidad_medida": "kg"
+            }
+        ],
+        "rendimiento": 1.0
+    }
+]
