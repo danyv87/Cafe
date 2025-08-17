@@ -1,33 +1,40 @@
-import base64
-import json
+"""OCR based receipt parser using Tesseract.
+
+This module exposes :func:`parse_receipt_image` which relies on the
+`pytesseract` wrapper around the Tesseract OCR engine to extract text from an
+image of a purchase receipt.  Lines containing product information are then
+matched with regular expressions to obtain ``producto``, ``cantidad`` and
+``precio`` fields.
+
+The Tesseract binary must be available in the system.  If the language data is
+stored in a non standard location, set the ``TESSDATA_PREFIX`` environment
+variable to point to the directory containing the ``tessdata`` folder.
+"""
+
+from __future__ import annotations
+
 import os
+import re
 from typing import List, Dict
 
-from openai import OpenAI
-
-
-def _get_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
-    return OpenAI(api_key=api_key)
+from PIL import Image
+import pytesseract
 
 
 def parse_receipt_image(path: str) -> List[Dict]:
     """Parse a receipt image and extract purchased items.
 
-    The function sends the image to an OpenAI multimodal model and expects a
-    JSON array with ``producto``, ``cantidad`` and ``precio`` fields for each
-    item found in the receipt. The image is encoded as a Base64 string before
-    being sent.
-
-    To authenticate requests the environment variable ``OPENAI_API_KEY`` must
-    be defined before calling this function.
+    The function loads the image from ``path`` and uses Tesseract to obtain the
+    text.  Each line is analysed with a regular expression expecting the
+    structure ``producto cantidad precio`` where the numeric values may contain
+    decimal points.  Matching lines are converted to dictionaries with the keys
+    ``producto``, ``cantidad`` and ``precio``.
 
     Parameters
     ----------
     path:
-        Path to an image (``.jpeg``, ``.jpg`` or ``.png``) containing the receipt.
+        Path to an image (``.jpeg``, ``.jpg`` or ``.png``) containing the
+        receipt.
 
     Returns
     -------
@@ -50,47 +57,31 @@ def parse_receipt_image(path: str) -> List[Dict]:
             "Unsupported format: only .jpeg, .jpg or .png images are allowed"
         )
 
-    with open(path, "rb") as f:
-        # The API expects the image as a Base64 string.
-        image_b64 = base64.b64encode(f.read()).decode("utf-8")
+    image = Image.open(path)
+    text = pytesseract.image_to_string(image)
 
-    prompt = (
-        "Devuelve un arreglo JSON de objetos con las claves 'producto', "
-        "'cantidad' y 'precio' presentes en este recibo."
+    # Expect lines formatted as: ``<producto> <cantidad> <precio>``
+    pattern = re.compile(
+        r"^(?P<producto>.+?)\s+(?P<cantidad>\d+(?:\.\d+)?)\s+(?P<precio>\d+(?:\.\d+)?)$"
     )
-
-    inputs = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image_base64": image_b64},
-            ],
-        }
-    ]
-
-    client = _get_client()
-
-    try:
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=inputs,
-            response_format={"type": "json_object"},
-        )
-    except TypeError:
-        # Fallback for legacy SDKs lacking ``response_format`` support.
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=inputs,
+    items: List[Dict] = []
+    for line in text.splitlines():
+        match = pattern.match(line.strip())
+        if not match:
+            continue
+        try:
+            cantidad = float(match.group("cantidad"))
+            precio = float(match.group("precio"))
+        except ValueError:
+            # Skip lines with malformed numbers
+            continue
+        items.append(
+            {
+                "producto": match.group("producto").strip(),
+                "cantidad": cantidad,
+                "precio": precio,
+            }
         )
 
-    try:
-        content = response.output[0].content[0].text
-    except Exception:  # pragma: no cover - fallback for older SDKs
-        content = response.choices[0].message["content"]
+    return items
 
-    data = json.loads(content)
-    if isinstance(data, dict):
-        # Allow returning an object with key 'items'
-        data = data.get("items", [])
-    return data
