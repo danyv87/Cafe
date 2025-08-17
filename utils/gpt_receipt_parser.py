@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from typing import List, Dict
@@ -12,7 +13,8 @@ def parse_receipt_image(path: str) -> List[Dict]:
 
     The function sends the image to an OpenAI multimodal model and expects a
     JSON array with ``producto``, ``cantidad`` and ``precio`` fields for each
-    item found in the receipt.
+    item found in the receipt. The image is encoded as a Base64 string before
+    being sent.
 
     To authenticate requests the environment variable ``OPENAI_API_KEY`` must
     be defined before calling this function.
@@ -44,7 +46,8 @@ def parse_receipt_image(path: str) -> List[Dict]:
         )
 
     with open(path, "rb") as f:
-        image_bytes = f.read()
+        # The API expects the image as a Base64 string.
+        image_b64 = base64.b64encode(f.read()).decode("utf-8")
 
     prompt = (
         "Devuelve un arreglo JSON de objetos con las claves 'producto', "
@@ -56,7 +59,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
             "role": "user",
             "content": [
                 {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image": image_bytes},
+                {"type": "input_image", "image": image_b64},
             ],
         }
     ]
