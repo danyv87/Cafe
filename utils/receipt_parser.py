@@ -93,8 +93,13 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
 
     # JSON files provide a convenient offline way of specifying receipt items
     if path_imagen.lower().endswith(".json"):
-        with open(path_imagen, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(path_imagen, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except FileNotFoundError as exc:
+            raise ValueError("Archivo JSON de recibo no encontrado") from exc
+        except json.JSONDecodeError as exc:
+            raise ValueError("JSON de recibo inválido") from exc
         if not isinstance(data, list):
             raise ValueError("El archivo JSON debe contener una lista de items")
         return _normalizar_items(data)
