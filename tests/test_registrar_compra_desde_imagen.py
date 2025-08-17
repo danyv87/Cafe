@@ -36,6 +36,15 @@ def test_registrar_compra_desde_imagen_network_error(mock_parse):
         compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
 
 
+@patch(
+    "controllers.compras_controller.parse_receipt_image",
+    side_effect=FileNotFoundError("missing"),
+)
+def test_registrar_compra_desde_imagen_archivo_no_encontrado(mock_parse):
+    with pytest.raises(ValueError, match="El comprobante no existe o no es accesible."):
+        compras_controller.registrar_compra_desde_imagen("Proveedor", "no_file.json")
+
+
 @patch("controllers.compras_controller.parse_receipt_image")
 def test_registrar_compra_desde_imagen_datos_malos(mock_parse):
     mock_parse.return_value = {"producto": "mal"}  # no es una lista

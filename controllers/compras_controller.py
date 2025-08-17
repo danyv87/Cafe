@@ -112,6 +112,11 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
         # Propagate the original message for precise feedback
         raise ValueError(str(e)) from e
+    except FileNotFoundError as e:
+        logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
+        raise ValueError(
+            "El comprobante no existe o no es accesible."
+        ) from e
     except Exception as e:
         logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
         raise ValueError(
