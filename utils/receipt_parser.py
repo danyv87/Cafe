@@ -1,125 +1,130 @@
+"""Utilities for parsing receipt images.
+
+This module exposes :func:`parse_receipt_image` which takes the path to a
+receipt image (or JSON file) and returns a list of dictionaries representing
+purchase items. The implementation favours light dependencies so the function
+tries to import parsers lazily and provides a JSON fallback for offline usage.
+In unit tests the function is commonly patched to provide deterministic
+results."""
+
 from __future__ import annotations
 
-import base64
 import json
-import os
 from typing import Dict, List
 
-from openai import OpenAI
 
-# =========================================================
-# Cliente OpenAI
-# =========================================================
-def _get_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
-    return OpenAI(api_key=api_key)
-
-# =========================================================
-# Catálogo de materias primas (cache + lookup)
-# =========================================================
+# Cache of normalised materia prima names to their objects. Populated lazily
+# the first time :func:`_buscar_materia_prima` is invoked. ``None`` indicates
+# that the cache has not been initialised yet.
 _MATERIAS_PRIMAS_CACHE: Dict[str, "MateriaPrima"] | None = None
 
+
 def clear_cache() -> None:
-    """Limpia la caché de materias primas."""
+    """Clear internal cache of ``MateriaPrima`` objects.
+
+    This is useful if the catalogue of materias primas changes at runtime and
+    ensures subsequent lookups use fresh data.
+    """
+
     global _MATERIAS_PRIMAS_CACHE
     _MATERIAS_PRIMAS_CACHE = None
 
+
 def _buscar_materia_prima(nombre: str):
+    """Return ``MateriaPrima`` whose name matches ``nombre``.
+
+    The search is case-insensitive and relies on ``listar_materias_primas``.
+    ``None`` is returned if no match is found. Results are cached so repeated
+    lookups avoid querying the controller repeatedly.
     """
-    Devuelve la MateriaPrima cuyo nombre coincide (case-insensitive),
-    o None si no se encuentra. Usa cache para evitar recargas.
-    """
+
     global _MATERIAS_PRIMAS_CACHE
-    try:
+
+    try:  # Import inside function to avoid heavy dependency at import time
         from controllers.materia_prima_controller import listar_materias_primas
-    except Exception:
+    except Exception:  # pragma: no cover - fallback when controller unavailable
         return None
 
     nombre_normalizado = nombre.strip().lower()
 
+    # Populate cache on first use
     if _MATERIAS_PRIMAS_CACHE is None:
         _MATERIAS_PRIMAS_CACHE = {
-            mp.nombre.strip().lower(): mp for mp in listar_materias_primas()  # type: ignore
+            mp.nombre.strip().lower(): mp for mp in listar_materias_primas()  # type: ignore[arg-type]
         }
+
     return _MATERIAS_PRIMAS_CACHE.get(nombre_normalizado)
 
-# =========================================================
-# Utilidades de normalización
-# =========================================================
-def _to_num(x):
-    """Convierte strings con moneda y separadores a float; deja pasar si ya es numérico."""
-    if isinstance(x, (int, float)):
-        return float(x)
-    if isinstance(x, str):
-        s = x.strip()
-        # Limpia símbolos de moneda/espacios
-        for sym in ("₲", "Gs.", "Gs", "Gs:", "Gs-", "G$", "$", "PYG"):
-            s = s.replace(sym, "")
-        s = s.replace(" ", "")
-        # Convierte formato 1.234,56 -> 1234.56
-        s = s.replace(".", "").replace(",", ".")
-        try:
-            return float(s)
-        except Exception:
-            pass
-    return x
 
 def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
+    """Convert a list of raw dictionaries to the expected schema.
+
+    ``raw_items`` is expected to contain at least the keys ``producto`` (or
+    ``nombre_producto``), ``cantidad`` and ``precio`` (or ``costo_unitario``).
+
+    The function maps product names to known "materias primas" using
+    :func:`_buscar_materia_prima`. If a name cannot be matched a ``ValueError``
+    is raised.
     """
-    Espera items con claves: producto/nombre_producto, cantidad, precio/costo_unitario.
-    Mapea a tu esquema con producto_id, nombre_producto, cantidad, costo_unitario.
-    """
+
     items: List[Dict] = []
     encontrados: Dict[str, "MateriaPrima"] = {}
-
     for raw in raw_items:
         nombre = raw.get("nombre_producto") or raw.get("producto")
         if not nombre:
             raise ValueError("Falta el nombre del producto en el comprobante")
 
-        key = nombre.strip().lower()
-        mp = encontrados.get(key)
+        nombre_normalizado = nombre.strip().lower()
+        mp = encontrados.get(nombre_normalizado)
         if mp is None:
             mp = _buscar_materia_prima(nombre)
-            encontrados[key] = mp
+            encontrados[nombre_normalizado] = mp
         if not mp:
             raise ValueError(f"Materia prima '{nombre}' no encontrada")
 
         try:
-            cantidad = _to_num(raw.get("cantidad", 0))
-            precio = _to_num(raw.get("costo_unitario", raw.get("precio", 0)))
-            cantidad = float(cantidad)
-            precio = float(precio)
-        except Exception as exc:
+            cantidad = float(raw.get("cantidad", 0))
+            precio = float(raw.get("costo_unitario", raw.get("precio", 0)))
+        except Exception as exc:  # pragma: no cover - propagates formatting errors
             raise ValueError("Cantidad o precio inválidos en el comprobante") from exc
 
-        items.append({
-            "producto_id": mp.id,
-            "nombre_producto": mp.nombre,
-            "cantidad": cantidad,
-            "costo_unitario": precio,
-            "descripcion_adicional": raw.get("descripcion_adicional", ""),
-        })
+        items.append(
+            {
+                "producto_id": mp.id,
+                "nombre_producto": mp.nombre,
+                "cantidad": cantidad,
+                "costo_unitario": precio,
+                "descripcion_adicional": raw.get("descripcion_adicional", ""),
+            }
+        )
     return items
 
-# =========================================================
-# Parser principal (ÚNICA definición)
-# =========================================================
-def parse_receipt_image(path: str) -> List[Dict]:
-    """
-    Si 'path' termina en .json -> carga lista de items (fallback offline).
-    Si es imagen (.jpeg/.jpg/.png) -> usa OpenAI Responses API (gpt-4o-mini).
-    Devuelve lista normalizada para tu app.
-    """
-    if not path:
-        raise ValueError("path no puede estar vacío")
 
-    # Fallback JSON (útil en pruebas u offline)
-    if path.lower().endswith(".json"):
+def parse_receipt_image(path_imagen: str) -> List[Dict]:
+    """Parse a receipt image and return a list of item dictionaries.
+
+    The function currently supports two backends:
+
+    1. **JSON fallback** – If ``path_imagen`` ends with ``.json`` the file is
+       loaded and assumed to contain the list of item dictionaries.
+    2. **OCR based parser** – Delegates to :mod:`utils.gpt_receipt_parser` which
+       uses Tesseract via ``pytesseract`` to process ``.jpeg``, ``.jpg`` or
+       ``.png`` images.
+
+    Returns
+    -------
+    list of dict
+        Each dictionary contains ``producto_id``, ``nombre_producto``,
+        ``cantidad`` and ``costo_unitario`` among other optional fields.
+    """
+
+    if not path_imagen:
+        raise ValueError("path_imagen no puede estar vacío")
+
+    # JSON files provide a convenient offline way of specifying receipt items
+    if path_imagen.lower().endswith(".json"):
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path_imagen, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except FileNotFoundError as exc:
             raise ValueError("Archivo JSON de recibo no encontrado") from exc
@@ -129,75 +134,16 @@ def parse_receipt_image(path: str) -> List[Dict]:
             raise ValueError("El archivo JSON debe contener una lista de items")
         return _normalizar_items(data)
 
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f"File not found: {path}")
+    # For images, attempt to use the OCR based parser
+    try:  # Import lazily so environments without OpenAI dependencies still work
+        from .gpt_receipt_parser import parse_receipt_image as gpt_parse
+    except Exception as exc:  # pragma: no cover - unable to import backend
+        raise NotImplementedError(
+            "No hay backend disponible para procesar imágenes de recibo"
+        ) from exc
 
-    ext = os.path.splitext(path)[1].lower()
-    if ext not in (".jpeg", ".jpg", ".png"):
-        raise ValueError("Unsupported format: only .jpeg, .jpg or .png images are allowed")
+    raw_items = gpt_parse(path_imagen)
+    if not isinstance(raw_items, list):
+        raise ValueError("La respuesta del backend de recibos es inválida")
+    return _normalizar_items(raw_items)
 
-    # Prepara data URL (formato aceptado por Responses API para visión)
-    with open(path, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode("utf-8")
-    mime = "png" if ext == ".png" else "jpeg"
-    data_url = f"data:image/{mime};base64,{b64}"
-
-    prompt = (
-        "Devuelve un ARREGLO JSON con objetos {producto, cantidad, precio}. "
-        "Usa números (punto decimal) en 'cantidad' y 'precio'. Sin texto extra."
-    )
-
-    inputs = [{
-        "role": "user",
-        "content": [
-            {"type": "input_text", "text": prompt},
-            {"type": "input_image", "image_url": data_url},
-        ],
-    }]
-
-    client = _get_client()
-
-    # Structured Outputs (json_schema). Si el entorno no acepta response_format, cae al except.
-    schema = {
-        "name": "items_recibo",
-        "schema": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["producto", "cantidad", "precio"],
-                "properties": {
-                    "producto": {"type": "string"},
-                    "cantidad": {"type": "number"},
-                    "precio":   {"type": "number"},
-                },
-                "additionalProperties": False,
-            },
-        },
-        "strict": True,
-    }
-
-    try:
-        resp = client.responses.create(
-            model="gpt-4o-mini",
-            input=inputs,
-            response_format={"type": "json_schema", "json_schema": schema},
-        )
-        try:
-            content = resp.output_text
-        except Exception:
-            content = resp.output[0].content[0].text
-    except TypeError:
-        # Entorno donde responses.create no acepta response_format
-        resp = client.responses.create(model="gpt-4o-mini", input=inputs)
-        try:
-            content = resp.output_text
-        except Exception:
-            content = resp.output[0].content[0].text
-
-    data = json.loads(content)
-    if isinstance(data, dict):
-        data = data.get("items", [])
-    if not isinstance(data, list):
-        raise ValueError("La respuesta del modelo no es un arreglo JSON")
-
-    return _normalizar_items(data)

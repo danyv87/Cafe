@@ -1,39 +1,45 @@
-import os
-import json
-from types import SimpleNamespace
-from unittest.mock import patch
+from pathlib import Path
 
 import pytest
+from PIL import Image, ImageDraw
 
 from utils import gpt_receipt_parser
 
 
-def _build_response(data):
-    text = json.dumps(data)
-    return SimpleNamespace(
-        output=[SimpleNamespace(content=[SimpleNamespace(text=text)])]
-    )
+def _create_receipt_image(path: Path) -> None:
+    """Create a simple receipt image for testing purposes.
+
+    The image contains two lines, each with ``producto cantidad precio``
+    separated by spaces so the regex in :mod:`utils.gpt_receipt_parser` can pick
+    them up reliably.
+    """
+
+    img = Image.new("RGB", (200, 80), color="white")
+    draw = ImageDraw.Draw(img)
+    draw.text((10, 10), "Cafe 1 2", fill="black")
+    draw.text((10, 40), "Leche 2 3", fill="black")
+    img.save(path)
 
 
-def test_parse_receipt_image_requires_api_key(tmp_path):
-    img = tmp_path / "r.jpg"
-    img.write_bytes(b"data")
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError):
-            gpt_receipt_parser.parse_receipt_image(str(img))
+def test_parse_receipt_image_file_not_found():
+    with pytest.raises(FileNotFoundError):
+        gpt_receipt_parser.parse_receipt_image("missing.png")
 
 
-@patch("utils.gpt_receipt_parser.OpenAI")
-def test_parse_receipt_image_initializes_client(OpenAIMock, tmp_path):
-    img = tmp_path / "r.png"
-    img.write_bytes(b"data")
-    fake_client = SimpleNamespace(
-        responses=SimpleNamespace(create=lambda **_: _build_response([
-            {"producto": "Cafe", "cantidad": 1, "precio": 2}
-        ]))
-    )
-    OpenAIMock.return_value = fake_client
-    with patch.dict(os.environ, {"OPENAI_API_KEY": "key"}):
-        items = gpt_receipt_parser.parse_receipt_image(str(img))
-    assert items == [{"producto": "Cafe", "cantidad": 1, "precio": 2}]
-    OpenAIMock.assert_called_once_with(api_key="key")
+def test_parse_receipt_image_extracts_items(tmp_path):
+    img_path = tmp_path / "receipt.png"
+    _create_receipt_image(img_path)
+
+    items = gpt_receipt_parser.parse_receipt_image(str(img_path))
+
+    assert {
+        "producto": "Cafe",
+        "cantidad": 1.0,
+        "precio": 2.0,
+    } in items
+    assert {
+        "producto": "Leche",
+        "cantidad": 2.0,
+        "precio": 3.0,
+    } in items
+
