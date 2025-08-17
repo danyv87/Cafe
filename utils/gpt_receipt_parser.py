@@ -59,7 +59,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
             "role": "user",
             "content": [
                 {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image": image_b64},
+                {"type": "input_image", "image_base64": image_b64},
             ],
         }
     ]
