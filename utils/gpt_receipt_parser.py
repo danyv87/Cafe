@@ -46,8 +46,11 @@ def parse_receipt_image(path: str) -> List[Dict]:
         )
 
     with open(path, "rb") as f:
-        # The API expects the image as a Base64 string.
+        # The API expects the image as a Base64 string inside a data URI.
         image_b64 = base64.b64encode(f.read()).decode("utf-8")
+
+    mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+    image_url = {"url": f"data:{mime};base64,{image_b64}"}
 
     prompt = (
         "Devuelve un arreglo JSON de objetos con las claves 'producto', "
@@ -59,23 +62,15 @@ def parse_receipt_image(path: str) -> List[Dict]:
             "role": "user",
             "content": [
                 {"type": "input_text", "text": prompt},
-                {"type": "input_image", "image": image_b64},
+                {"type": "input_image", "image_url": image_url},
             ],
         }
     ]
 
-    try:
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=inputs,
-            response_format={"type": "json_object"},
-        )
-    except TypeError:
-        # Fallback for legacy SDKs lacking ``response_format`` support.
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=inputs,
-        )
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=inputs,
+    )
 
     try:
         content = response.output[0].content[0].text
