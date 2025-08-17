@@ -13,23 +13,47 @@ import json
 from typing import Dict, List
 
 
+# Cache of normalised materia prima names to their objects. Populated lazily
+# the first time :func:`_buscar_materia_prima` is invoked. ``None`` indicates
+# that the cache has not been initialised yet.
+_MATERIAS_PRIMAS_CACHE: Dict[str, "MateriaPrima"] | None = None
+
+
+def clear_cache() -> None:
+    """Clear internal cache of ``MateriaPrima`` objects.
+
+    This is useful if the catalogue of materias primas changes at runtime and
+    ensures subsequent lookups use fresh data.
+    """
+
+    global _MATERIAS_PRIMAS_CACHE
+    _MATERIAS_PRIMAS_CACHE = None
+
+
 def _buscar_materia_prima(nombre: str):
     """Return ``MateriaPrima`` whose name matches ``nombre``.
 
     The search is case-insensitive and relies on ``listar_materias_primas``.
-    ``None`` is returned if no match is found.
+    ``None`` is returned if no match is found. Results are cached so repeated
+    lookups avoid querying the controller repeatedly.
     """
+
+    global _MATERIAS_PRIMAS_CACHE
 
     try:  # Import inside function to avoid heavy dependency at import time
         from controllers.materia_prima_controller import listar_materias_primas
     except Exception:  # pragma: no cover - fallback when controller unavailable
         return None
 
-    nombre = nombre.strip().lower()
-    for mp in listar_materias_primas():  # type: ignore[arg-type]
-        if mp.nombre.strip().lower() == nombre:
-            return mp
-    return None
+    nombre_normalizado = nombre.strip().lower()
+
+    # Populate cache on first use
+    if _MATERIAS_PRIMAS_CACHE is None:
+        _MATERIAS_PRIMAS_CACHE = {
+            mp.nombre.strip().lower(): mp for mp in listar_materias_primas()  # type: ignore[arg-type]
+        }
+
+    return _MATERIAS_PRIMAS_CACHE.get(nombre_normalizado)
 
 
 def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
@@ -44,12 +68,17 @@ def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
     """
 
     items: List[Dict] = []
+    encontrados: Dict[str, "MateriaPrima"] = {}
     for raw in raw_items:
         nombre = raw.get("nombre_producto") or raw.get("producto")
         if not nombre:
             raise ValueError("Falta el nombre del producto en el comprobante")
 
-        mp = _buscar_materia_prima(nombre)
+        nombre_normalizado = nombre.strip().lower()
+        mp = encontrados.get(nombre_normalizado)
+        if mp is None:
+            mp = _buscar_materia_prima(nombre)
+            encontrados[nombre_normalizado] = mp
         if not mp:
             raise ValueError(f"Materia prima '{nombre}' no encontrada")
 
