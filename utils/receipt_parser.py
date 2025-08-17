@@ -107,8 +107,9 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
 
     1. **JSON fallback** – If ``path_imagen`` ends with ``.json`` the file is
        loaded and assumed to contain the list of item dictionaries.
-    2. **GPT based parser** – Delegates to :mod:`utils.gpt_receipt_parser` which
-       uses the OpenAI API to process ``.jpeg``, ``.jpg`` or ``.png`` images.
+    2. **OCR based parser** – Delegates to :mod:`utils.gpt_receipt_parser` which
+       uses Tesseract via ``pytesseract`` to process ``.jpeg``, ``.jpg`` or
+       ``.png`` images.
 
     Returns
     -------
@@ -133,7 +134,7 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
             raise ValueError("El archivo JSON debe contener una lista de items")
         return _normalizar_items(data)
 
-    # For images, attempt to use the GPT based parser
+    # For images, attempt to use the OCR based parser
     try:  # Import lazily so environments without OpenAI dependencies still work
         from .gpt_receipt_parser import parse_receipt_image as gpt_parse
     except Exception as exc:  # pragma: no cover - unable to import backend
