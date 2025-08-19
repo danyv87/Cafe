@@ -72,7 +72,7 @@ def mostrar_ventana_materias_primas():
             return
         try:
             costo = float(costo)
-            stock = float(stock)
+            stock = int(stock)
             if costo < 0 or stock < 0:
                 raise ValueError
         except ValueError:
@@ -155,7 +155,7 @@ def mostrar_ventana_materias_primas():
             return
         try:
             costo = float(costo)
-            stock = float(stock)
+            stock = int(stock)
             if costo < 0 or stock < 0:
                 raise ValueError
         except ValueError:
