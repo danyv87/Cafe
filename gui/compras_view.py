@@ -171,14 +171,20 @@ def mostrar_ventana_compras():
             )
             return
 
-        try:
-            items = registrar_compra_desde_imagen(proveedor, ruta)
-        except ValueError as e:
-            messagebox.showerror("Error", str(e))
-            return
-        except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
-            return
+        while True:
+            try:
+                items = registrar_compra_desde_imagen(proveedor, ruta)
+                break
+            except ValueError as e:
+                msg = str(e)
+                if "Materia prima" in msg and "no encontrada" in msg:
+                    # Tras crear la materia prima, reintentar la importación
+                    continue
+                messagebox.showerror("Error", msg)
+                return
+            except Exception as e:
+                messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
+                return
 
         if not items:
             messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")

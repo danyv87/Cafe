@@ -3,11 +3,14 @@ from utils.json_utils import read_json, write_json
 from utils.history_utils import listar_versiones
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
-from utils.receipt_parser import parse_receipt_image
+from utils import receipt_parser
+from controllers.materia_prima_controller import (
+    actualizar_stock_materia_prima,
+    agregar_materia_prima,
+)
 import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
-from controllers.materia_prima_controller import actualizar_stock_materia_prima
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -59,6 +62,51 @@ def exportar_compras_excel(compras):
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
+def _solicitar_datos_materia_prima(nombre):
+    """Pide al usuario datos para crear una nueva materia prima.
+
+    Intenta usar diálogos de ``tkinter`` y cae a entrada estándar si el
+    entorno gráfico no está disponible.
+    """
+
+    try:  # pragma: no cover - prefer GUI but fall back to CLI in tests
+        import tkinter as tk
+        from tkinter import simpledialog
+
+        root = tk.Tk()
+        root.withdraw()
+        unidad = simpledialog.askstring(
+            "Materia prima faltante",
+            f"Unidad de medida para '{nombre}':",
+            parent=root,
+        )
+        if unidad is None:
+            raise ValueError("Operación cancelada por el usuario.")
+        costo = simpledialog.askfloat(
+            "Materia prima faltante",
+            f"Costo unitario para '{nombre}':",
+            parent=root,
+        )
+        if costo is None:
+            raise ValueError("Operación cancelada por el usuario.")
+        stock = simpledialog.askfloat(
+            "Materia prima faltante",
+            f"Stock inicial para '{nombre}':",
+            parent=root,
+        )
+        if stock is None:
+            raise ValueError("Operación cancelada por el usuario.")
+        root.destroy()
+        return unidad, float(costo), float(stock)
+    except Exception:
+        unidad = input(
+            f"Ingrese la unidad de medida para '{nombre}': "
+        ).strip()
+        costo = float(input(f"Ingrese el costo unitario para '{nombre}': "))
+        stock = float(input(f"Ingrese el stock inicial para '{nombre}': "))
+        return unidad, costo, stock
+
+
 def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
@@ -95,33 +143,40 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     if not proveedor or len(proveedor.strip()) == 0:
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
-    try:
-        items_dict = parse_receipt_image(path_imagen)
-    except (ConnectionError, TimeoutError) as e:
-        logger.error(f"Error de red al procesar '{path_imagen}': {e}")
-        raise ValueError(
-            "No se pudo procesar la imagen por un problema de conexión."
-        ) from e
-    except NotImplementedError as e:
-        logger.error(
-            f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
-        )
-        # Re-raise preserving the original message so the GUI can mostrarlo
-        raise ValueError(str(e)) from e
-    except ValueError as e:
-        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
-        # Propagate the original message for precise feedback
-        raise ValueError(str(e)) from e
-    except FileNotFoundError as e:
-        logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
-        raise ValueError(
-            "El comprobante no existe o no es accesible."
-        ) from e
-    except Exception as e:
-        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
-        raise ValueError(
-            "No se pudo interpretar la imagen del comprobante."
-        ) from e
+    while True:
+        try:
+            items_dict = receipt_parser.parse_receipt_image(path_imagen)
+            break
+        except (ConnectionError, TimeoutError) as e:
+            logger.error(f"Error de red al procesar '{path_imagen}': {e}")
+            raise ValueError(
+                "No se pudo procesar la imagen por un problema de conexión."
+            ) from e
+        except NotImplementedError as e:
+            logger.error(
+                f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
+            )
+            raise ValueError(str(e)) from e
+        except FileNotFoundError as e:
+            logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
+            raise ValueError(
+                "El comprobante no existe o no es accesible."
+            ) from e
+        except ValueError as e:
+            mensaje = str(e)
+            if "Materia prima" in mensaje and "no encontrada" in mensaje:
+                nombre_mp = mensaje.split("'")[1]
+                unidad, costo, stock = _solicitar_datos_materia_prima(nombre_mp)
+                agregar_materia_prima(nombre_mp, unidad, costo, stock)
+                receipt_parser.clear_cache()
+                continue
+            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+            raise ValueError(mensaje) from e
+        except Exception as e:
+            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+            raise ValueError(
+                "No se pudo interpretar la imagen del comprobante."
+            ) from e
 
     if not isinstance(items_dict, list):
         raise ValueError("Formato de datos inválido del comprobante.")
