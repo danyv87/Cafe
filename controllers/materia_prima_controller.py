@@ -43,8 +43,8 @@ def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock):
         return False, "La unidad de medida no puede estar vacía."
     if not isinstance(costo_unitario, (int, float)) or costo_unitario <= 0:
         return False, "El costo unitario debe ser un número positivo."
-    if not isinstance(stock, int) or stock < 0:
-        return False, "El stock debe ser un número entero no negativo."
+    if not isinstance(stock, (int, float)) or stock < 0:
+        return False, "El stock debe ser un número no negativo."
     return True, ""
 
 
