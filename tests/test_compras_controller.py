@@ -48,7 +48,7 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(len(compras), 2)
         self.assertTrue(any(c.fecha == fecha_custom for c in compras))
 
-    @patch("controllers.compras_controller.parse_receipt_image")
+    @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
     def test_registrar_compra_desde_imagen(self, mock_parse):
         mock_parse.return_value = [
             {
@@ -84,7 +84,7 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(len(compras), 2)
 
     @patch(
-        "controllers.compras_controller.parse_receipt_image",
+        "controllers.compras_controller.receipt_parser.parse_receipt_image",
         side_effect=ConnectionError("fallo de red"),
     )
     def test_registrar_compra_desde_imagen_error_red(self, mock_parse):
@@ -93,7 +93,7 @@ class TestCargarCompras(unittest.TestCase):
         self.assertIn("conexión", str(ctx.exception).lower())
 
     @patch(
-        "controllers.compras_controller.parse_receipt_image",
+        "controllers.compras_controller.receipt_parser.parse_receipt_image",
         side_effect=ValueError("formato inválido"),
     )
     def test_registrar_compra_desde_imagen_error_parseo(self, mock_parse):
@@ -101,7 +101,7 @@ class TestCargarCompras(unittest.TestCase):
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
         self.assertEqual("formato inválido", str(ctx.exception))
 
-    @patch("controllers.compras_controller.parse_receipt_image")
+    @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
     def test_registrar_compra_desde_imagen_datos_invalidos(self, mock_parse):
         mock_parse.return_value = [
             {
@@ -115,7 +115,7 @@ class TestCargarCompras(unittest.TestCase):
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
 
     @patch(
-        "controllers.compras_controller.parse_receipt_image",
+        "controllers.compras_controller.receipt_parser.parse_receipt_image",
         side_effect=NotImplementedError("backend no disponible"),
     )
     def test_registrar_compra_desde_imagen_backend_no_disponible(self, mock_parse):

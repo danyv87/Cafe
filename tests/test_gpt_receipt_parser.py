@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+pytest.importorskip("PIL")
 from PIL import Image, ImageDraw
 
 from utils import gpt_receipt_parser

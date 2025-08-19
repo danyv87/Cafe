@@ -6,7 +6,7 @@ from models.compra_detalle import CompraDetalle
 
 
 class TestCompraDesdeImagenGUI(unittest.TestCase):
-    @patch('controllers.compras_controller.parse_receipt_image')
+    @patch('controllers.compras_controller.receipt_parser.parse_receipt_image')
     def test_aceptar_items_actualiza_lista_y_total(self, mock_parse):
         mock_parse.return_value = [
             {"producto_id": 1, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
