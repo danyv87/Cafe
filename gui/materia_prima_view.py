@@ -51,8 +51,13 @@ def mostrar_ventana_materias_primas():
     entry_nombre.grid(row=0, column=1)
 
     tk.Label(frame_agregar, text="Unidad:").grid(row=0, column=2, sticky="e")
-    entry_unidad = tk.Entry(frame_agregar, width=10)
-    entry_unidad.grid(row=0, column=3)
+    combo_unidad = ttk.Combobox(
+        frame_agregar,
+        values=["kg", "g", "l", "ml", "unidad"],
+        state="readonly",
+        width=10,
+    )
+    combo_unidad.grid(row=0, column=3)
 
     tk.Label(frame_agregar, text="Costo Unitario:").grid(row=1, column=0, sticky="e")
     entry_costo = tk.Entry(frame_agregar, width=12)
@@ -64,7 +69,7 @@ def mostrar_ventana_materias_primas():
 
     def agregar_mp():
         nombre = entry_nombre.get().strip()
-        unidad = entry_unidad.get().strip()
+        unidad = combo_unidad.get().strip()
         costo = entry_costo.get().strip()
         stock = entry_stock.get().strip()
         if not nombre or not unidad or not costo or not stock:
@@ -82,7 +87,7 @@ def mostrar_ventana_materias_primas():
             agregar_materia_prima(nombre, unidad, costo, stock)
             cargar_materias_primas()
             entry_nombre.delete(0, tk.END)
-            entry_unidad.delete(0, tk.END)
+            combo_unidad.set("")
             entry_costo.delete(0, tk.END)
             entry_stock.delete(0, tk.END)
             messagebox.showinfo("Éxito", "Materia prima agregada correctamente.")
@@ -105,8 +110,13 @@ def mostrar_ventana_materias_primas():
     entry_nombre_editar.grid(row=0, column=3)
 
     tk.Label(frame_editar, text="Unidad:").grid(row=1, column=0, sticky="e")
-    entry_unidad_editar = tk.Entry(frame_editar, width=10)
-    entry_unidad_editar.grid(row=1, column=1)
+    combo_unidad_editar = ttk.Combobox(
+        frame_editar,
+        values=["kg", "g", "l", "ml", "unidad"],
+        state="readonly",
+        width=10,
+    )
+    combo_unidad_editar.grid(row=1, column=1)
 
     tk.Label(frame_editar, text="Costo Unitario:").grid(row=1, column=2, sticky="e")
     entry_costo_unitario_editar = tk.Entry(frame_editar, width=10)
@@ -135,8 +145,7 @@ def mostrar_ventana_materias_primas():
         entry_id_editar.insert(0, mp_obj.id)
         entry_nombre_editar.delete(0, tk.END)
         entry_nombre_editar.insert(0, mp_obj.nombre)
-        entry_unidad_editar.delete(0, tk.END)
-        entry_unidad_editar.insert(0, mp_obj.unidad_medida)
+        combo_unidad_editar.set(mp_obj.unidad_medida)
         entry_costo_unitario_editar.delete(0, tk.END)
         entry_costo_unitario_editar.insert(0, str(mp_obj.costo_unitario))
         entry_stock_editar.delete(0, tk.END)
@@ -147,7 +156,7 @@ def mostrar_ventana_materias_primas():
     def editar_mp():
         id_mp = entry_id_editar.get().strip()
         nombre = entry_nombre_editar.get().strip()
-        unidad = entry_unidad_editar.get().strip()
+        unidad = combo_unidad_editar.get().strip()
         costo = entry_costo_unitario_editar.get().strip()
         stock = entry_stock_editar.get().strip()
         if not id_mp or not nombre or not unidad or not costo or not stock:

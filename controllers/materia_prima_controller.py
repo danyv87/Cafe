@@ -6,6 +6,9 @@ import config
 
 DATA_PATH = config.get_data_path("materias_primas.json")
 
+# Unidades permitidas para la materia prima
+ALLOWED_UNIDADES = ["kg", "g", "l", "ml", "unidad"]
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,8 @@ def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock):
         return False, "El nombre de la materia prima no puede estar vacío."
     if not unidad_medida or not isinstance(unidad_medida, str) or len(unidad_medida.strip()) == 0:
         return False, "La unidad de medida no puede estar vacía."
+    if unidad_medida not in ALLOWED_UNIDADES:
+        return False, f"Unidad de medida inválida. Opciones permitidas: {', '.join(ALLOWED_UNIDADES)}."
     if not isinstance(costo_unitario, (int, float)) or costo_unitario <= 0:
         return False, "El costo unitario debe ser un número positivo."
     if not isinstance(stock, int) or stock < 0:
