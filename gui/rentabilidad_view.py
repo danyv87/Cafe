@@ -18,7 +18,7 @@ def agregar_tab_rentabilidad(notebook: ttk.Notebook) -> None:
     )
 
     tree.heading("Producto", text="Producto")
-    tree.heading("Precio Venta", text="Precio Venta (Gs)")
+    tree.heading("Precio Venta", text="Precio Venta (Gs) por unidad")
     tree.heading("Costo Producción", text="Costo Producción (Gs)")
     tree.heading("Ganancia", text="Ganancia (Gs)")
     tree.heading("Margen Beneficio", text="Margen Beneficio (%)")
@@ -37,7 +37,7 @@ def agregar_tab_rentabilidad(notebook: ttk.Notebook) -> None:
         tree.insert("", tk.END, values=("No hay datos de rentabilidad para mostrar.", "", "", "", ""))
     else:
         for item in rentabilidad_data:
-            precio_venta_formatted = f"{item['precio_venta']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            precio_venta_formatted = f"{item['precio_venta_unitario']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             costo_produccion_formatted = f"{item['costo_produccion']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             ganancia_formatted = f"{item['ganancia']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             margen_beneficio_formatted = f"{item['margen_beneficio']:.2f}".replace(".", ",")

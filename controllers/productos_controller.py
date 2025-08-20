@@ -159,17 +159,28 @@ def obtener_rentabilidad_productos():
     rentabilidad_data = []
 
     for p in productos:
-        costo_produccion = calcular_costo_produccion_producto(p.id)
-        ganancia = p.precio_unitario - costo_produccion
-        margen_beneficio = (ganancia / p.precio_unitario * 100) if p.precio_unitario > 0 else 0
+        receta = obtener_receta_por_producto_id(p.id)
+        rendimiento = (
+            receta.rendimiento if receta and receta.rendimiento and receta.rendimiento > 0 else 1
+        )
+
+        precio_venta_unitario = p.precio_unitario / rendimiento
+
+        costo_produccion_total = calcular_costo_produccion_producto(p.id)
+        costo_produccion_unitario = costo_produccion_total / rendimiento
+
+        ganancia = precio_venta_unitario - costo_produccion_unitario
+        margen_beneficio = (
+            (ganancia / precio_venta_unitario * 100) if precio_venta_unitario > 0 else 0
+        )
 
         rentabilidad_data.append({
             "producto_id": p.id,
             "nombre_producto": p.nombre,
-            "precio_venta": p.precio_unitario,
-            "costo_produccion": costo_produccion,
+            "precio_venta_unitario": precio_venta_unitario,
+            "costo_produccion": costo_produccion_unitario,
             "ganancia": ganancia,
-            "margen_beneficio": margen_beneficio
+            "margen_beneficio": margen_beneficio,
         })
     return rentabilidad_data
 
