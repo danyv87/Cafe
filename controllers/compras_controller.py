@@ -7,8 +7,8 @@ from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from utils import receipt_parser
 from controllers.materia_prima_controller import (
-    actualizar_stock_materia_prima,
     agregar_materia_prima,
+    actualizar_stock_materia_prima,
 )
 import config
 from collections import defaultdict
