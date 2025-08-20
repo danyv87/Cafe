@@ -171,26 +171,29 @@ def test_flujo_selecciona_subconjunto_items(
     original_data_path = compras_controller.DATA_PATH
     compras_controller.DATA_PATH = tmp_path / "compras.json"
 
-    mock_parse.return_value = [
-        {
-            "producto_id": 1,
-            "nombre_producto": "Cafe",
-            "cantidad": 1,
-            "costo_unitario": 10,
-        },
-        {
-            "producto_id": 2,
-            "nombre_producto": "Azucar",
-            "cantidad": 2,
-            "costo_unitario": 5,
-        },
-        {
-            "producto_id": 3,
-            "nombre_producto": "Harina",
-            "cantidad": 1,
-            "costo_unitario": 7,
-        },
-    ]
+    mock_parse.return_value = (
+        [
+            {
+                "producto_id": 1,
+                "nombre_producto": "Cafe",
+                "cantidad": 1,
+                "costo_unitario": 10,
+            },
+            {
+                "producto_id": 2,
+                "nombre_producto": "Azucar",
+                "cantidad": 2,
+                "costo_unitario": 5,
+            },
+            {
+                "producto_id": 3,
+                "nombre_producto": "Harina",
+                "cantidad": 1,
+                "costo_unitario": 7,
+            },
+        ],
+        [],
+    )
 
     try:
         items = compras_controller.registrar_compra_desde_imagen(

@@ -95,3 +95,37 @@ def test_parse_receipt_image_multiple_items(tmp_path, monkeypatch):
         "precio": 7.0,
     } in items
 
+
+def test_parse_receipt_image_varied_formats(tmp_path, monkeypatch):
+    img_path = tmp_path / "receipt_varied.png"
+    _create_receipt_image(img_path)
+
+    monkeypatch.setattr(
+        "pytesseract.image_to_string",
+        lambda img: (
+            "BANANA 70999 kg 0.970 82.50\n"
+            "Azucar 1 3,50\n"
+            "Manteca 2 $7,25\n"
+            "Subtotal 89,25\nTotal 89,25"
+        ),
+    )
+
+    items = gpt_receipt_parser.parse_receipt_image(str(img_path))
+
+    assert len(items) == 3
+    assert {
+        "producto": "BANANA 70999 kg",
+        "cantidad": 0.97,
+        "precio": 82.5,
+    } in items
+    assert {
+        "producto": "Azucar",
+        "cantidad": 1.0,
+        "precio": 3.5,
+    } in items
+    assert {
+        "producto": "Manteca",
+        "cantidad": 2.0,
+        "precio": 7.25,
+    } in items
+

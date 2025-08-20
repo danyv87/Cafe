@@ -20,6 +20,13 @@ from typing import List, Dict
 from PIL import Image
 import pytesseract
 
+_SUMMARY_KEYWORDS = {"total", "subtotal", "iva"}
+
+
+def _normalise_number(value: str) -> float:
+    value = value.replace("$", "").replace(",", ".")
+    return float(value)
+
 
 def parse_receipt_image(path: str) -> List[Dict]:
     """Parse a receipt image and extract purchased items.
@@ -28,7 +35,11 @@ def parse_receipt_image(path: str) -> List[Dict]:
     text.  Each line is analysed with a regular expression expecting the
     structure ``producto cantidad precio`` where the numeric values may contain
     decimal points.  Matching lines are converted to dictionaries with the keys
-    ``producto``, ``cantidad`` and ``precio``.
+    ``producto``, ``cantidad`` and ``precio``.  If a line does not match this
+    pattern, a heuristic fallback is applied that extracts the last two numeric
+    values as quantity and price respectively.  Lines containing keywords such
+    as ``Total`` or ``IVA`` are ignored to reduce false positives from summary
+    sections.
 
     Parameters
     ----------
@@ -60,24 +71,43 @@ def parse_receipt_image(path: str) -> List[Dict]:
     image = Image.open(path)
     text = pytesseract.image_to_string(image)
 
-    # Expect lines formatted as: ``<producto> <cantidad> <precio>``
     pattern = re.compile(
-        r"^(?P<producto>.+?)\s+(?P<cantidad>\d+(?:\.\d+)?)\s+(?P<precio>\d+(?:\.\d+)?)$"
+        r"^(?P<producto>.+?)\s+(?P<cantidad>\d+(?:[.,]\d+)?)\s+(?P<precio>\d+(?:[.,]\d+)?)(?:\s+\w+)?$"
     )
     items: List[Dict] = []
-    for line in text.splitlines():
-        match = pattern.match(line.strip())
-        if not match:
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or any(k in line.lower() for k in _SUMMARY_KEYWORDS):
             continue
+
+        match = pattern.match(line)
+        if match:
+            producto = match.group("producto").strip()
+            cantidad_txt = match.group("cantidad")
+            precio_txt = match.group("precio")
+        else:
+            cleaned = line.replace("$", "")
+            numbers = re.findall(r"\d+(?:[.,]\d+)?", cleaned)
+            if len(numbers) < 2:
+                continue
+            precio_txt = numbers[-1]
+            cantidad_txt = numbers[-2]
+            idx_precio = cleaned.rfind(precio_txt)
+            before_precio = cleaned[:idx_precio].rstrip()
+            idx_cantidad = before_precio.rfind(cantidad_txt)
+            producto = before_precio[:idx_cantidad].strip()
+            if not producto:
+                continue
+
         try:
-            cantidad = float(match.group("cantidad"))
-            precio = float(match.group("precio"))
+            cantidad = _normalise_number(cantidad_txt)
+            precio = _normalise_number(precio_txt)
         except ValueError:
-            # Skip lines with malformed numbers
             continue
+
         items.append(
             {
-                "producto": match.group("producto").strip(),
+                "producto": producto,
                 "cantidad": cantidad,
                 "precio": precio,
             }
