@@ -1,7 +1,12 @@
 from pathlib import Path
 
 import pytest
+import shutil
+
 pytest.importorskip("PIL")
+pytest.importorskip("pytesseract")
+if not shutil.which("tesseract"):
+    pytest.skip("tesseract no instalado", allow_module_level=True)
 from PIL import Image, ImageDraw
 
 from utils import gpt_receipt_parser
