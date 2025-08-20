@@ -163,9 +163,10 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     if not proveedor or len(proveedor.strip()) == 0:
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
-    omitidos: List[str] = []
+    omitidos: List[str] = []  # materias primas que el usuario decide omitir
     while True:
         try:
+            # se reintenta el reconocimiento para manejar faltantes/omitidos
             items_dict, faltantes = receipt_parser.parse_receipt_image(
                 path_imagen, omitidos=omitidos
             )
