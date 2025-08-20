@@ -152,13 +152,30 @@ def solicitar_datos_materia_prima_masivo(
 
         top = tk.Toplevel(root)
         top.title("Materias primas faltantes")
+        top.geometry("700x500")
+        top.resizable(True, True)
 
-        frame = ttk.Frame(top, padding=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        container = ttk.Frame(top, padding=10)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        canvas = tk.Canvas(container)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+
+        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
 
         headers = ["Nombre", "Crear", "Unidad", "Costo", "Stock"]
         for col, text in enumerate(headers):
-            ttk.Label(frame, text=text, font=("Helvetica", 9, "bold")).grid(
+            ttk.Label(scrollable_frame, text=text, font=("Helvetica", 9, "bold")).grid(
                 row=0, column=col, padx=5, pady=5
             )
 
@@ -172,16 +189,16 @@ def solicitar_datos_materia_prima_masivo(
             nombre = raw.get("nombre_producto") or raw.get("producto") or ""
             nombres.append(nombre)
 
-            ttk.Label(frame, text=nombre).grid(row=idx, column=0, sticky="w")
+            ttk.Label(scrollable_frame, text=nombre).grid(row=idx, column=0, sticky="w")
             var = tk.BooleanVar(value=True)
-            chk = ttk.Checkbutton(frame, variable=var)
+            chk = ttk.Checkbutton(scrollable_frame, variable=var)
             chk.grid(row=idx, column=1)
 
-            e_unidad = ttk.Entry(frame, width=10)
+            e_unidad = ttk.Entry(scrollable_frame, width=10)
             e_unidad.grid(row=idx, column=2)
-            e_costo = ttk.Entry(frame, width=10)
+            e_costo = ttk.Entry(scrollable_frame, width=10)
             e_costo.grid(row=idx, column=3)
-            e_stock = ttk.Entry(frame, width=10)
+            e_stock = ttk.Entry(scrollable_frame, width=10)
             e_stock.grid(row=idx, column=4)
 
             vars_crear.append(var)
