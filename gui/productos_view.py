@@ -39,7 +39,7 @@ def mostrar_ventana_productos():
     entry_nombre = tk.Entry(frame_form_agregar, width=40)
     entry_nombre.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_agregar, text="Precio (Gs):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Precio (Gs) por unidad:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
     entry_precio = tk.Entry(frame_form_agregar, width=40)
     entry_precio.grid(row=2, column=1, padx=5, pady=2)
 
@@ -53,7 +53,7 @@ def mostrar_ventana_productos():
     entry_nombre_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
     entry_nombre_editar.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_editar, text="Precio (Gs):").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_editar, text="Precio (Gs) por unidad:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
     entry_precio_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
     entry_precio_editar.grid(row=2, column=1, padx=5, pady=2)
 
