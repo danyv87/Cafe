@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from controllers import compras_controller
 from models.compra import Compra
@@ -94,3 +94,56 @@ def test_registrar_compra_desde_imagen_producto_id_invalido(mock_parse, producto
 
     with pytest.raises(ValueError):
         compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+
+
+@patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
+@patch("controllers.compras_controller.actualizar_stock_materia_prima")
+def test_flujo_selecciona_subconjunto_items(
+    mock_actualizar, mock_parse, tmp_path
+):
+    """Los ítems omitidos no deben afectar stock ni total de la compra."""
+
+    original_data_path = compras_controller.DATA_PATH
+    compras_controller.DATA_PATH = tmp_path / "compras.json"
+
+    mock_parse.return_value = [
+        {
+            "producto_id": 1,
+            "nombre_producto": "Cafe",
+            "cantidad": 1,
+            "costo_unitario": 10,
+        },
+        {
+            "producto_id": 2,
+            "nombre_producto": "Azucar",
+            "cantidad": 2,
+            "costo_unitario": 5,
+        },
+        {
+            "producto_id": 3,
+            "nombre_producto": "Harina",
+            "cantidad": 1,
+            "costo_unitario": 7,
+        },
+    ]
+
+    try:
+        items = compras_controller.registrar_compra_desde_imagen(
+            "Proveedor", "img.jpg"
+        )
+
+        # Se muestra la lista completa de ítems
+        assert len(items) == 3
+
+        # Solo se aceptan los dos primeros ítems
+        detalles = [CompraDetalle(**item) for item in items[:2]]
+        compra = compras_controller.registrar_compra("Proveedor", detalles)
+
+        # El tercer ítem omitido no afecta el total ni el stock
+        assert len(compra.items_compra) == 2
+        assert compra.total == 10 + 10  # Cafe + Azucar
+
+        mock_actualizar.assert_has_calls([call(1, 1), call(2, 2)], any_order=True)
+        assert mock_actualizar.call_count == 2
+    finally:
+        compras_controller.DATA_PATH = original_data_path
