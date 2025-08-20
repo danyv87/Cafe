@@ -16,7 +16,8 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             [],
         )
 
-        items = compras_controller.registrar_compra_desde_imagen('Proveedor', 'img.jpg')
+        items, pendientes = compras_controller.registrar_compra_desde_imagen('Proveedor', 'img.jpg')
+        self.assertEqual(pendientes, [])
         compra_actual_items = []
 
         # Aceptar primer ítem

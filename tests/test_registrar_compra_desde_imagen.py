@@ -20,9 +20,10 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
         [],
     )
 
-    compra = compras_controller.registrar_compra_desde_imagen(
+    compra, pendientes = compras_controller.registrar_compra_desde_imagen(
         "Proveedor", "img.jpg", como_compra=True
     )
+    assert pendientes == []
     assert isinstance(compra, Compra)
     assert len(compra.items_compra) == 1
     detalle = compra.items_compra[0]
@@ -72,8 +73,11 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
     inputs = iter(["crear", "kg", "50", "10"])
     monkeypatch.setattr("builtins.input", lambda _: next(inputs))
 
-    items = compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        "Proveedor", "img.jpg"
+    )
 
+    assert pendientes == []
     assert items[0]["nombre_producto"] == "Azucar"
     mock_agregar.assert_called_once_with("Azucar", "kg", 50.0, 10.0)
     mock_clear.assert_called()
@@ -118,8 +122,13 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
 
     monkeypatch.setattr("builtins.input", lambda _: "omitir")
 
-    items = compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        "Proveedor", "img.jpg"
+    )
 
+    assert pendientes == [
+        {"nombre_producto": "Azucar", "cantidad": 1, "costo_unitario": 3}
+    ]
     assert len(items) == 1
     assert items[0]["nombre_producto"] == "Cafe"
     mock_agregar.assert_not_called()
@@ -196,12 +205,13 @@ def test_flujo_selecciona_subconjunto_items(
     )
 
     try:
-        items = compras_controller.registrar_compra_desde_imagen(
+        items, pendientes = compras_controller.registrar_compra_desde_imagen(
             "Proveedor", "img.jpg"
         )
 
         # Se muestra la lista completa de ítems
         assert len(items) == 3
+        assert pendientes == []
 
         # Solo se aceptan los dos primeros ítems
         detalles = [CompraDetalle(**item) for item in items[:2]]

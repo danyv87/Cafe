@@ -171,22 +171,13 @@ def mostrar_ventana_compras():
             )
             return
 
-        while True:
-            try:
-                items = registrar_compra_desde_imagen(proveedor, ruta)
-                break
-            except ValueError as e:
-                msg = str(e)
-                if "Materia prima" in msg and "no encontrada" in msg:
-                    # Tras crear la materia prima, reintentar la importación
-                    continue
-                messagebox.showerror("Error", msg)
-                return
-            except Exception as e:
-                messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
-                return
+        try:
+            items, faltantes = registrar_compra_desde_imagen(proveedor, ruta)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            return
 
-        if not items:
+        if not items and not faltantes:
             messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")
             return
 
@@ -211,6 +202,25 @@ def mostrar_ventana_compras():
             )
             lista_items.insert(tk.END, linea)
 
+        if faltantes:
+            tk.Label(
+                ventana_items,
+                text="Ítems omitidos:",
+                font=("Helvetica", 10, "bold"),
+            ).pack(pady=(10, 0))
+            frame_falt = tk.Frame(ventana_items)
+            frame_falt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            scrollbar_f = tk.Scrollbar(frame_falt, orient=tk.VERTICAL)
+            lista_falt = tk.Listbox(
+                frame_falt, yscrollcommand=scrollbar_f.set, width=80
+            )
+            scrollbar_f.config(command=lista_falt.yview)
+            scrollbar_f.pack(side=tk.RIGHT, fill=tk.Y)
+            lista_falt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            for raw in faltantes:
+                nombre = raw.get("nombre_producto") or raw.get("producto") or ""
+                lista_falt.insert(tk.END, nombre)
+
         def aceptar_items():
             for item in items:
                 detalle = CompraDetalle(
@@ -223,7 +233,9 @@ def mostrar_ventana_compras():
                 compra_actual_items.append(detalle)
             actualizar_lista_compra_gui()
             ventana_items.destroy()
-            messagebox.showinfo("Éxito", f"Se agregaron {len(items)} ítems importados.")
+            messagebox.showinfo(
+                "Éxito", f"Se agregaron {len(items)} ítems importados."
+            )
 
         tk.Button(ventana_items, text="Agregar a la compra", command=aceptar_items, bg="lightgreen").pack(pady=5)
         tk.Button(ventana_items, text="Cancelar", command=ventana_items.destroy, bg="lightcoral").pack(pady=5)

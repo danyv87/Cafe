@@ -62,9 +62,10 @@ class TestCargarCompras(unittest.TestCase):
             [],
         )
 
-        items = compras_controller.registrar_compra_desde_imagen(
+        items, pendientes = compras_controller.registrar_compra_desde_imagen(
             "Proveedor Z", "dummy.jpg"
         )
+        self.assertEqual(pendientes, [])
         self.assertIsInstance(items, list)
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["nombre_producto"], "Leche")
