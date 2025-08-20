@@ -59,14 +59,14 @@ class TestCargarCompras(unittest.TestCase):
             }
         ]
 
-        items = compras_controller.registrar_compra_desde_imagen(
+        validos, pendientes = compras_controller.registrar_compra_desde_imagen(
             "Proveedor Z", "dummy.jpg"
         )
-        self.assertIsInstance(items, list)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["nombre_producto"], "Leche")
+        self.assertEqual(len(validos), 1)
+        self.assertEqual(pendientes, [])
+        self.assertEqual(validos[0]["nombre_producto"], "Leche")
 
-        detalles = [CompraDetalle(**item) for item in items]
+        detalles = [CompraDetalle(**item) for item in validos]
 
         # Aún no se guardó en el archivo
         compras = compras_controller.cargar_compras()

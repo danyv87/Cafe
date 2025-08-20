@@ -6,7 +6,6 @@ from models.compra_detalle import CompraDetalle
 from utils import receipt_parser
 from controllers.materia_prima_controller import (
     actualizar_stock_materia_prima,
-    agregar_materia_prima,
 )
 import config
 from collections import defaultdict
@@ -143,48 +142,40 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     if not proveedor or len(proveedor.strip()) == 0:
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
-    while True:
-        try:
-            items_dict = receipt_parser.parse_receipt_image(path_imagen)
-            break
-        except (ConnectionError, TimeoutError) as e:
-            logger.error(f"Error de red al procesar '{path_imagen}': {e}")
-            raise ValueError(
-                "No se pudo procesar la imagen por un problema de conexión."
-            ) from e
-        except NotImplementedError as e:
-            logger.error(
-                f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
-            )
-            raise ValueError(str(e)) from e
-        except FileNotFoundError as e:
-            logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
-            raise ValueError(
-                "El comprobante no existe o no es accesible."
-            ) from e
-        except ValueError as e:
-            mensaje = str(e)
-            if "Materia prima" in mensaje and "no encontrada" in mensaje:
-                nombre_mp = mensaje.split("'")[1]
-                unidad, costo, stock = _solicitar_datos_materia_prima(nombre_mp)
-                agregar_materia_prima(nombre_mp, unidad, costo, stock)
-                receipt_parser.clear_cache()
-                continue
-            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
-            raise ValueError(mensaje) from e
-        except Exception as e:
-            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
-            raise ValueError(
-                "No se pudo interpretar la imagen del comprobante."
-            ) from e
+    try:
+        items_dict = receipt_parser.parse_receipt_image(path_imagen)
+    except (ConnectionError, TimeoutError) as e:
+        logger.error(f"Error de red al procesar '{path_imagen}': {e}")
+        raise ValueError(
+            "No se pudo procesar la imagen por un problema de conexión."
+        ) from e
+    except NotImplementedError as e:
+        logger.error(
+            f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
+        )
+        raise ValueError(str(e)) from e
+    except FileNotFoundError as e:
+        logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
+        raise ValueError(
+            "El comprobante no existe o no es accesible."
+        ) from e
+    except ValueError as e:
+        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+        raise ValueError(str(e)) from e
+    except Exception as e:
+        logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+        raise ValueError(
+            "No se pudo interpretar la imagen del comprobante."
+        ) from e
 
     if not isinstance(items_dict, list):
         raise ValueError("Formato de datos inválido del comprobante.")
 
-    items_validados = []
+    items_validos = []
+    items_pendientes = []
     for item in items_dict:
         try:
-            producto_id = int(item["producto_id"])
+            producto_id = item.get("producto_id")
             nombre = item["nombre_producto"].strip()
             cantidad = float(item["cantidad"])
             costo_unitario = float(item["costo_unitario"])
@@ -193,8 +184,24 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             logger.error(f"Error al convertir datos del comprobante: {e}")
             raise ValueError("Datos de compra inválidos en la imagen.") from e
 
-        if not producto_id:
-            raise ValueError("producto_id inválido en la imagen.")
+        if producto_id is None:
+            items_pendientes.append(
+                {
+                    "producto_id": None,
+                    "nombre_producto": nombre,
+                    "cantidad": cantidad,
+                    "costo_unitario": costo_unitario,
+                    "descripcion_adicional": descripcion,
+                }
+            )
+            continue
+        try:
+            producto_id = int(producto_id)
+            if producto_id <= 0:
+                raise ValueError("producto_id inválido en la imagen.")
+        except Exception as e:
+            logger.error(f"producto_id inválido: {e}")
+            raise ValueError("producto_id inválido en la imagen.") from e
         if not isinstance(nombre, str) or not nombre:
             raise ValueError("nombre_producto inválido en la imagen.")
         if cantidad <= 0:
@@ -204,7 +211,7 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         if not isinstance(descripcion, str):
             raise ValueError("descripcion_adicional debe ser texto.")
 
-        items_validados.append(
+        items_validos.append(
             {
                 "producto_id": producto_id,
                 "nombre_producto": nombre,
@@ -223,11 +230,11 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
                 costo_unitario=item["costo_unitario"],
                 descripcion_adicional=item.get("descripcion_adicional", ""),
             )
-            for item in items_validados
+            for item in items_validos
         ]
-        return Compra(proveedor=proveedor.strip(), items_compra=detalles)
+        return Compra(proveedor=proveedor.strip(), items_compra=detalles), items_pendientes
 
-    return items_validados
+    return items_validos, items_pendientes
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):

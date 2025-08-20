@@ -3,9 +3,40 @@ from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 import datetime
 import os
-from controllers.compras_controller import registrar_compra, registrar_compra_desde_imagen
+from controllers.compras_controller import (
+    registrar_compra,
+    registrar_compra_desde_imagen,
+    _solicitar_datos_materia_prima,
+)
 from models.compra_detalle import CompraDetalle
-from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
+from controllers.materia_prima_controller import (
+    listar_materias_primas,
+    obtener_materia_prima_por_id,
+    agregar_materia_prima,
+)
+
+
+def crear_detalles_desde_items(items, seleccionados):
+    """Convierte una lista de diccionarios de ítems en ``CompraDetalle``.
+
+    Solo se procesan aquellos índices marcados en ``seleccionados`` y que
+    cuentan con ``producto_id`` válido. Esta función se expone para facilitar
+    las pruebas de selección de ítems importados.
+    """
+
+    detalles = []
+    for item, seleccionado in zip(items, seleccionados):
+        if seleccionado and item.get("producto_id"):
+            detalles.append(
+                CompraDetalle(
+                    producto_id=item["producto_id"],
+                    nombre_producto=item["nombre_producto"],
+                    cantidad=item["cantidad"],
+                    costo_unitario=item["costo_unitario"],
+                    descripcion_adicional=item.get("descripcion_adicional", ""),
+                )
+            )
+    return detalles
 
 
 def mostrar_ventana_compras():
@@ -171,23 +202,22 @@ def mostrar_ventana_compras():
             )
             return
 
-        while True:
-            try:
-                items = registrar_compra_desde_imagen(proveedor, ruta)
-                break
-            except ValueError as e:
-                msg = str(e)
-                if "Materia prima" in msg and "no encontrada" in msg:
-                    # Tras crear la materia prima, reintentar la importación
-                    continue
-                messagebox.showerror("Error", msg)
-                return
-            except Exception as e:
-                messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
-                return
+        try:
+            items_validos, items_pendientes = registrar_compra_desde_imagen(
+                proveedor, ruta
+            )
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            return
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un problema al importar: {e}")
+            return
 
+        items = items_validos + items_pendientes
         if not items:
-            messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")
+            messagebox.showinfo(
+                "Sin ítems", "No se encontraron ítems en el comprobante."
+            )
             return
 
         ventana_items = tk.Toplevel(ventana)
@@ -197,36 +227,67 @@ def mostrar_ventana_compras():
         frame_items = tk.Frame(ventana_items)
         frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        scrollbar = tk.Scrollbar(frame_items, orient=tk.VERTICAL)
-        lista_items = tk.Listbox(frame_items, yscrollcommand=scrollbar.set, width=80)
-        scrollbar.config(command=lista_items.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        lista_items.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vars_seleccion = []
+
+        def crear_materia_prima(item, label):
+            try:
+                unidad, costo, stock = _solicitar_datos_materia_prima(
+                    item["nombre_producto"]
+                )
+            except ValueError:
+                return
+            nuevo_id = agregar_materia_prima(item["nombre_producto"], unidad, costo, stock)
+            item["producto_id"] = nuevo_id
+            label.config(fg="black")
 
         for item in items:
+            var = tk.BooleanVar(value=item in items_validos)
+            vars_seleccion.append(var)
+            fila = tk.Frame(frame_items)
+            fila.pack(anchor="w")
+
             total_item = item["cantidad"] * item["costo_unitario"]
-            linea = (
+            texto = (
                 f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
                 .replace(",", "X").replace(".", ",").replace("X", ".")
             )
-            lista_items.insert(tk.END, linea)
+            chk = tk.Checkbutton(fila, variable=var)
+            chk.pack(side=tk.LEFT)
+            etiqueta = tk.Label(fila, text=texto)
+            etiqueta.pack(side=tk.LEFT)
+            if item in items_pendientes:
+                etiqueta.config(fg="red")
+                tk.Button(
+                    fila,
+                    text="Crear",
+                    command=lambda it=item, lb=etiqueta: crear_materia_prima(it, lb),
+                ).pack(side=tk.RIGHT)
 
         def aceptar_items():
-            for item in items:
-                detalle = CompraDetalle(
-                    producto_id=item["producto_id"],
-                    nombre_producto=item["nombre_producto"],
-                    cantidad=item["cantidad"],
-                    costo_unitario=item["costo_unitario"],
-                    descripcion_adicional=item.get("descripcion_adicional", ""),
+            seleccion = [var.get() for var in vars_seleccion]
+            detalles = crear_detalles_desde_items(items, seleccion)
+            if detalles:
+                compra_actual_items.extend(detalles)
+                actualizar_lista_compra_gui()
+                messagebox.showinfo(
+                    "Éxito", f"Se agregaron {len(detalles)} ítems importados."
                 )
-                compra_actual_items.append(detalle)
-            actualizar_lista_compra_gui()
+            else:
+                messagebox.showinfo("Sin ítems", "No se seleccionaron ítems válidos.")
             ventana_items.destroy()
-            messagebox.showinfo("Éxito", f"Se agregaron {len(items)} ítems importados.")
 
-        tk.Button(ventana_items, text="Agregar a la compra", command=aceptar_items, bg="lightgreen").pack(pady=5)
-        tk.Button(ventana_items, text="Cancelar", command=ventana_items.destroy, bg="lightcoral").pack(pady=5)
+        tk.Button(
+            ventana_items,
+            text="Agregar a la compra",
+            command=aceptar_items,
+            bg="lightgreen",
+        ).pack(pady=5)
+        tk.Button(
+            ventana_items,
+            text="Cancelar",
+            command=ventana_items.destroy,
+            bg="lightcoral",
+        ).pack(pady=5)
 
     def agregar_o_editar_item_a_compra():
         """

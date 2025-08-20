@@ -5,6 +5,7 @@ pytest.importorskip("PIL")
 from PIL import Image, ImageDraw
 
 from utils import gpt_receipt_parser
+import shutil
 
 
 def _create_receipt_image(path: Path) -> None:
@@ -27,6 +28,7 @@ def test_parse_receipt_image_file_not_found():
         gpt_receipt_parser.parse_receipt_image("missing.png")
 
 
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract not installed")
 def test_parse_receipt_image_extracts_items(tmp_path):
     img_path = tmp_path / "receipt.png"
     _create_receipt_image(img_path)

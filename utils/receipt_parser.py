@@ -63,8 +63,9 @@ def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
     ``nombre_producto``), ``cantidad`` and ``precio`` (or ``costo_unitario``).
 
     The function maps product names to known "materias primas" using
-    :func:`_buscar_materia_prima`. If a name cannot be matched a ``ValueError``
-    is raised.
+    :func:`_buscar_materia_prima`. If a name cannot be matched the item is
+    included in the result with ``producto_id`` set to ``None`` so callers can
+    decide how to handle it.
     """
 
     items: List[Dict] = []
@@ -79,8 +80,6 @@ def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
         if mp is None:
             mp = _buscar_materia_prima(nombre)
             encontrados[nombre_normalizado] = mp
-        if not mp:
-            raise ValueError(f"Materia prima '{nombre}' no encontrada")
 
         try:
             cantidad = float(raw.get("cantidad", 0))
@@ -90,8 +89,8 @@ def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
 
         items.append(
             {
-                "producto_id": mp.id,
-                "nombre_producto": mp.nombre,
+                "producto_id": mp.id if mp else None,
+                "nombre_producto": mp.nombre if mp else nombre,
                 "cantidad": cantidad,
                 "costo_unitario": precio,
                 "descripcion_adicional": raw.get("descripcion_adicional", ""),
