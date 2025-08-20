@@ -128,9 +128,10 @@ def _solicitar_datos_materia_prima(nombre):
 def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
-    La información recuperada **no** se persiste ni actualiza el stock hasta
-    que los ítems sean confirmados y registrados mediante
-    :func:`registrar_compra`.
+    Además de los ítems validados, también se obtienen aquellos que quedan
+    pendientes por no tener una materia prima asociada. La información
+    recuperada **no** se persiste ni actualiza el stock hasta que los ítems sean
+    confirmados y registrados mediante :func:`registrar_compra`.
 
     Args:
         proveedor (str): Nombre del proveedor.
@@ -139,8 +140,10 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             en caso contrario, se retorna la lista de diccionarios de ítems.
 
     Returns:
-        list[dict] | Compra: Ítems validados del comprobante o una ``Compra``
-            temporal si ``como_compra`` es ``True``.
+        tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
+            items_pendientes)`` o ``(Compra, items_pendientes)`` si
+            ``como_compra`` es ``True``. ``items_pendientes`` contiene los
+            productos del comprobante que no tienen una materia prima asociada.
 
     Raises:
         ValueError: Se propaga con alguno de los siguientes mensajes para
