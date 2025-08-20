@@ -8,10 +8,13 @@ from models.compra_detalle import CompraDetalle
 class TestCompraDesdeImagenGUI(unittest.TestCase):
     @patch('controllers.compras_controller.receipt_parser.parse_receipt_image')
     def test_aceptar_items_actualiza_lista_y_total(self, mock_parse):
-        mock_parse.return_value = [
-            {"producto_id": 1, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
-            {"producto_id": 2, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
-        ]
+        mock_parse.return_value = (
+            [
+                {"producto_id": 1, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
+                {"producto_id": 2, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
+            ],
+            [],
+        )
 
         items = compras_controller.registrar_compra_desde_imagen('Proveedor', 'img.jpg')
         compra_actual_items = []

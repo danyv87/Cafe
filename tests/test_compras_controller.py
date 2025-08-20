@@ -50,14 +50,17 @@ class TestCargarCompras(unittest.TestCase):
 
     @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
     def test_registrar_compra_desde_imagen(self, mock_parse):
-        mock_parse.return_value = [
-            {
-                "producto_id": 3,
-                "nombre_producto": "Leche",
-                "cantidad": 2,
-                "costo_unitario": 4,
-            }
-        ]
+        mock_parse.return_value = (
+            [
+                {
+                    "producto_id": 3,
+                    "nombre_producto": "Leche",
+                    "cantidad": 2,
+                    "costo_unitario": 4,
+                }
+            ],
+            [],
+        )
 
         items = compras_controller.registrar_compra_desde_imagen(
             "Proveedor Z", "dummy.jpg"
@@ -103,14 +106,17 @@ class TestCargarCompras(unittest.TestCase):
 
     @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
     def test_registrar_compra_desde_imagen_datos_invalidos(self, mock_parse):
-        mock_parse.return_value = [
-            {
-                "producto_id": 1,
-                "nombre_producto": "",
-                "cantidad": 0,
-                "costo_unitario": 1,
-            }
-        ]
+        mock_parse.return_value = (
+            [
+                {
+                    "producto_id": 1,
+                    "nombre_producto": "",
+                    "cantidad": 0,
+                    "costo_unitario": 1,
+                }
+            ],
+            [],
+        )
         with self.assertRaises(ValueError):
             compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
 

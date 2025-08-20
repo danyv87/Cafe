@@ -10,7 +10,7 @@ results."""
 from __future__ import annotations
 
 import json
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 
 # Cache of normalised materia prima names to their objects. Populated lazily
@@ -56,31 +56,49 @@ def _buscar_materia_prima(nombre: str):
     return _MATERIAS_PRIMAS_CACHE.get(nombre_normalizado)
 
 
-def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
+def _normalizar_items(
+    raw_items: List[Dict], omitidos: List[str] | None = None
+) -> Tuple[List[Dict], List[Dict]]:
     """Convert a list of raw dictionaries to the expected schema.
 
     ``raw_items`` is expected to contain at least the keys ``producto`` (or
-    ``nombre_producto``), ``cantidad`` and ``precio`` (or ``costo_unitario``).
+    ``nombre_producto``), ``cantidad`` y ``precio`` (o ``costo_unitario``).
 
-    The function maps product names to known "materias primas" using
-    :func:`_buscar_materia_prima`. If a name cannot be matched a ``ValueError``
-    is raised.
+    Args
+    ----
+    raw_items:
+        Items obtenidos del backend del comprobante.
+    omitidos:
+        Lista opcional de nombres de productos a ignorar.
+
+    Returns
+    -------
+    tuple(list, list)
+        Una tupla con ``items`` normalizados y ``faltantes`` que no pudieron
+        emparejarse con una materia prima.
     """
 
     items: List[Dict] = []
+    faltantes: List[Dict] = []
     encontrados: Dict[str, "MateriaPrima"] = {}
+    omitidos_norm = {n.strip().lower() for n in (omitidos or [])}
+
     for raw in raw_items:
         nombre = raw.get("nombre_producto") or raw.get("producto")
         if not nombre:
             raise ValueError("Falta el nombre del producto en el comprobante")
 
         nombre_normalizado = nombre.strip().lower()
+        if nombre_normalizado in omitidos_norm:
+            continue
+
         mp = encontrados.get(nombre_normalizado)
         if mp is None:
             mp = _buscar_materia_prima(nombre)
             encontrados[nombre_normalizado] = mp
         if not mp:
-            raise ValueError(f"Materia prima '{nombre}' no encontrada")
+            faltantes.append(raw)
+            continue
 
         try:
             cantidad = float(raw.get("cantidad", 0))
@@ -97,11 +115,13 @@ def _normalizar_items(raw_items: List[Dict]) -> List[Dict]:
                 "descripcion_adicional": raw.get("descripcion_adicional", ""),
             }
         )
-    return items
+    return items, faltantes
 
 
-def parse_receipt_image(path_imagen: str) -> List[Dict]:
-    """Parse a receipt image and return a list of item dictionaries.
+def parse_receipt_image(
+    path_imagen: str, omitidos: List[str] | None = None
+) -> Tuple[List[Dict], List[Dict]]:
+    """Parse a receipt image and return a tuple of item dictionaries.
 
     The function currently supports two backends:
 
@@ -113,9 +133,9 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
 
     Returns
     -------
-    list of dict
-        Each dictionary contains ``producto_id``, ``nombre_producto``,
-        ``cantidad`` and ``costo_unitario`` among other optional fields.
+    tuple(list, list)
+        ``items`` normalizados y ``faltantes`` cuyos nombres no coincidieron
+        con ninguna materia prima conocida.
     """
 
     if not path_imagen:
@@ -132,7 +152,7 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
             raise ValueError("JSON de recibo inválido") from exc
         if not isinstance(data, list):
             raise ValueError("El archivo JSON debe contener una lista de items")
-        return _normalizar_items(data)
+        return _normalizar_items(data, omitidos)
 
     # For images, attempt to use the OCR based parser
     try:  # Import lazily so environments without OpenAI dependencies still work
@@ -145,5 +165,5 @@ def parse_receipt_image(path_imagen: str) -> List[Dict]:
     raw_items = gpt_parse(path_imagen)
     if not isinstance(raw_items, list):
         raise ValueError("La respuesta del backend de recibos es inválida")
-    return _normalizar_items(raw_items)
+    return _normalizar_items(raw_items, omitidos)
 
