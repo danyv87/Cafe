@@ -1,12 +1,6 @@
 from pathlib import Path
 
 import pytest
-import shutil
-
-pytest.importorskip("PIL")
-pytest.importorskip("pytesseract")
-if not shutil.which("tesseract"):
-    pytest.skip("tesseract no instalado", allow_module_level=True)
 from PIL import Image, ImageDraw
 
 from utils import gpt_receipt_parser
@@ -55,7 +49,8 @@ def test_parse_receipt_image_extracts_items(tmp_path, monkeypatch):
     _create_receipt_image(img_path)
 
     monkeypatch.setattr(
-        "pytesseract.image_to_string", lambda img: "Cafe 1 2\nLeche 2 3"
+        "utils.gpt_receipt_parser.pytesseract.image_to_string",
+        lambda img, lang="spa": "Cafe 1 2\nLeche 2 3",
     )
 
     items = gpt_receipt_parser.parse_receipt_image(str(img_path))
@@ -77,8 +72,8 @@ def test_parse_receipt_image_multiple_items(tmp_path, monkeypatch):
     _create_complex_receipt_image(img_path)
 
     monkeypatch.setattr(
-        "pytesseract.image_to_string",
-        lambda img: "Cafe 1 2\nLeche 2 3\nAzucar 3 5\nDesconocido 1 7",
+        "utils.gpt_receipt_parser.pytesseract.image_to_string",
+        lambda img, lang="spa": "Cafe 1 2\nLeche 2 3\nAzucar 3 5\nDesconocido 1 7",
     )
 
     items = gpt_receipt_parser.parse_receipt_image(str(img_path))
@@ -101,8 +96,8 @@ def test_parse_receipt_image_varied_formats(tmp_path, monkeypatch):
     _create_receipt_image(img_path)
 
     monkeypatch.setattr(
-        "pytesseract.image_to_string",
-        lambda img: (
+        "utils.gpt_receipt_parser.pytesseract.image_to_string",
+        lambda img, lang="spa": (
             "BANANA 70999 kg 0.970 82.50\n"
             "Azucar 1 3,50\n"
             "Manteca 2 $7,25\n"
