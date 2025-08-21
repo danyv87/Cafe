@@ -9,6 +9,7 @@ authentication token from a safe location.
 from __future__ import annotations
 
 import os
+import json
 from typing import Dict, List
 
 from .gemini_api import get_gemini_api_key
@@ -36,8 +37,11 @@ def parse_receipt_image(path: str) -> List[Dict]:
         If the extension is not one of the supported formats.
     ImportError
         If the ``google-genai`` dependency is missing.
-    NotImplementedError
-        The Gemini backend is not available in this test environment.
+    ValueError
+        If the model returns data that is not valid JSON or does not match the
+        expected structure.
+    RuntimeError
+        For errors raised by the remote service or network issues.
     """
 
     try:
@@ -57,6 +61,65 @@ def parse_receipt_image(path: str) -> List[Dict]:
     api_key = get_gemini_api_key()
     client = genai.Client(api_key=api_key)
 
-    raise NotImplementedError(
-        "El backend de Gemini para analizar comprobantes aún no está implementado"
+    mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+    with open(path, "rb") as fh:
+        image_bytes = fh.read()
+
+    prompt = (
+        "Extrae todos los productos del comprobante y devuelve un JSON con una "
+        "lista de objetos. Cada objeto debe contener las claves 'producto', "
+        "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
     )
+
+    try:
+        response = client.models.generate_content(  # type: ignore[attr-defined]
+            model="gemini-1.5-flash",
+            contents=[
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {"mime_type": mime, "data": image_bytes}},
+                    ],
+                }
+            ],
+        )
+    except Exception as exc:  # pragma: no cover - depends on network/service
+        raise RuntimeError(
+            f"Error al comunicarse con el servicio Gemini: {exc}"
+        ) from exc
+
+    text = getattr(response, "text", "")
+    try:
+        payload = json.loads(text)
+    except Exception as exc:
+        raise ValueError("Respuesta JSON malformada del modelo") from exc
+
+    if not isinstance(payload, list):
+        raise ValueError("La respuesta del modelo debe ser una lista de objetos")
+
+    items: List[Dict] = []
+    for raw_item in payload:
+        if not isinstance(raw_item, dict):
+            raise ValueError(
+                "La respuesta del modelo debe ser una lista de diccionarios"
+            )
+        required = {"producto", "cantidad", "precio"}
+        if not required.issubset(raw_item):
+            raise ValueError(
+                "Cada elemento debe contener 'producto', 'cantidad' y 'precio'"
+            )
+        producto = str(raw_item["producto"])
+        try:
+            cantidad = float(raw_item["cantidad"])
+            precio = float(raw_item["precio"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "Los campos 'cantidad' y 'precio' deben ser numéricos"
+            ) from exc
+        item = {"producto": producto, "cantidad": cantidad, "precio": precio}
+        if "descripcion_adicional" in raw_item:
+            item["descripcion_adicional"] = str(raw_item["descripcion_adicional"])
+        items.append(item)
+
+    return items

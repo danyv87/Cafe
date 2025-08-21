@@ -1,0 +1,56 @@
+import sys
+import types
+import pytest
+
+from utils import gemini_receipt_parser
+
+
+def _setup_dummy_genai(monkeypatch, response):
+    """Helper to register a dummy google.genai module returning ``response``."""
+    class DummyClient:
+        def __init__(self, api_key):
+            self.api_key = api_key
+            self.models = self
+
+        def generate_content(self, *args, **kwargs):  # pragma: no cover - very small
+            return response
+
+    dummy_google = types.ModuleType("google")
+    dummy_genai = types.SimpleNamespace(Client=DummyClient)
+    dummy_google.genai = dummy_genai
+    monkeypatch.setitem(sys.modules, "google", dummy_google)
+    monkeypatch.setitem(sys.modules, "google.genai", dummy_genai)
+    return DummyClient
+
+
+def test_parse_receipt_image_success(monkeypatch, tmp_path):
+    img = tmp_path / "ticket.jpg"
+    img.write_bytes(b"fake")
+    response = types.SimpleNamespace(
+        text='[{"producto": "Pan", "cantidad": 2, "precio": 3.5}]'
+    )
+    DummyClient = _setup_dummy_genai(monkeypatch, response)
+
+    called = {}
+
+    def fake_key():
+        called["used"] = True
+        return "APIKEY"
+
+    monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", fake_key)
+
+    items = gemini_receipt_parser.parse_receipt_image(str(img))
+
+    assert items == [{"producto": "Pan", "cantidad": 2.0, "precio": 3.5}]
+    assert called["used"]
+
+
+def test_parse_receipt_image_bad_json(monkeypatch, tmp_path):
+    img = tmp_path / "ticket.png"
+    img.write_bytes(b"fake")
+    response = types.SimpleNamespace(text="not json")
+    _setup_dummy_genai(monkeypatch, response)
+    monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
+
+    with pytest.raises(ValueError):
+        gemini_receipt_parser.parse_receipt_image(str(img))
