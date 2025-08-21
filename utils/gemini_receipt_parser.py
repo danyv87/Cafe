@@ -53,8 +53,9 @@ def parse_receipt_image(path: str) -> List[Dict]:
     if not path.lower().endswith((".jpeg", ".jpg", ".png")):
         raise ValueError("Unsupported format: only .jpeg, .jpg or .png images are allowed")
 
+    # Retrieve the API key without exposing secrets directly in the code
     api_key = get_gemini_api_key()
-    _client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
     raise NotImplementedError(
         "El backend de Gemini para analizar comprobantes aún no está implementado"
