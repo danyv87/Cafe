@@ -1,7 +1,6 @@
 import os
 import logging
 from utils.json_utils import read_json, write_json
-from utils.history_utils import listar_versiones
 from models.producto import Producto
 import config
 
@@ -199,15 +198,3 @@ def obtener_materia_prima_por_id(materia_prima_id):
     """
     from controllers.materia_prima_controller import obtener_materia_prima_por_id as _obtener_materia_prima_por_id
     return _obtener_materia_prima_por_id(materia_prima_id)
-
-
-def listar_versiones_productos():
-    """Lista las versiones disponibles del archivo de productos."""
-    return listar_versiones(DATA_PATH)
-
-
-def restaurar_version_productos(ruta_version):
-    """Restaura los productos desde la *ruta_version* indicada."""
-    data = read_json(ruta_version)
-    write_json(DATA_PATH, data)
-    return [Producto.from_dict(p) for p in data]

@@ -2,7 +2,6 @@ import logging
 from typing import List
 
 from utils.json_utils import read_json, write_json
-from utils.history_utils import listar_versiones
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from utils import receipt_parser
@@ -634,13 +633,3 @@ def obtener_compras_por_dia():
     return formatted
 
 
-def listar_versiones_compras():
-    """Lista las versiones disponibles del archivo de compras."""
-    return listar_versiones(DATA_PATH)
-
-
-def restaurar_version_compras(ruta_version):
-    """Restaura las compras desde la *ruta_version* indicada."""
-    data = read_json(ruta_version)
-    write_json(DATA_PATH, data)
-    return [Compra.from_dict(c) for c in data]
