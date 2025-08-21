@@ -26,8 +26,8 @@
     },
     {
         "id": "dfde2af5-bd71-41e7-a9a9-30c9871fbaab",
-        "nombre": "Chocolate caliente chico",
-        "precio_unitario": 5000.0
+        "nombre": "Chocolate caliente",
+        "precio_unitario": 12000.0
     },
     {
         "id": "7b29d7a4-2982-4641-8bf0-2ec5753e8035",
@@ -63,5 +63,60 @@
         "id": "aaa8763c-c510-4480-a4ee-ed85662c9eff",
         "nombre": "Pizzetas Muzzarella 10cm",
         "precio_unitario": 10000.0
+    },
+    {
+        "id": "5fa4c8b4-fbb4-4027-a9c4-5865fb15dc97",
+        "nombre": "Caja Dia del Ni\u00f1o Grande",
+        "precio_unitario": 120000.0
+    },
+    {
+        "id": "aef7574e-73b5-4991-9cce-b82999924dc4",
+        "nombre": "Caja Dia del Ni\u00f1o Chico",
+        "precio_unitario": 60000.0
+    },
+    {
+        "id": "43cbcd17-664b-4164-95bb-0f292290f1b6",
+        "nombre": "Medialunas Sin Relleno Chico Tipo Bocadito",
+        "precio_unitario": 3000.0
+    },
+    {
+        "id": "1bb47ed8-7c34-4b8d-9c9e-cf491785698a",
+        "nombre": "Brigadeiro Chocolate Mediano",
+        "precio_unitario": 3000.0
+    },
+    {
+        "id": "de2bb8d0-64fa-41ca-95d1-05a88f8618f8",
+        "nombre": "Brigadeiro de Coco Mediano",
+        "precio_unitario": 3000.0
+    },
+    {
+        "id": "748ec207-a0f2-4678-b4b3-669c5037cc12",
+        "nombre": "Zapallito Relleno",
+        "precio_unitario": 30000.0
+    },
+    {
+        "id": "10c9c930-1c32-43d3-ab05-4e4ae8cbe3c7",
+        "nombre": "Zucchinni Relleno de Carne",
+        "precio_unitario": 30000.0
+    },
+    {
+        "id": "0da30ce6-2db2-4512-92c4-de785c8a07bc",
+        "nombre": "Zucchnni Relleno de Pollo",
+        "precio_unitario": 30000.0
+    },
+    {
+        "id": "039a1958-db21-4d88-8f3d-bdc857796d4d",
+        "nombre": "Zucchinni Relleno de Verduras",
+        "precio_unitario": 30000.0
+    },
+    {
+        "id": "67e8f99a-b647-492c-821f-ba89c830eedd",
+        "nombre": "Caldito de Lentejas",
+        "precio_unitario": 30000.0
+    },
+    {
+        "id": "45c69abe-96c4-47d6-a43a-ee5272206a42",
+        "nombre": "Masa Cruda para pizza 250gr",
+        "precio_unitario": 15000.0
     }
 ]

@@ -69,7 +69,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
         )
 
     image = Image.open(path)
-    text = pytesseract.image_to_string(image)
+    text = pytesseract.image_to_string(image, lang='spa')
 
     pattern = re.compile(
         r"^(?P<producto>.+?)\s+(?P<cantidad>\d+(?:[.,]\d+)?)\s+(?P<precio>\d+(?:[.,]\d+)?)(?:\s+\w+)?$"

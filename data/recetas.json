@@ -23,7 +23,8 @@
                 "unidad_medida": "gramos"
             }
         ],
-        "rendimiento": null
+        "rendimiento": null,
+        "procedimiento": null
     },
     {
         "id": "d064f654-19d9-4a9c-abb8-22e63bd6d5c0",
@@ -73,7 +74,8 @@
                 "unidad_medida": "litros"
             }
         ],
-        "rendimiento": 12.0
+        "rendimiento": 12.0,
+        "procedimiento": null
     },
     {
         "id": "d4e91c62-9a17-4e88-9772-0e64d24eb4e2",
@@ -111,6 +113,40 @@
                 "unidad_medida": "kg"
             }
         ],
-        "rendimiento": 1.0
+        "rendimiento": 1.0,
+        "procedimiento": null
+    },
+    {
+        "id": "fb49e713-1a81-4a83-b096-8b9c2c66d44d",
+        "producto_id": "45c69abe-96c4-47d6-a43a-ee5272206a42",
+        "nombre_producto": "Masa Cruda para pizza 250gr",
+        "ingredientes": [
+            {
+                "materia_prima_id": "f8b9b1f0-8273-4f64-aaa3-a46246e6b801",
+                "nombre_materia_prima": "Harina de Trigo 000",
+                "cantidad_necesaria": 1.0,
+                "unidad_medida": "kg"
+            },
+            {
+                "materia_prima_id": "3a044b23-9c5f-4fa4-b994-c49150818b12",
+                "nombre_materia_prima": "Aceite de Oliva",
+                "cantidad_necesaria": 60.0,
+                "unidad_medida": "ml"
+            },
+            {
+                "materia_prima_id": "836a2d6a-84aa-4255-98ac-1ee0f0f0b4c1",
+                "nombre_materia_prima": "Sal fina",
+                "cantidad_necesaria": 10.0,
+                "unidad_medida": "g"
+            },
+            {
+                "materia_prima_id": "4f27f8f6-db72-4cf4-a2e4-b3b6842304a3",
+                "nombre_materia_prima": "Levadura Fresca",
+                "cantidad_necesaria": 50.0,
+                "unidad_medida": "g"
+            }
+        ],
+        "rendimiento": 6.0,
+        "procedimiento": null
     }
 ]

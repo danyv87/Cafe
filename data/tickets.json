@@ -800,19 +800,91 @@
         "total": 144000.0
     },
     {
-        "id": "a5946a8b-a322-4211-be50-a03f7e7f7b59",
-        "fecha": "2025-08-15 15:53:40",
-        "cliente": "test",
+        "id": "1dfb0ca9-7916-4c61-84d9-4a755a34109e",
+        "fecha": "2025-08-15 14:40:57",
+        "cliente": "Sara Rodas Saoli",
         "items_venta": [
             {
-                "fecha_item": "2025-08-15 15:53:37",
-                "producto_id": "77d265ba-6b18-47e9-90f2-f0be9713a2ed",
-                "nombre_producto": "Medialunas con relleno de dulce de leche",
-                "cantidad": 1,
-                "precio_unitario": 6000.0,
-                "total": 6000.0
+                "fecha_item": "2025-08-15 14:40:07",
+                "producto_id": "de2bb8d0-64fa-41ca-95d1-05a88f8618f8",
+                "nombre_producto": "Brigadeiro de Coco Mediano",
+                "cantidad": 50,
+                "precio_unitario": 3000.0,
+                "total": 150000.0
+            },
+            {
+                "fecha_item": "2025-08-15 14:40:30",
+                "producto_id": "1bb47ed8-7c34-4b8d-9c9e-cf491785698a",
+                "nombre_producto": "Brigadeiro Chocolate Mediano",
+                "cantidad": 50,
+                "precio_unitario": 3000.0,
+                "total": 150000.0
+            },
+            {
+                "fecha_item": "2025-08-15 14:40:47",
+                "producto_id": "43cbcd17-664b-4164-95bb-0f292290f1b6",
+                "nombre_producto": "Medialunas Sin Relleno Chico Tipo Bocadito",
+                "cantidad": 50,
+                "precio_unitario": 3000.0,
+                "total": 150000.0
             }
         ],
-        "total": 6000.0
+        "total": 450000.0
+    },
+    {
+        "id": "8f1ff29c-d362-4fdd-a37f-a7a685fc5928",
+        "fecha": "2025-08-14 14:41:35",
+        "cliente": "Sol Torres",
+        "items_venta": [
+            {
+                "fecha_item": "2025-08-15 14:41:34",
+                "producto_id": "5fa4c8b4-fbb4-4027-a9c4-5865fb15dc97",
+                "nombre_producto": "Caja Dia del Ni\u00f1o Grande",
+                "cantidad": 1,
+                "precio_unitario": 120000.0,
+                "total": 120000.0
+            }
+        ],
+        "total": 120000.0
+    },
+    {
+        "id": "a4886efb-c298-4b80-9207-7488c1f8ae4e",
+        "fecha": "2025-08-15 14:42:31",
+        "cliente": "Liliana Rodas",
+        "items_venta": [
+            {
+                "fecha_item": "2025-08-15 14:41:59",
+                "producto_id": "5fa4c8b4-fbb4-4027-a9c4-5865fb15dc97",
+                "nombre_producto": "Caja Dia del Ni\u00f1o Grande",
+                "cantidad": 1,
+                "precio_unitario": 120000.0,
+                "total": 120000.0
+            },
+            {
+                "fecha_item": "2025-08-15 14:42:21",
+                "producto_id": "aef7574e-73b5-4991-9cce-b82999924dc4",
+                "nombre_producto": "Caja Dia del Ni\u00f1o Chico",
+                "cantidad": 1,
+                "precio_unitario": 60000.0,
+                "total": 60000.0
+            }
+        ],
+        "total": 180000.0
+    },
+    {
+        "id": "0a750ab1-65fd-405b-82f1-a8b2b4fe3bac",
+        "fecha": "2025-08-16 15:26:55",
+        "cliente": "Julia Gaona",
+        "items_venta": [
+            {
+                "fecha_item": "2025-08-17 15:26:49",
+                "producto_id": "5fa4c8b4-fbb4-4027-a9c4-5865fb15dc97",
+                "nombre_producto": "Caja Dia del Ni\u00f1o Grande",
+                "cantidad": 1,
+                "precio_unitario": 120000.0,
+                "total": 120000.0
+            }
+        ],
+        "total": 120000.0
     }
 ]
