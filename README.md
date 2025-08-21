@@ -5,7 +5,7 @@ This project is a simple GUI-based application for managing a cafe. It is built 
 ## Requirements
 
 - **Python 3.8+**
-- Install additional dependencies with:
+- Before running the application or its tests, install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
