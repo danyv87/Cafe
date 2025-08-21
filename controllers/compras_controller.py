@@ -195,6 +195,9 @@ def registrar_compra_desde_imagen(
     except ValueError as e:
         logger.exception("Error al interpretar la imagen", extra=metadata)
         raise ValueError(str(e)) from e
+    except RuntimeError as e:
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError(str(e)) from e
     except Exception as e:
         logger.exception("Error al interpretar la imagen", extra=metadata)
         raise ValueError("No se pudo interpretar la imagen del comprobante.") from e
