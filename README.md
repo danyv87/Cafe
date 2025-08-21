@@ -80,4 +80,20 @@ cp data/history/2024-01-30/*.json data/
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
 
+## Receipts con Gemini
+
+La aplicación puede extraer ítems de comprobantes usando los modelos de Gemini.
+
+- **Instalación:** agrega la dependencia `google-genai`:
+
+```bash
+pip install google-genai
+```
+
+- **Credenciales:** define la variable de entorno `GEMINI_API_KEY` con tu clave o utiliza el archivo de configuración cifrado proporcionado por el equipo. Sin esta información el backend no estará disponible.
+
+- **Limitaciones y costos:** el servicio de Gemini tiene cuotas y posibles cargos según tu cuenta de Google Cloud. Revisa la documentación oficial antes de procesar comprobantes de manera masiva.
+
+La función `utils/receipt_parser.parse_receipt_image` detecta automáticamente imágenes (`.png`, `.jpg`, `.jpeg`) y emplea este backend cuando está instalado y configurado.
+
 
