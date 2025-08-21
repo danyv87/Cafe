@@ -196,6 +196,8 @@ def registrar_compra_desde_imagen(
         logger.exception("Error al interpretar la imagen", extra=metadata)
         raise ValueError(str(e)) from e
     except RuntimeError as e:
+        # Errores de ejecución (p.ej. falta de clave API) también deben ser
+        # reportados al usuario para facilitar el diagnóstico.
         logger.exception("Error al interpretar la imagen", extra=metadata)
         raise ValueError(str(e)) from e
     except Exception as e:

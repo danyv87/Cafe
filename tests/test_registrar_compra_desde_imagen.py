@@ -43,6 +43,16 @@ def test_registrar_compra_desde_imagen_network_error(mock_parse):
         compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
 
+@patch(
+    "controllers.compras_controller.receipt_parser.parse_receipt_image",
+    side_effect=RuntimeError("clave faltante"),
+)
+def test_registrar_compra_desde_imagen_runtime_error(mock_parse):
+    """Los RuntimeError del parser deben propagarse como ValueError con el mismo mensaje."""
+    with pytest.raises(ValueError, match="clave faltante"):
+        compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
+
+
 @patch("controllers.compras_controller.receipt_parser.clear_cache")
 @patch("controllers.compras_controller.agregar_materia_prima")
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
