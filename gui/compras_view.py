@@ -3,9 +3,14 @@ from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 import datetime
 import os
-from controllers.compras_controller import registrar_compra, registrar_compra_desde_imagen
+from controllers.compras_controller import (
+    registrar_compra,
+    registrar_compra_desde_imagen,
+    registrar_materias_primas_faltantes,
+)
 from models.compra_detalle import CompraDetalle
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
+from gui.materia_prima_dialogs import solicitar_datos_materia_prima_masivo
 
 
 def mostrar_ventana_compras():
@@ -172,12 +177,35 @@ def mostrar_ventana_compras():
             return
 
         try:
-            items, faltantes = registrar_compra_desde_imagen(proveedor, ruta)
+            omitidos = []
+            items, faltantes = registrar_compra_desde_imagen(
+                proveedor, ruta, omitidos=omitidos
+            )
+            pendientes: list[dict] = []
+            while faltantes:
+                datos_creacion = solicitar_datos_materia_prima_masivo(faltantes)
+                registrados, omitidos_raw = registrar_materias_primas_faltantes(
+                    faltantes, datos_creacion
+                )
+                pendientes.extend(omitidos_raw)
+                omitidos.extend(
+                    [
+                        r.get("nombre_producto") or r.get("producto") or ""
+                        for r in omitidos_raw
+                    ]
+                )
+                if registrados:
+                    items, faltantes = registrar_compra_desde_imagen(
+                        proveedor, ruta, omitidos=omitidos
+                    )
+                else:
+                    break
+            pendientes.extend(faltantes)
         except Exception as e:
             messagebox.showerror("Error", str(e))
             return
 
-        if not items and not faltantes:
+        if not items and not pendientes:
             messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")
             return
 
@@ -201,8 +229,7 @@ def mostrar_ventana_compras():
                 .replace(",", "X").replace(".", ",").replace("X", ".")
             )
             lista_items.insert(tk.END, linea)
-
-        if faltantes:
+        if pendientes:
             tk.Label(
                 ventana_items,
                 text="Ítems omitidos:",
@@ -217,7 +244,7 @@ def mostrar_ventana_compras():
             scrollbar_f.config(command=lista_falt.yview)
             scrollbar_f.pack(side=tk.RIGHT, fill=tk.Y)
             lista_falt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            for raw in faltantes:
+            for raw in pendientes:
                 nombre = raw.get("nombre_producto") or raw.get("producto") or ""
                 lista_falt.insert(tk.END, nombre)
 

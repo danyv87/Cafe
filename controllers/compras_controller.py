@@ -83,186 +83,40 @@ def exportar_compras_excel(compras):
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
-def _solicitar_datos_materia_prima(nombre):
-    """Pide al usuario datos para crear una nueva materia prima o la omite.
-
-    Retorna ``None`` si el usuario decide omitir la materia prima. Intenta usar
-    diálogos de ``tkinter`` y cae a la entrada estándar si el entorno gráfico no
-    está disponible.
-    """
-
-    try:  # pragma: no cover - prefer GUI but fall back to CLI in tests
-        import tkinter as tk
-        from tkinter import simpledialog
-
-        root = tk.Tk()
-        root.withdraw()
-        accion = simpledialog.askstring(
-            "Materia prima faltante",
-            f"¿Desea crear u omitir '{nombre}'?",
-            parent=root,
-        )
-        if accion is None or accion.strip().lower() != "crear":
-            root.destroy()
-            return None
-        unidad = simpledialog.askstring(
-            "Materia prima faltante",
-            f"Unidad de medida para '{nombre}':",
-            parent=root,
-        )
-        if unidad is None:
-            raise ValueError("Operación cancelada por el usuario.")
-        costo = simpledialog.askfloat(
-            "Materia prima faltante",
-            f"Costo unitario para '{nombre}':",
-            parent=root,
-        )
-        if costo is None:
-            raise ValueError("Operación cancelada por el usuario.")
-        stock = simpledialog.askfloat(
-            "Materia prima faltante",
-            f"Stock inicial para '{nombre}':",
-            parent=root,
-        )
-        if stock is None:
-            raise ValueError("Operación cancelada por el usuario.")
-        root.destroy()
-        return unidad, float(costo), float(stock)
-    except Exception:
-        accion = (
-            input(
-                f"Materia prima '{nombre}' no encontrada. ¿Crear u omitir? (crear/omitir): "
-            )
-            .strip()
-            .lower()
-        )
-        if accion != "crear":
-            return None
-        unidad = input(f"Ingrese la unidad de medida para '{nombre}': ").strip()
-        costo = float(input(f"Ingrese el costo unitario para '{nombre}': "))
-        stock = float(input(f"Ingrese el stock inicial para '{nombre}': "))
-        return unidad, costo, stock
-
-
-def solicitar_datos_materia_prima_masivo(
-    faltantes: list[dict],
-) -> dict[str, tuple]:
-    """Solicita datos de varias materias primas faltantes a la vez.
-
-    Se intenta mostrar un formulario con ``tkinter`` para que el usuario pueda
-    completar los datos de cada materia prima faltante y decidir cuáles crear.
-    Si el entorno gráfico no está disponible, se recurre a la entrada estándar.
+def registrar_materias_primas_faltantes(
+    faltantes: List[dict], datos_creacion: dict[str, tuple]
+) -> tuple[list[str], list[dict]]:
+    """Registra materias primas faltantes a partir de datos ya validados.
 
     Args:
-        faltantes (list[dict]): Elementos detectados en el comprobante que no
-            poseen una materia prima asociada.
+        faltantes: Lista de elementos detectados en el comprobante sin materia
+            prima asociada.
+        datos_creacion: Diccionario ``{nombre: (unidad, costo, stock)}`` con los
+            datos para las materias primas que se desean crear.
 
     Returns:
-        dict[str, tuple]: Diccionario ``{nombre: (unidad, costo, stock)}`` con
-            los datos para las materias primas que el usuario decidió crear.
+        tuple[list[str], list[dict]]: Una tupla con dos elementos:
+            - Lista de nombres de materias primas creadas.
+            - Lista de diccionarios correspondientes a las materias primas que
+              se decidieron omitir.
     """
 
-    try:  # pragma: no cover - prefer GUI but fall back to CLI in tests
-        import tkinter as tk
-        from tkinter import ttk
+    registrados: list[str] = []
+    omitidos: list[dict] = []
 
-        root = tk.Tk()
-        root.withdraw()
+    for raw in faltantes:
+        nombre = raw.get("nombre_producto") or raw.get("producto") or ""
+        if nombre in datos_creacion:
+            unidad, costo, stock = datos_creacion[nombre]
+            agregar_materia_prima(nombre, unidad, costo, stock)
+            registrados.append(nombre)
+        else:
+            omitidos.append(raw)
 
-        top = tk.Toplevel(root)
-        top.title("Materias primas faltantes")
-        top.geometry("700x500")
-        top.resizable(True, True)
+    if registrados:
+        receipt_parser.clear_cache()
 
-        container = ttk.Frame(top, padding=10)
-        container.pack(fill=tk.BOTH, expand=True)
-
-        canvas = tk.Canvas(container)
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
-
-        scrollable_frame = ttk.Frame(canvas)
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all")),
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        headers = ["Nombre", "Crear", "Unidad", "Costo", "Stock"]
-        for col, text in enumerate(headers):
-            ttk.Label(scrollable_frame, text=text, font=("Helvetica", 9, "bold")).grid(
-                row=0, column=col, padx=5, pady=5
-            )
-
-        vars_crear = []
-        entradas_unidad = []
-        entradas_costo = []
-        entradas_stock = []
-        nombres = []
-
-        for idx, raw in enumerate(faltantes, start=1):
-            nombre = raw.get("nombre_producto") or raw.get("producto") or ""
-            nombres.append(nombre)
-
-            ttk.Label(scrollable_frame, text=nombre).grid(row=idx, column=0, sticky="w")
-            var = tk.BooleanVar(value=True)
-            chk = ttk.Checkbutton(scrollable_frame, variable=var)
-            chk.grid(row=idx, column=1)
-
-            e_unidad = ttk.Entry(scrollable_frame, width=10)
-            e_unidad.grid(row=idx, column=2)
-            e_costo = ttk.Entry(scrollable_frame, width=10)
-            e_costo.grid(row=idx, column=3)
-            e_stock = ttk.Entry(scrollable_frame, width=10)
-            e_stock.grid(row=idx, column=4)
-
-            vars_crear.append(var)
-            entradas_unidad.append(e_unidad)
-            entradas_costo.append(e_costo)
-            entradas_stock.append(e_stock)
-
-        resultado: dict[str, tuple] = {}
-
-        def aceptar():
-            for i, nombre in enumerate(nombres):
-                if vars_crear[i].get():
-                    unidad = entradas_unidad[i].get().strip()
-                    try:
-                        costo = float(entradas_costo[i].get())
-                        stock = float(entradas_stock[i].get())
-                    except ValueError:
-                        continue
-                    resultado[nombre] = (unidad, costo, stock)
-            top.destroy()
-            root.quit()
-
-        ttk.Button(top, text="Aceptar", command=aceptar).pack(pady=5)
-
-        root.mainloop()
-        root.destroy()
-        return resultado
-    except Exception:
-        seleccionados: dict[str, tuple] = {}
-        for raw in faltantes:
-            nombre = raw.get("nombre_producto") or raw.get("producto") or ""
-            accion = (
-                input(
-                    f"Materia prima '{nombre}' no encontrada. ¿Crear u omitir? (crear/omitir): "
-                )
-                .strip()
-                .lower()
-            )
-            if accion != "crear":
-                continue
-            unidad = input(f"Unidad de medida para '{nombre}': ").strip()
-            costo = float(input(f"Costo unitario para '{nombre}': "))
-            stock = float(input(f"Stock inicial para '{nombre}': "))
-            seleccionados[nombre] = (unidad, costo, stock)
-        return seleccionados
+    return registrados, omitidos
 
 
 def registrar_compra_desde_imagen(
@@ -271,6 +125,7 @@ def registrar_compra_desde_imagen(
     como_compra=False,
     output_dir=None,
     db_conn=None,
+    omitidos=None,
 ):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
@@ -288,6 +143,8 @@ def registrar_compra_desde_imagen(
             extraída en formato JSON. Se ignora si es ``None``.
         db_conn (sqlite3.Connection | None): Conexión a base de datos donde
             guardar la factura. Tiene prioridad sobre ``output_dir``.
+        omitidos (list[str] | None): Nombres de materias primas que deben
+            omitirse durante el reconocimiento.
 
     Returns:
         tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
@@ -313,61 +170,36 @@ def registrar_compra_desde_imagen(
     if not proveedor or len(proveedor.strip()) == 0:
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
-    omitidos: List[str] = []  # materias primas que el usuario decide omitir
-    pendientes: List[dict] = []
+    omitidos = list(omitidos or [])
     metadata = {"archivo": path_imagen, "proveedor": proveedor}
-    while True:
-        try:
-            # se reintenta el reconocimiento para manejar faltantes/omitidos
-            items_dict, faltantes = receipt_parser.parse_receipt_image(
-                path_imagen, omitidos=omitidos
-            )
-        except (ConnectionError, TimeoutError) as e:
-            logger.exception(
-                "Error de red al procesar comprobante", extra=metadata
-            )
-            raise ValueError(
-                "No se pudo procesar la imagen por un problema de conexión."
-            ) from e
-        except NotImplementedError as e:
-            logger.exception(
-                "Funcionalidad no disponible al procesar comprobante", extra=metadata
-            )
-            raise ValueError(str(e)) from e
-        except FileNotFoundError as e:
-            logger.exception("Comprobante no accesible", extra=metadata)
-            raise ValueError(
-                "El comprobante no existe o no es accesible."
-            ) from e
-        except ValueError as e:
-            logger.exception("Error al interpretar la imagen", extra=metadata)
-            raise ValueError(str(e)) from e
-        except Exception as e:
-            logger.exception("Error al interpretar la imagen", extra=metadata)
-            raise ValueError(
-                "No se pudo interpretar la imagen del comprobante."
-            ) from e
-
-        if faltantes:
-            datos_creacion = solicitar_datos_materia_prima_masivo(faltantes)
-            registrados: List[str] = []
-            for raw in faltantes:
-                nombre_mp = raw.get("nombre_producto") or raw.get("producto") or ""
-                if nombre_mp in datos_creacion:
-                    unidad, costo, stock = datos_creacion[nombre_mp]
-                    agregar_materia_prima(nombre_mp, unidad, costo, stock)
-                    registrados.append(nombre_mp)
-                else:
-                    omitidos.append(nombre_mp)
-                    pendientes.append(raw)
-            if registrados:
-                receipt_parser.clear_cache()
-                continue
-        break
+    try:
+        items_dict, faltantes = receipt_parser.parse_receipt_image(
+            path_imagen, omitidos=omitidos
+        )
+    except (ConnectionError, TimeoutError) as e:
+        logger.exception("Error de red al procesar comprobante", extra=metadata)
+        raise ValueError(
+            "No se pudo procesar la imagen por un problema de conexión."
+        ) from e
+    except NotImplementedError as e:
+        logger.exception(
+            "Funcionalidad no disponible al procesar comprobante", extra=metadata
+        )
+        raise ValueError(str(e)) from e
+    except FileNotFoundError as e:
+        logger.exception("Comprobante no accesible", extra=metadata)
+        raise ValueError("El comprobante no existe o no es accesible.") from e
+    except ValueError as e:
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError(str(e)) from e
+    except Exception as e:
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError("No se pudo interpretar la imagen del comprobante.") from e
 
     if not isinstance(items_dict, list):
         raise ValueError("Formato de datos inválido del comprobante.")
 
+    pendientes: List[dict] = list(faltantes)
     items_validados = []
     for item in items_dict:
         try:
