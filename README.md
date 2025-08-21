@@ -22,7 +22,6 @@ missing the program will raise an informative error.
 - **controllers/** – business logic for products, purchases, recipes and more.
 - **gui/** – Tkinter windows that provide the graphical interface.
 - **models/** – plain Python classes that represent the domain objects.
-- **views/** – command line interface utilities (legacy).
 - **utils/** – helper functions used across the project.
 - **data/** – JSON files where all application data is stored.
 You can change this directory by setting the `CAFE_DATA_PATH` environment
