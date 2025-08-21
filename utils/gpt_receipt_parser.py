@@ -18,7 +18,17 @@ import re
 from typing import List, Dict
 
 from PIL import Image
-import pytesseract
+
+try:  # pragma: no cover - optional dependency
+    import pytesseract  # type: ignore[import]
+except ImportError:  # pragma: no cover - executed when dependency missing
+    class _PytesseractPlaceholder:
+        def image_to_string(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            raise ImportError(
+                "Falta la dependencia 'pytesseract'. Instálala con `pip install pytesseract`."
+            )
+
+    pytesseract = _PytesseractPlaceholder()  # type: ignore[assignment]
 
 _SUMMARY_KEYWORDS = {"total", "subtotal", "iva"}
 
