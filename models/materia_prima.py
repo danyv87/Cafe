@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 class MateriaPrima:
     def __init__(self, nombre, unidad_medida, costo_unitario, stock=0, stock_minimo=0, id=None):
