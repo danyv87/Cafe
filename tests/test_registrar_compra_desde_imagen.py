@@ -44,7 +44,7 @@ def test_registrar_compra_desde_imagen_network_error(mock_parse):
 @patch("controllers.compras_controller.agregar_materia_prima")
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_crea_materia_prima(
-    mock_parse, mock_agregar, mock_clear, monkeypatch
+    mock_parse, mock_agregar, mock_clear
 ):
     mock_parse.side_effect = [
         (
@@ -70,24 +70,34 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
         ),
     ]
 
-    inputs = iter(["crear", "kg", "50", "10"])
-    monkeypatch.setattr("builtins.input", lambda _: next(inputs))
-
-    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes = compras_controller.registrar_compra_desde_imagen(
         "Proveedor", "img.jpg"
     )
 
-    assert pendientes == []
-    assert items[0]["nombre_producto"] == "Azucar"
+    assert items == []
+    assert len(faltantes) == 1
+
+    datos = {"Azucar": ("kg", 50.0, 10.0)}
+    registrados, omitidos = compras_controller.registrar_materias_primas_faltantes(
+        faltantes, datos
+    )
+    assert registrados == ["Azucar"]
+    assert omitidos == []
     mock_agregar.assert_called_once_with("Azucar", "kg", 50.0, 10.0)
-    mock_clear.assert_called()
+    mock_clear.assert_called_once()
+
+    items, faltantes = compras_controller.registrar_compra_desde_imagen(
+        "Proveedor", "img.jpg"
+    )
+    assert faltantes == []
+    assert items[0]["nombre_producto"] == "Azucar"
 
 
 @patch("controllers.compras_controller.receipt_parser.clear_cache")
 @patch("controllers.compras_controller.agregar_materia_prima")
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_omite_materia_prima(
-    mock_parse, mock_agregar, mock_clear, monkeypatch
+    mock_parse, mock_agregar, mock_clear
 ):
     mock_parse.side_effect = [
         (
@@ -120,19 +130,33 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
         ),
     ]
 
-    monkeypatch.setattr("builtins.input", lambda _: "omitir")
-
-    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes = compras_controller.registrar_compra_desde_imagen(
         "Proveedor", "img.jpg"
     )
 
-    assert pendientes == [
-        {"nombre_producto": "Azucar", "cantidad": 1, "costo_unitario": 3}
-    ]
     assert len(items) == 1
     assert items[0]["nombre_producto"] == "Cafe"
+    assert faltantes == [
+        {"nombre_producto": "Azucar", "cantidad": 1, "costo_unitario": 3}
+    ]
+
+    registrados, omitidos_raw = compras_controller.registrar_materias_primas_faltantes(
+        faltantes, {}
+    )
+    assert registrados == []
+    assert omitidos_raw == [
+        {"nombre_producto": "Azucar", "cantidad": 1, "costo_unitario": 3}
+    ]
     mock_agregar.assert_not_called()
     mock_clear.assert_not_called()
+
+    nombres_omitidos = [raw["nombre_producto"] for raw in omitidos_raw]
+    items, faltantes2 = compras_controller.registrar_compra_desde_imagen(
+        "Proveedor", "img.jpg", omitidos=nombres_omitidos
+    )
+    assert faltantes2 == []
+    assert len(items) == 1
+    assert items[0]["nombre_producto"] == "Cafe"
 
 
 @patch(

@@ -6,7 +6,7 @@ from controllers import compras_controller
 
 @patch("controllers.compras_controller.registrar_compra_desde_imagen")
 def test_importacion_masiva_registra_errores(mock_registrar, tmp_path):
-    def side_effect(proveedor, archivo, como_compra=True):
+    def side_effect(proveedor, archivo, como_compra=True, **kwargs):
         if "bad" in archivo:
             raise ValueError("fail")
         return ("compra", [])
