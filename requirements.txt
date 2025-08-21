@@ -1,6 +1,6 @@
+google-generativeai
 matplotlib
 numpy
 pandas
 pillow
-pytesseract
 tkcalendar

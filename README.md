@@ -11,10 +11,11 @@ This project is a simple GUI-based application for managing a cafe. It is built 
 pip install -r requirements.txt
 ```
 
-Receipt parsing that relies on external AI services requires an API key. Define
-the `GEMINI_API_KEY` environment variable or provide an encrypted configuration
-file before running the application. If the key is missing the program will
-raise an informative error.
+The application integrates with Google’s Gemini models through the
+`google-generativeai` library. Any feature that relies on this service requires
+an API key. Define the `GEMINI_API_KEY` environment variable or provide an
+encrypted configuration file before running the application. If the key is
+missing the program will raise an informative error.
 
 ## Modules Overview
 
