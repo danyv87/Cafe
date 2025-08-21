@@ -14,7 +14,6 @@ from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 
 # Configuración de logging estructurado
-logging.basicConfig(level=logging.INFO)
 
 
 class ContextAdapter(logging.LoggerAdapter):
@@ -25,15 +24,19 @@ class ContextAdapter(logging.LoggerAdapter):
 
 
 base_logger = logging.getLogger(__name__)
-logger = ContextAdapter(base_logger, {"proveedor": "-", "archivo": "-"})
 LOG_PATH = config.get_data_path("compras_import.log")
-file_handler = logging.FileHandler(LOG_PATH)
-file_handler.setFormatter(
-    logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(proveedor)s - %(archivo)s - %(message)s"
+if not any(
+    isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == LOG_PATH
+    for h in base_logger.handlers
+):
+    file_handler = logging.FileHandler(LOG_PATH)
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(proveedor)s - %(archivo)s - %(message)s"
+        )
     )
-)
-base_logger.addHandler(file_handler)
+    base_logger.addHandler(file_handler)
+logger = ContextAdapter(base_logger, {"proveedor": "-", "archivo": "-"})
 
 # Ruta por defecto donde se almacenarán las compras
 DATA_PATH = config.get_data_path("compras.json")
