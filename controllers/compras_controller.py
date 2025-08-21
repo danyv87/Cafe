@@ -4,6 +4,7 @@ from typing import List
 from utils.json_utils import read_json, write_json
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
+from models.proveedor import Proveedor
 from utils import receipt_parser
 from controllers.materia_prima_controller import (
     agregar_materia_prima,
@@ -122,7 +123,7 @@ def registrar_materias_primas_faltantes(
 
 
 def registrar_compra_desde_imagen(
-    proveedor,
+    proveedor: Proveedor,
     path_imagen,
     como_compra=False,
     output_dir=None,
@@ -137,7 +138,7 @@ def registrar_compra_desde_imagen(
     confirmados y registrados mediante :func:`registrar_compra`.
 
     Args:
-        proveedor (str): Nombre del proveedor.
+        proveedor (Proveedor): Objeto del proveedor.
         path_imagen (str): Ruta del archivo de imagen del comprobante.
         como_compra (bool): Si es ``True`` se devuelve un objeto :class:`Compra`;
             en caso contrario, se retorna la lista de diccionarios de ítems.
@@ -169,11 +170,11 @@ def registrar_compra_desde_imagen(
               imagen"`` o ``"cantidad debe ser un número positivo."``.
     """
 
-    if not proveedor or len(proveedor.strip()) == 0:
+    if not isinstance(proveedor, Proveedor) or not proveedor.nombre.strip():
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
     omitidos = list(omitidos or [])
-    metadata = {"archivo": path_imagen, "proveedor": proveedor}
+    metadata = {"archivo": path_imagen, "proveedor": proveedor.nombre}
     try:
         items_dict, faltantes = receipt_parser.parse_receipt_image(
             path_imagen, omitidos=omitidos
@@ -213,7 +214,7 @@ def registrar_compra_desde_imagen(
         except Exception as e:  # pragma: no cover - fallthrough validation
             logger.exception(
                 "Error al convertir datos del comprobante",
-                extra={"archivo": path_imagen, "proveedor": proveedor},
+                extra={"archivo": path_imagen, "proveedor": proveedor.nombre},
             )
             raise ValueError("Datos de compra inválidos en la imagen.") from e
 
@@ -244,7 +245,8 @@ def registrar_compra_desde_imagen(
         from utils.invoice_utils import save_invoice  # import local to avoid heavy deps
 
         factura = {
-            "proveedor": proveedor.strip(),
+            "proveedor_id": proveedor.id,
+            "proveedor": proveedor.nombre,
             "items": items_validados,
             "pendientes": pendientes,
         }
@@ -265,14 +267,14 @@ def registrar_compra_desde_imagen(
             for item in items_validados
         ]
         return (
-            Compra(proveedor=proveedor.strip(), items_compra=detalles),
+            Compra(proveedor_id=proveedor.id, items_compra=detalles),
             pendientes,
         )
 
     return items_validados, pendientes
 
 
-def importar_comprobantes_masivos(proveedor: str, archivos: List[str]):
+def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     """Procesa múltiples comprobantes y devuelve el estado por cada archivo.
 
     Para cada comprobante se intentará registrar la compra utilizando
@@ -281,7 +283,7 @@ def importar_comprobantes_masivos(proveedor: str, archivos: List[str]):
     error para ese comprobante.
 
     Args:
-        proveedor (str): Nombre del proveedor.
+        proveedor (Proveedor): Objeto del proveedor.
         archivos (List[str]): Rutas de los comprobantes a importar.
 
     Returns:
@@ -305,7 +307,7 @@ def importar_comprobantes_masivos(proveedor: str, archivos: List[str]):
             )
         except Exception as exc:  # pragma: no cover - best effort logging
             logger.exception(
-                "Error en importación masiva", extra={"archivo": archivo, "proveedor": proveedor}
+                "Error en importación masiva", extra={"archivo": archivo, "proveedor": proveedor.nombre}
             )
             resultados.append(
                 {
@@ -317,11 +319,11 @@ def importar_comprobantes_masivos(proveedor: str, archivos: List[str]):
     return resultados
 
 
-def registrar_compra(proveedor, items_compra_detalle, fecha=None):
+def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
-        proveedor (str): Nombre del proveedor.
+        proveedor (Proveedor): Objeto del proveedor.
         items_compra_detalle (list): Lista de objetos CompraDetalle (ahora representando materias primas).
         fecha (str, optional): Fecha y hora de la compra en formato "YYYY-MM-DD HH:MM:SS". Si no se
             proporciona, se utilizará la fecha y hora actuales.
@@ -330,14 +332,14 @@ def registrar_compra(proveedor, items_compra_detalle, fecha=None):
     Returns:
         Compra: El objeto Compra recién registrado.
     """
-    if not proveedor or len(proveedor.strip()) == 0:
+    if not isinstance(proveedor, Proveedor) or not proveedor.nombre.strip():
         raise ValueError("El nombre del proveedor no puede estar vacío.")
     if not items_compra_detalle:
         raise ValueError("La compra debe contener al menos un producto.")
 
     compras = cargar_compras()
     nueva_compra = Compra(
-        proveedor=proveedor.strip(),
+        proveedor_id=proveedor.id,
         items_compra=items_compra_detalle,
         fecha=fecha
     )

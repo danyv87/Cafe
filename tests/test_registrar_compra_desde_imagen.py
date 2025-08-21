@@ -4,6 +4,7 @@ from unittest.mock import patch, call
 from controllers import compras_controller
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
+from models.proveedor import Proveedor
 
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
@@ -20,11 +21,13 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
         [],
     )
 
+    proveedor = Proveedor("Proveedor")
     compra, pendientes = compras_controller.registrar_compra_desde_imagen(
-        "Proveedor", "img.jpg", como_compra=True
+        proveedor, "img.jpg", como_compra=True
     )
     assert pendientes == []
     assert isinstance(compra, Compra)
+    assert compra.proveedor_id == proveedor.id
     assert len(compra.items_compra) == 1
     detalle = compra.items_compra[0]
     assert isinstance(detalle, CompraDetalle)
@@ -37,7 +40,7 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
 )
 def test_registrar_compra_desde_imagen_network_error(mock_parse):
     with pytest.raises(ValueError):
-        compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
 
 @patch("controllers.compras_controller.receipt_parser.clear_cache")
@@ -70,8 +73,9 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
         ),
     ]
 
+    proveedor = Proveedor("Proveedor")
     items, faltantes = compras_controller.registrar_compra_desde_imagen(
-        "Proveedor", "img.jpg"
+        proveedor, "img.jpg"
     )
 
     assert items == []
@@ -87,7 +91,7 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
     mock_clear.assert_called_once()
 
     items, faltantes = compras_controller.registrar_compra_desde_imagen(
-        "Proveedor", "img.jpg"
+        proveedor, "img.jpg"
     )
     assert faltantes == []
     assert items[0]["nombre_producto"] == "Azucar"
@@ -130,8 +134,9 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
         ),
     ]
 
+    proveedor = Proveedor("Proveedor")
     items, faltantes = compras_controller.registrar_compra_desde_imagen(
-        "Proveedor", "img.jpg"
+        proveedor, "img.jpg"
     )
 
     assert len(items) == 1
@@ -152,7 +157,7 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
 
     nombres_omitidos = [raw["nombre_producto"] for raw in omitidos_raw]
     items, faltantes2 = compras_controller.registrar_compra_desde_imagen(
-        "Proveedor", "img.jpg", omitidos=nombres_omitidos
+        proveedor, "img.jpg", omitidos=nombres_omitidos
     )
     assert faltantes2 == []
     assert len(items) == 1
@@ -165,14 +170,14 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
 )
 def test_registrar_compra_desde_imagen_archivo_no_encontrado(mock_parse):
     with pytest.raises(ValueError, match="El comprobante no existe o no es accesible."):
-        compras_controller.registrar_compra_desde_imagen("Proveedor", "no_file.json")
+        compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "no_file.json")
 
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_datos_malos(mock_parse):
     mock_parse.return_value = ({"producto": "mal"}, [])  # no es una lista
     with pytest.raises(ValueError):
-        compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
@@ -191,7 +196,7 @@ def test_registrar_compra_desde_imagen_producto_id_invalido(mock_parse, producto
     )
 
     with pytest.raises(ValueError):
-        compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+        compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
@@ -229,8 +234,9 @@ def test_flujo_selecciona_subconjunto_items(
     )
 
     try:
+        proveedor = Proveedor("Proveedor")
         items, pendientes = compras_controller.registrar_compra_desde_imagen(
-            "Proveedor", "img.jpg"
+            proveedor, "img.jpg"
         )
 
         # Se muestra la lista completa de ítems
@@ -239,7 +245,7 @@ def test_flujo_selecciona_subconjunto_items(
 
         # Solo se aceptan los dos primeros ítems
         detalles = [CompraDetalle(**item) for item in items[:2]]
-        compra = compras_controller.registrar_compra("Proveedor", detalles)
+        compra = compras_controller.registrar_compra(proveedor, detalles)
 
         # El tercer ítem omitido no afecta el total ni el stock
         assert len(compra.items_compra) == 2

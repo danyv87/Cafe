@@ -3,10 +3,10 @@ from datetime import datetime
 
 
 class Compra:
-    def __init__(self, proveedor, items_compra=None, id=None, fecha=None):
+    def __init__(self, proveedor_id, items_compra=None, id=None, fecha=None):
         self.id = id or str(uuid.uuid4())  # ID único para la compra
         self.fecha = fecha or datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Fecha y hora de la compra
-        self.proveedor = proveedor  # Nombre del proveedor asociado a la compra
+        self.proveedor_id = proveedor_id  # ID del proveedor asociado a la compra
         self.items_compra = items_compra if items_compra is not None else []  # Lista de objetos CompraDetalle
 
         # Calcula el total de la compra sumando los totales de cada item_compra
@@ -19,7 +19,7 @@ class Compra:
         return {
             "id": self.id,
             "fecha": self.fecha,
-            "proveedor": self.proveedor,
+            "proveedor_id": self.proveedor_id,
             "items_compra": [item.to_dict() for item in self.items_compra],  # Serializa cada CompraDetalle
             "total": self.total
         }
@@ -37,6 +37,6 @@ class Compra:
         return Compra(
             id=data.get("id"),
             fecha=data.get("fecha"),
-            proveedor=data.get("proveedor"),
+            proveedor_id=data.get("proveedor_id"),
             items_compra=items_compra
         )

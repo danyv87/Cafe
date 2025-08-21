@@ -9,6 +9,7 @@ from controllers.compras_controller import (
     registrar_materias_primas_faltantes,
 )
 from models.compra_detalle import CompraDetalle
+from models.proveedor import Proveedor
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
 from gui.materia_prima_dialogs import solicitar_datos_materia_prima_masivo
 
@@ -156,8 +157,8 @@ def mostrar_ventana_compras():
 
     def importar_items_desde_imagen():
         """Permite al usuario importar ítems desde una imagen o archivo JSON."""
-        proveedor = entry_proveedor.get().strip()
-        if not proveedor:
+        proveedor_nombre = entry_proveedor.get().strip()
+        if not proveedor_nombre:
             messagebox.showwarning("Atención", "Por favor, ingrese el nombre del proveedor antes de importar.")
             return
 
@@ -178,6 +179,7 @@ def mostrar_ventana_compras():
 
         try:
             omitidos = []
+            proveedor = Proveedor(proveedor_nombre)
             items, faltantes = registrar_compra_desde_imagen(
                 proveedor, ruta, omitidos=omitidos
             )
@@ -414,14 +416,14 @@ def mostrar_ventana_compras():
         """
         Registra la compra completa.
         """
-        proveedor = entry_proveedor.get().strip()
+        proveedor_nombre = entry_proveedor.get().strip()
         fecha_seleccionada = date_entry.get().strip()
         hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
         if fecha_seleccionada:
             fecha = f"{fecha_seleccionada} {hora_actual}"
         else:
             fecha = ""
-        if not proveedor:
+        if not proveedor_nombre:
             messagebox.showwarning("Atención", "Por favor, ingrese el nombre del proveedor.")
             return
         if not compra_actual_items:
@@ -430,17 +432,18 @@ def mostrar_ventana_compras():
 
         confirmar_compra = messagebox.askyesno(
             "Confirmar Compra",
-            f"¿Desea registrar la compra para '{proveedor}' con un total de Gs {sum(item.total for item in compra_actual_items):,.0f}?".replace(",", "X").replace(".", ",").replace("X",".")
+            f"¿Desea registrar la compra para '{proveedor_nombre}' con un total de Gs {sum(item.total for item in compra_actual_items):,.0f}?".replace(",", "X").replace(".", ",").replace("X",".")
         )
         if not confirmar_compra:
             messagebox.showinfo("Cancelado", "Registro de compra cancelado.")
             return
 
         try:
+            proveedor = Proveedor(proveedor_nombre)
             compra_registrada = registrar_compra(proveedor, compra_actual_items, fecha=fecha)
 
             messagebox.showinfo("Compra Registrada",
-                                f"Compra registrada con éxito para {proveedor}.\nTotal: Gs {compra_registrada.total:,.0f}".replace(
+                                f"Compra registrada con éxito para {proveedor_nombre}.\nTotal: Gs {compra_registrada.total:,.0f}".replace(
                                     ",", "X").replace(".", ",").replace("X", "."))
 
             # Limpiar todo para una nueva compra
