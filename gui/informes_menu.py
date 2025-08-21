@@ -14,6 +14,7 @@ from controllers.compras_controller import listar_compras, total_comprado
 from gui.estadisticas_view import agregar_tab_estadisticas
 from gui.rentabilidad_view import agregar_tab_rentabilidad
 from gui.costos_operativos_view import agregar_tab_costos_operativos
+from gui.reportes_financieros_view import agregar_tab_estado_resultado
 
 
 class HistoryReportFrame:
@@ -144,4 +145,5 @@ def mostrar_informes_menu() -> None:
     agregar_tab_estadisticas(notebook)
     agregar_tab_rentabilidad(notebook)
     agregar_tab_costos_operativos(notebook)
+    agregar_tab_estado_resultado(notebook)
 
