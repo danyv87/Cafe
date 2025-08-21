@@ -164,7 +164,7 @@ def obtener_rentabilidad_productos():
             receta.rendimiento if receta and receta.rendimiento and receta.rendimiento > 0 else 1
         )
 
-        precio_venta_unitario = p.precio_unitario / rendimiento
+        precio_venta_unitario = p.precio_unitario
 
         costo_produccion_total = calcular_costo_produccion_producto(p.id)
         costo_produccion_unitario = costo_produccion_total / rendimiento
