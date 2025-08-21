@@ -16,16 +16,25 @@ from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 
 # Configuración de logging estructurado
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
+
+class ContextAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        extra = kwargs.get("extra", {})
+        kwargs["extra"] = {**self.extra, **extra}
+        return msg, kwargs
+
+
+base_logger = logging.getLogger(__name__)
+logger = ContextAdapter(base_logger, {"proveedor": "-", "archivo": "-"})
 LOG_PATH = config.get_data_path("compras_import.log")
 file_handler = logging.FileHandler(LOG_PATH)
 file_handler.setFormatter(
     logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(proveedor)s - %(archivo)s - %(message)s",
-        defaults={"proveedor": "-", "archivo": "-"},
+        "%(asctime)s - %(levelname)s - %(proveedor)s - %(archivo)s - %(message)s"
     )
 )
-logger.addHandler(file_handler)
+base_logger.addHandler(file_handler)
 
 # Ruta por defecto donde se almacenarán las compras
 DATA_PATH = config.get_data_path("compras.json")

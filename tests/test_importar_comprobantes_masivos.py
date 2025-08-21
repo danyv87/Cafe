@@ -17,12 +17,9 @@ def test_importacion_masiva_registra_errores(mock_registrar, tmp_path):
     log_file = tmp_path / "audit.log"
     handler = logging.FileHandler(log_file)
     handler.setFormatter(
-        logging.Formatter(
-            "%(proveedor)s - %(archivo)s - %(message)s",
-            defaults={"proveedor": "-", "archivo": "-"},
-        )
+        logging.Formatter("%(proveedor)s - %(archivo)s - %(message)s")
     )
-    compras_controller.logger.addHandler(handler)
+    compras_controller.logger.logger.addHandler(handler)
 
     archivos = ["ok.jpg", "bad.jpg"]
     resultados = compras_controller.importar_comprobantes_masivos("Prov", archivos)
@@ -39,4 +36,4 @@ def test_importacion_masiva_registra_errores(mock_registrar, tmp_path):
     assert "bad.jpg" in contenido
     assert "Prov" in contenido
 
-    compras_controller.logger.removeHandler(handler)
+    compras_controller.logger.logger.removeHandler(handler)
