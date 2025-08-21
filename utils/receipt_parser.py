@@ -127,8 +127,8 @@ def parse_receipt_image(
 
     1. **JSON fallback** – If ``path_imagen`` ends with ``.json`` the file is
        loaded and assumed to contain the list of item dictionaries.
-    2. **OCR based parser** – Delegates to :mod:`utils.gpt_receipt_parser` which
-       uses Tesseract via ``pytesseract`` to process ``.jpeg``, ``.jpg`` or
+    2. **Gemini based parser** – Delegates to :mod:`utils.gemini_receipt_parser`
+       which relies on the Gemini API to process ``.jpeg``, ``.jpg`` or
        ``.png`` images.
 
     Returns
@@ -154,15 +154,15 @@ def parse_receipt_image(
             raise ValueError("El archivo JSON debe contener una lista de items")
         return _normalizar_items(data, omitidos)
 
-    # For images, attempt to use the OCR based parser
+    # For images, attempt to use the Gemini based parser
     try:  # Import lazily so environments without OpenAI dependencies still work
-        from .gpt_receipt_parser import parse_receipt_image as gpt_parse
+        from .gemini_receipt_parser import parse_receipt_image as gemini_parse
     except Exception as exc:  # pragma: no cover - unable to import backend
         raise NotImplementedError(
             "No hay backend disponible para procesar imágenes de recibo"
         ) from exc
 
-    raw_items = gpt_parse(path_imagen)
+    raw_items = gemini_parse(path_imagen)
     if not isinstance(raw_items, list):
         raise ValueError("La respuesta del backend de recibos es inválida")
     return _normalizar_items(raw_items, omitidos)
