@@ -83,6 +83,7 @@ aplicación para que cargue la información actualizada.
 ## Receipts con Gemini
 
 La aplicación puede extraer ítems de comprobantes usando los modelos de Gemini.
+El lector de facturas depende exclusivamente del módulo `utils/gemini_receipt_parser`.
 
 - **Instalación:** agrega la dependencia `google-genai`:
 
