@@ -37,6 +37,10 @@ python main.py
 
 This command opens the main window of the system. To close the application simply click the **Salir** button or close the window normally.
 
+### Estado de resultados
+
+Desde el menú **Informes y Análisis** se puede abrir la pestaña *Estado Resultado*. Ingrese una fecha de inicio y otra de fin en formato `YYYY-MM-DD` y presione **Generar** para visualizar las ventas, los costos de producción calculados a partir de las recetas, los gastos adicionales y el resultado neto del período.
+
 ### Custom data directory
 
 By default all JSON data files are stored in the `data/` directory of the

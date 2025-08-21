@@ -170,3 +170,32 @@ def obtener_gastos_adicionales_por_dia():
         total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
         formatted.append((dia, f"Gs {total_str}"))
     return formatted
+
+
+def _parse_fecha(fecha):
+    if isinstance(fecha, datetime):
+        return fecha
+    if isinstance(fecha, str):
+        fecha = fecha[:19]
+        try:
+            if len(fecha) == 10:
+                return datetime.strptime(fecha, "%Y-%m-%d")
+            return datetime.strptime(fecha, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Formato de fecha inválido. Use 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM:SS'.")
+    raise TypeError("La fecha debe ser un string o datetime.")
+
+
+def total_gastos_periodo(inicio, fin):
+    inicio_dt = _parse_fecha(inicio)
+    fin_dt = _parse_fecha(fin)
+    total = 0.0
+    for gasto in cargar_gastos_adicionales():
+        try:
+            fecha_gasto = _parse_fecha(gasto.fecha)
+        except Exception:
+            continue
+        if inicio_dt <= fecha_gasto <= fin_dt:
+            total += gasto.monto
+    return total
+

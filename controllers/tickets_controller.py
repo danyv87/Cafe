@@ -120,6 +120,34 @@ def total_vendido_tickets():
     tickets = cargar_tickets()
     return sum(t.total for t in tickets)
 
+
+def _parse_fecha(fecha):
+    if isinstance(fecha, datetime.datetime):
+        return fecha
+    if isinstance(fecha, str):
+        fecha = fecha[:19]
+        try:
+            if len(fecha) == 10:
+                return datetime.datetime.strptime(fecha, "%Y-%m-%d")
+            return datetime.datetime.strptime(fecha, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Formato de fecha inválido. Use 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM:SS'.")
+    raise TypeError("La fecha debe ser un string o datetime.")
+
+
+def total_vendido_periodo(inicio, fin):
+    inicio_dt = _parse_fecha(inicio)
+    fin_dt = _parse_fecha(fin)
+    total = 0.0
+    for ticket in cargar_tickets():
+        try:
+            fecha_ticket = _parse_fecha(ticket.fecha)
+        except Exception:
+            continue
+        if inicio_dt <= fecha_ticket <= fin_dt:
+            total += ticket.total
+    return total
+
 def obtener_ventas_por_mes():
     tickets = cargar_tickets()
     ventas_por_mes = defaultdict(float)
