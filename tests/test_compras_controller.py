@@ -7,6 +7,7 @@ from unittest.mock import patch
 from controllers import compras_controller
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
+from models.proveedor import Proveedor
 
 class TestCargarCompras(unittest.TestCase):
     def setUp(self):
@@ -17,7 +18,8 @@ class TestCargarCompras(unittest.TestCase):
 
         # Prepare a sample Compra and write it to the temporary JSON file
         detalle = CompraDetalle(producto_id=1, nombre_producto="Cafe", cantidad=2, costo_unitario=10)
-        compra = Compra(proveedor="Proveedor X", items_compra=[detalle])
+        self.proveedor = Proveedor("Proveedor X", "c")
+        compra = Compra(proveedor_id=self.proveedor.id, items_compra=[detalle])
         with open(self.temp_file, "w", encoding="utf-8") as f:
             json.dump([compra.to_dict()], f)
 
@@ -32,7 +34,7 @@ class TestCargarCompras(unittest.TestCase):
         compras = compras_controller.cargar_compras()
         self.assertEqual(len(compras), 1)
         compra = compras[0]
-        self.assertEqual(compra.proveedor, "Proveedor X")
+        self.assertEqual(compra.proveedor_id, self.proveedor.id)
         self.assertEqual(len(compra.items_compra), 1)
         self.assertEqual(compra.items_compra[0].nombre_producto, "Cafe")
         # Ensure the controller's path points to compras.json
@@ -42,7 +44,8 @@ class TestCargarCompras(unittest.TestCase):
     def test_registrar_compra_con_fecha(self, mock_actualizar_stock):
         detalle = CompraDetalle(producto_id=2, nombre_producto="Azucar", cantidad=1, costo_unitario=5)
         fecha_custom = "2024-05-01 10:30:00"
-        nueva_compra = compras_controller.registrar_compra("Proveedor Y", [detalle], fecha=fecha_custom)
+        proveedor_y = Proveedor("Proveedor Y")
+        nueva_compra = compras_controller.registrar_compra(proveedor_y, [detalle], fecha=fecha_custom)
         self.assertEqual(nueva_compra.fecha, fecha_custom)
         compras = compras_controller.cargar_compras()
         self.assertEqual(len(compras), 2)
@@ -62,8 +65,9 @@ class TestCargarCompras(unittest.TestCase):
             [],
         )
 
+        proveedor_z = Proveedor("Proveedor Z")
         items, pendientes = compras_controller.registrar_compra_desde_imagen(
-            "Proveedor Z", "dummy.jpg"
+            proveedor_z, "dummy.jpg"
         )
         self.assertEqual(pendientes, [])
         self.assertIsInstance(items, list)
@@ -80,7 +84,7 @@ class TestCargarCompras(unittest.TestCase):
             "controllers.compras_controller.actualizar_stock_materia_prima"
         ) as mock_actualizar:
             compras_controller.registrar_compra(
-                "Proveedor Z", detalles, fecha=""
+                proveedor_z, detalles, fecha=""
             )
             mock_actualizar.assert_called_once()
 
@@ -93,7 +97,7 @@ class TestCargarCompras(unittest.TestCase):
     )
     def test_registrar_compra_desde_imagen_error_red(self, mock_parse):
         with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
         self.assertIn("conexión", str(ctx.exception).lower())
 
     @patch(
@@ -102,7 +106,7 @@ class TestCargarCompras(unittest.TestCase):
     )
     def test_registrar_compra_desde_imagen_error_parseo(self, mock_parse):
         with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
         self.assertEqual("formato inválido", str(ctx.exception))
 
     @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
@@ -119,7 +123,7 @@ class TestCargarCompras(unittest.TestCase):
             [],
         )
         with self.assertRaises(ValueError):
-            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
     @patch(
         "controllers.compras_controller.receipt_parser.parse_receipt_image",
@@ -127,7 +131,7 @@ class TestCargarCompras(unittest.TestCase):
     )
     def test_registrar_compra_desde_imagen_backend_no_disponible(self, mock_parse):
         with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen("Proveedor", "img.jpg")
+            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
         # The controller should propagate the original message
         self.assertEqual("backend no disponible", str(ctx.exception))
 

@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from controllers import compras_controller
 from models.compra_detalle import CompraDetalle
+from models.proveedor import Proveedor
 
 
 class TestCompraDesdeImagenGUI(unittest.TestCase):
@@ -16,7 +17,8 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             [],
         )
 
-        items, pendientes = compras_controller.registrar_compra_desde_imagen('Proveedor', 'img.jpg')
+        proveedor = Proveedor('Proveedor')
+        items, pendientes = compras_controller.registrar_compra_desde_imagen(proveedor, 'img.jpg')
         self.assertEqual(pendientes, [])
         compra_actual_items = []
 

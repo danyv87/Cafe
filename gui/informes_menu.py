@@ -10,6 +10,7 @@ from tkinter import ttk
 
 from controllers.tickets_controller import listar_tickets, total_vendido_tickets
 from controllers.compras_controller import listar_compras, total_comprado
+from controllers.proveedores_controller import obtener_proveedor_por_id
 
 from gui.estadisticas_view import agregar_tab_estadisticas
 from gui.rentabilidad_view import agregar_tab_rentabilidad
@@ -101,9 +102,11 @@ class HistoryReportFrame:
                     f"{c.total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 )
                 lista.insert(tk.END, "---------------------------------------------------------------------------------")
+                proveedor = obtener_proveedor_por_id(c.proveedor_id)
+                nombre_proveedor = proveedor.nombre if proveedor else c.proveedor_id
                 lista.insert(
                     tk.END,
-                    f"Compra ID: {c.id[:8]}... | Fecha: {c.fecha} | Proveedor: {c.proveedor} | Total Compra: Gs {total_compra_formateado}",
+                    f"Compra ID: {c.id[:8]}... | Fecha: {c.fecha} | Proveedor: {nombre_proveedor} | Total Compra: Gs {total_compra_formateado}",
                 )
                 lista.insert(tk.END, "  Items Comprados:")
                 for item in c.items_compra:

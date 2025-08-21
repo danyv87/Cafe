@@ -2,6 +2,7 @@ import logging
 from unittest.mock import patch
 
 from controllers import compras_controller
+from models.proveedor import Proveedor
 
 
 @patch("controllers.compras_controller.registrar_compra_desde_imagen")
@@ -22,7 +23,8 @@ def test_importacion_masiva_registra_errores(mock_registrar, tmp_path):
     compras_controller.logger.logger.addHandler(handler)
 
     archivos = ["ok.jpg", "bad.jpg"]
-    resultados = compras_controller.importar_comprobantes_masivos("Prov", archivos)
+    proveedor = Proveedor("Prov")
+    resultados = compras_controller.importar_comprobantes_masivos(proveedor, archivos)
 
     # Verificar resultados
     assert resultados[0]["ok"] is True
