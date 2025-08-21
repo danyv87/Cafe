@@ -14,8 +14,18 @@ import config
 from collections import defaultdict
 from datetime import datetime  # <-- ¡Necesario para funciones de fecha!
 
-logging.basicConfig(level=logging.DEBUG)
+# Configuración de logging estructurado
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+LOG_PATH = config.get_data_path("compras_import.log")
+file_handler = logging.FileHandler(LOG_PATH)
+file_handler.setFormatter(
+    logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(proveedor)s - %(archivo)s - %(message)s",
+        defaults={"proveedor": "-", "archivo": "-"},
+    )
+)
+logger.addHandler(file_handler)
 
 # Ruta por defecto donde se almacenarán las compras
 DATA_PATH = config.get_data_path("compras.json")
@@ -246,7 +256,13 @@ def solicitar_datos_materia_prima_masivo(
         return seleccionados
 
 
-def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
+def registrar_compra_desde_imagen(
+    proveedor,
+    path_imagen,
+    como_compra=False,
+    output_dir=None,
+    db_conn=None,
+):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
     Además de los ítems validados, también se obtienen aquellos que quedan
@@ -259,6 +275,10 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         path_imagen (str): Ruta del archivo de imagen del comprobante.
         como_compra (bool): Si es ``True`` se devuelve un objeto :class:`Compra`;
             en caso contrario, se retorna la lista de diccionarios de ítems.
+        output_dir (str | Path | None): Directorio donde guardar la factura
+            extraída en formato JSON. Se ignora si es ``None``.
+        db_conn (sqlite3.Connection | None): Conexión a base de datos donde
+            guardar la factura. Tiene prioridad sobre ``output_dir``.
 
     Returns:
         tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
@@ -286,6 +306,7 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
 
     omitidos: List[str] = []  # materias primas que el usuario decide omitir
     pendientes: List[dict] = []
+    metadata = {"archivo": path_imagen, "proveedor": proveedor}
     while True:
         try:
             # se reintenta el reconocimiento para manejar faltantes/omitidos
@@ -293,25 +314,27 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
                 path_imagen, omitidos=omitidos
             )
         except (ConnectionError, TimeoutError) as e:
-            logger.error(f"Error de red al procesar '{path_imagen}': {e}")
+            logger.exception(
+                "Error de red al procesar comprobante", extra=metadata
+            )
             raise ValueError(
                 "No se pudo procesar la imagen por un problema de conexión."
             ) from e
         except NotImplementedError as e:
-            logger.error(
-                f"Funcionalidad no disponible al procesar '{path_imagen}': {e}"
+            logger.exception(
+                "Funcionalidad no disponible al procesar comprobante", extra=metadata
             )
             raise ValueError(str(e)) from e
         except FileNotFoundError as e:
-            logger.error(f"Comprobante no accesible '{path_imagen}': {e}")
+            logger.exception("Comprobante no accesible", extra=metadata)
             raise ValueError(
                 "El comprobante no existe o no es accesible."
             ) from e
         except ValueError as e:
-            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+            logger.exception("Error al interpretar la imagen", extra=metadata)
             raise ValueError(str(e)) from e
         except Exception as e:
-            logger.error(f"Error al interpretar la imagen '{path_imagen}': {e}")
+            logger.exception("Error al interpretar la imagen", extra=metadata)
             raise ValueError(
                 "No se pudo interpretar la imagen del comprobante."
             ) from e
@@ -345,7 +368,10 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             costo_unitario = float(item["costo_unitario"])
             descripcion = item.get("descripcion_adicional", "")
         except Exception as e:  # pragma: no cover - fallthrough validation
-            logger.error(f"Error al convertir datos del comprobante: {e}")
+            logger.exception(
+                "Error al convertir datos del comprobante",
+                extra={"archivo": path_imagen, "proveedor": proveedor},
+            )
             raise ValueError("Datos de compra inválidos en la imagen.") from e
 
         if not producto_id:
@@ -369,6 +395,21 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
             }
         )
 
+    # Guardar la factura si corresponde
+    destino = db_conn if db_conn is not None else output_dir
+    if destino is not None:
+        from utils.invoice_utils import save_invoice  # import local to avoid heavy deps
+
+        factura = {
+            "proveedor": proveedor.strip(),
+            "items": items_validados,
+            "pendientes": pendientes,
+        }
+        try:
+            save_invoice(factura, destino)
+        except Exception as exc:  # pragma: no cover - errores al guardar
+            logger.error(f"No se pudo guardar la factura: {exc}")
+
     if como_compra:
         detalles = [
             CompraDetalle(
@@ -386,6 +427,51 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         )
 
     return items_validados, pendientes
+
+
+def importar_comprobantes_masivos(proveedor: str, archivos: List[str]):
+    """Procesa múltiples comprobantes y devuelve el estado por cada archivo.
+
+    Para cada comprobante se intentará registrar la compra utilizando
+    :func:`registrar_compra_desde_imagen`. En caso de error se registrará la
+    excepción junto con metadatos del archivo y se devolverá un estado de
+    error para ese comprobante.
+
+    Args:
+        proveedor (str): Nombre del proveedor.
+        archivos (List[str]): Rutas de los comprobantes a importar.
+
+    Returns:
+        List[dict]: Lista de resultados por archivo con la forma
+        ``{"archivo": str, "ok": bool, "compra": Compra | None, "pendientes": list, "error": str | None}``.
+    """
+
+    resultados = []
+    for archivo in archivos:
+        try:
+            compra, pendientes = registrar_compra_desde_imagen(
+                proveedor, archivo, como_compra=True
+            )
+            resultados.append(
+                {
+                    "archivo": archivo,
+                    "ok": True,
+                    "compra": compra,
+                    "pendientes": pendientes,
+                }
+            )
+        except Exception as exc:  # pragma: no cover - best effort logging
+            logger.exception(
+                "Error en importación masiva", extra={"archivo": archivo, "proveedor": proveedor}
+            )
+            resultados.append(
+                {
+                    "archivo": archivo,
+                    "ok": False,
+                    "error": str(exc),
+                }
+            )
+    return resultados
 
 
 def registrar_compra(proveedor, items_compra_detalle, fecha=None):

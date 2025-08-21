@@ -1,16 +1,6 @@
-# Núcleo científico
-numpy<2           # 1.26.x estable y compatible
-pandas>=1.5,<2.3  # últimas versiones que aún soportan Py39
-scipy>=1.10,<1.14
-
-# Visualización
-matplotlib>=3.7,<3.10
-
-# GUI (si usas tkinter, no hace falta instalarlo; si usas PyQt/PySide, añade uno)
-# pyqt5>=5.15,<5.16   # Descomenta si usas PyQt
-# pyside6>=6.5,<6.8   # Alternativa a PyQt
-
-# Otros posibles (ajusta según uses en tu proyecto)
-openpyxl>=3.1,<3.2   # Para Excel
-requests>=2.28,<2.33
-
+matplotlib
+numpy
+pandas
+pillow
+pytesseract
+tkcalendar

@@ -5,15 +5,16 @@ This project is a simple GUI-based application for managing a cafe. It is built 
 ## Requirements
 
 - **Python 3.8+**
-- Install additional dependencies with:
+- Before running the application or its tests, install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-To enable receipt parsing powered by OpenAI models you must define the
-`OPENAI_API_KEY` environment variable with a valid API key before running the
-application.
+Receipt parsing that relies on external AI services requires an API key. Define
+the `GEMINI_API_KEY` environment variable or provide an encrypted configuration
+file before running the application. If the key is missing the program will
+raise an informative error.
 
 ## Modules Overview
 
