@@ -256,7 +256,13 @@ def solicitar_datos_materia_prima_masivo(
         return seleccionados
 
 
-def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
+def registrar_compra_desde_imagen(
+    proveedor,
+    path_imagen,
+    como_compra=False,
+    output_dir=None,
+    db_conn=None,
+):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
     Además de los ítems validados, también se obtienen aquellos que quedan
@@ -269,6 +275,10 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
         path_imagen (str): Ruta del archivo de imagen del comprobante.
         como_compra (bool): Si es ``True`` se devuelve un objeto :class:`Compra`;
             en caso contrario, se retorna la lista de diccionarios de ítems.
+        output_dir (str | Path | None): Directorio donde guardar la factura
+            extraída en formato JSON. Se ignora si es ``None``.
+        db_conn (sqlite3.Connection | None): Conexión a base de datos donde
+            guardar la factura. Tiene prioridad sobre ``output_dir``.
 
     Returns:
         tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
@@ -384,6 +394,21 @@ def registrar_compra_desde_imagen(proveedor, path_imagen, como_compra=False):
                 "descripcion_adicional": descripcion,
             }
         )
+
+    # Guardar la factura si corresponde
+    destino = db_conn if db_conn is not None else output_dir
+    if destino is not None:
+        from utils.invoice_utils import save_invoice  # import local to avoid heavy deps
+
+        factura = {
+            "proveedor": proveedor.strip(),
+            "items": items_validados,
+            "pendientes": pendientes,
+        }
+        try:
+            save_invoice(factura, destino)
+        except Exception as exc:  # pragma: no cover - errores al guardar
+            logger.error(f"No se pudo guardar la factura: {exc}")
 
     if como_compra:
         detalles = [
