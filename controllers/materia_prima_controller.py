@@ -34,7 +34,7 @@ def guardar_materias_primas(materias_primas):
     logger.debug("Materias primas guardadas con éxito.")
 
 
-def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock):
+def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock, stock_minimo=0):
     """
     Valida los datos de una materia prima.
     Retorna True si es válido, False y un mensaje de error en caso contrario.
@@ -49,14 +49,18 @@ def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock):
         return False, "El costo unitario debe ser un número positivo."
     if not isinstance(stock, (int, float)) or stock < 0:
         return False, "El stock debe ser un número no negativo."
+    if not isinstance(stock_minimo, (int, float)) or stock_minimo < 0:
+        return False, "El stock mínimo debe ser un número no negativo."
+    if stock < stock_minimo:
+        return False, "El stock inicial no puede ser menor al stock mínimo."
     return True, ""
 
 
-def agregar_materia_prima(nombre, unidad_medida, costo_unitario, stock_inicial):
+def agregar_materia_prima(nombre, unidad_medida, costo_unitario, stock_inicial, stock_minimo=0):
     """
     Agrega una nueva materia prima a la lista y la guarda.
     """
-    es_valido, mensaje_error = validar_materia_prima(nombre, unidad_medida, costo_unitario, stock_inicial)
+    es_valido, mensaje_error = validar_materia_prima(nombre, unidad_medida, costo_unitario, stock_inicial, stock_minimo)
     if not es_valido:
         raise ValueError(mensaje_error)
 
@@ -65,7 +69,8 @@ def agregar_materia_prima(nombre, unidad_medida, costo_unitario, stock_inicial):
         nombre.strip(),
         unidad_medida.strip(),
         costo_unitario,
-        stock_inicial
+        stock_inicial,
+        stock_minimo
     )
     materias_primas.append(nueva_materia_prima)
     guardar_materias_primas(materias_primas)
@@ -77,6 +82,12 @@ def listar_materias_primas():
     Retorna la lista completa de materias primas.
     """
     return cargar_materias_primas()
+
+
+def materias_con_stock_bajo():
+    """Retorna la lista de materias primas cuyo stock actual es menor o igual al stock mínimo."""
+    materias = cargar_materias_primas()
+    return [mp for mp in materias if mp.stock <= mp.stock_minimo]
 
 
 def obtener_materia_prima_por_id(id_materia_prima):
@@ -91,12 +102,12 @@ def obtener_materia_prima_por_id(id_materia_prima):
     return None
 
 
-def editar_materia_prima(id_materia_prima, nuevo_nombre, nueva_unidad_medida, nuevo_costo_unitario, nuevo_stock):
+def editar_materia_prima(id_materia_prima, nuevo_nombre, nueva_unidad_medida, nuevo_costo_unitario, nuevo_stock, nuevo_stock_minimo=0):
     """
     Edita una materia prima existente por su ID.
     """
     es_valido, mensaje_error = validar_materia_prima(nuevo_nombre, nueva_unidad_medida, nuevo_costo_unitario,
-                                                     nuevo_stock)
+                                                     nuevo_stock, nuevo_stock_minimo)
     if not es_valido:
         raise ValueError(mensaje_error)
 
@@ -107,6 +118,7 @@ def editar_materia_prima(id_materia_prima, nuevo_nombre, nueva_unidad_medida, nu
             materias_primas[i].unidad_medida = nueva_unidad_medida.strip()
             materias_primas[i].costo_unitario = nuevo_costo_unitario
             materias_primas[i].stock = nuevo_stock
+            materias_primas[i].stock_minimo = nuevo_stock_minimo
             guardar_materias_primas(materias_primas)
             return materias_primas[i]
     raise ValueError(f"Materia prima con ID '{id_materia_prima}' no encontrada para edición.")

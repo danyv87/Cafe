@@ -7,6 +7,7 @@ from controllers.materia_prima_controller import (
     eliminar_materia_prima,
     establecer_stock_materia_prima,
     obtener_materia_prima_por_id,
+    materias_con_stock_bajo,
 )
 from controllers.recetas_controller import listar_recetas
 
@@ -15,6 +16,13 @@ def mostrar_ventana_materias_primas():
     ventana.title("Gestión de Materias Primas")
     ventana.geometry("950x670")
     ventana.resizable(True, True)
+
+    bajas = materias_con_stock_bajo()
+    if bajas:
+        mensaje = "Materias con stock bajo:\n" + "\n".join(
+            f"- {mp.nombre} (Stock: {mp.stock}, Min: {mp.stock_minimo})" for mp in bajas
+        )
+        messagebox.showwarning("Stock bajo", mensaje)
 
     # --- Lista de materias primas ---
     frame_lista = tk.LabelFrame(ventana, text="Materias Primas", padx=5, pady=5)
@@ -36,7 +44,7 @@ def mostrar_ventana_materias_primas():
             for mp in materias_primas:
                 lista.insert(
                     tk.END,
-                    f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f}",
+                    f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f} (Min: {mp.stock_minimo:,.2f})",
                 )
 
     cargar_materias_primas()
@@ -67,34 +75,41 @@ def mostrar_ventana_materias_primas():
     entry_stock = tk.Entry(frame_agregar, width=10)
     entry_stock.grid(row=1, column=3)
 
+    tk.Label(frame_agregar, text="Stock Mínimo:").grid(row=2, column=0, sticky="e")
+    entry_stock_minimo = tk.Entry(frame_agregar, width=10)
+    entry_stock_minimo.grid(row=2, column=1)
+
     def agregar_mp():
         nombre = entry_nombre.get().strip()
         unidad = combo_unidad.get().strip()
         costo = entry_costo.get().strip()
         stock = entry_stock.get().strip()
-        if not nombre or not unidad or not costo or not stock:
+        stock_min = entry_stock_minimo.get().strip()
+        if not nombre or not unidad or not costo or not stock or not stock_min:
             messagebox.showwarning("Atención", "Complete todos los campos.")
             return
         try:
             costo = float(costo)
-            stock = int(stock)
-            if costo < 0 or stock < 0:
+            stock = float(stock)
+            stock_min = float(stock_min)
+            if costo < 0 or stock < 0 or stock_min < 0:
                 raise ValueError
         except ValueError:
-            messagebox.showerror("Error", "Costo y stock deben ser números no negativos.")
+            messagebox.showerror("Error", "Costo, stock y stock mínimo deben ser números no negativos.")
             return
         try:
-            agregar_materia_prima(nombre, unidad, costo, stock)
+            agregar_materia_prima(nombre, unidad, costo, stock, stock_min)
             cargar_materias_primas()
             entry_nombre.delete(0, tk.END)
             combo_unidad.set("")
             entry_costo.delete(0, tk.END)
             entry_stock.delete(0, tk.END)
+            entry_stock_minimo.delete(0, tk.END)
             messagebox.showinfo("Éxito", "Materia prima agregada correctamente.")
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo agregar.\nDetalle: {e}")
 
-    tk.Button(frame_agregar, text="Agregar", width=14, command=agregar_mp, bg="lightgreen").grid(row=2, column=3, pady=7, sticky="e")
+    tk.Button(frame_agregar, text="Agregar", width=14, command=agregar_mp, bg="lightgreen").grid(row=3, column=3, pady=7, sticky="e")
 
     # --- Sección Editar/Eliminar ---
     frame_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Materia Prima", padx=10, pady=10)
@@ -125,6 +140,9 @@ def mostrar_ventana_materias_primas():
     tk.Label(frame_editar, text="Stock:").grid(row=2, column=0, sticky="e")
     entry_stock_editar = tk.Entry(frame_editar, width=10)
     entry_stock_editar.grid(row=2, column=1)
+    tk.Label(frame_editar, text="Stock Mínimo:").grid(row=2, column=2, sticky="e")
+    entry_stock_min_editar = tk.Entry(frame_editar, width=10)
+    entry_stock_min_editar.grid(row=2, column=3)
 
     def cargar_campos_editar(event=None):
         seleccion = lista.curselection()
@@ -150,6 +168,8 @@ def mostrar_ventana_materias_primas():
         entry_costo_unitario_editar.insert(0, str(mp_obj.costo_unitario))
         entry_stock_editar.delete(0, tk.END)
         entry_stock_editar.insert(0, str(mp_obj.stock))
+        entry_stock_min_editar.delete(0, tk.END)
+        entry_stock_min_editar.insert(0, str(mp_obj.stock_minimo))
 
     lista.bind("<<ListboxSelect>>", cargar_campos_editar)
 
@@ -159,19 +179,21 @@ def mostrar_ventana_materias_primas():
         unidad = combo_unidad_editar.get().strip()
         costo = entry_costo_unitario_editar.get().strip()
         stock = entry_stock_editar.get().strip()
-        if not id_mp or not nombre or not unidad or not costo or not stock:
+        stock_min = entry_stock_min_editar.get().strip()
+        if not id_mp or not nombre or not unidad or not costo or not stock or not stock_min:
             messagebox.showwarning("Atención", "Complete todos los campos.")
             return
         try:
             costo = float(costo)
-            stock = int(stock)
-            if costo < 0 or stock < 0:
+            stock = float(stock)
+            stock_min = float(stock_min)
+            if costo < 0 or stock < 0 or stock_min < 0:
                 raise ValueError
         except ValueError:
-            messagebox.showerror("Error", "Costo y stock deben ser números no negativos.")
+            messagebox.showerror("Error", "Costo, stock y stock mínimo deben ser números no negativos.")
             return
         try:
-            editar_materia_prima(id_mp, nombre, unidad, costo, stock)
+            editar_materia_prima(id_mp, nombre, unidad, costo, stock, stock_min)
             cargar_materias_primas()
             messagebox.showinfo("Éxito", "Materia prima editada correctamente.")
         except Exception as e:
