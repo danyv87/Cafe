@@ -4,12 +4,14 @@ from controllers.tickets_controller import (
     obtener_ventas_por_mes,
     obtener_ventas_por_semana,
     total_vendido_tickets,
+    obtener_ventas_por_producto,
 )
 from controllers.compras_controller import (
     obtener_compras_por_mes,
     obtener_compras_por_semana,
     total_comprado,
 )
+from controllers.productos_controller import obtener_producto_por_id
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import numpy as np
@@ -63,6 +65,25 @@ def agregar_tab_estadisticas(notebook: ttk.Notebook) -> None:
     else:
         for semana_año, total in ventas_por_semana.items():
             tree_ventas_semanal.insert("", tk.END, values=(semana_año, total))
+
+    tk.Label(content_frame, text="Ventas por Producto", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
+    tree_ventas_producto = ttk.Treeview(content_frame, columns=("Producto", "Total Vendido"), show="headings", height=8)
+    tree_ventas_producto.heading("Producto", text="Producto")
+    tree_ventas_producto.heading("Total Vendido", text="Total Vendido (Gs)")
+    tree_ventas_producto.column("Producto", width=150, anchor="center")
+    tree_ventas_producto.column("Total Vendido", width=200, anchor="e")
+    tree_ventas_producto.pack(pady=5, fill=tk.X, padx=10)
+
+    ventas_por_producto = obtener_ventas_por_producto()
+    if not ventas_por_producto:
+        tree_ventas_producto.insert("", tk.END, values=("No hay ventas por producto para mostrar.", ""))
+    else:
+        ventas_ordenadas = sorted(ventas_por_producto.items(), key=lambda x: x[1], reverse=True)
+        for producto_id, total in ventas_ordenadas:
+            prod = obtener_producto_por_id(producto_id)
+            nombre = prod.nombre if prod else str(producto_id)
+            total_str = f"Gs {total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            tree_ventas_producto.insert("", tk.END, values=(nombre, total_str))
 
     tk.Label(content_frame, text="Compras Agrupadas por Mes", font=("Helvetica", 12, "bold")).pack(pady=(15, 5))
     tree_compras_mensual = ttk.Treeview(content_frame, columns=("Mes", "Total Comprado"), show="headings", height=8)

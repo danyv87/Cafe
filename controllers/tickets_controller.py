@@ -147,6 +147,25 @@ def obtener_ventas_por_semana():
             ventas_por_semana[key] += t.total
     return dict(ventas_por_semana)
 
+
+def obtener_ventas_por_producto():
+    """Obtiene el total vendido agrupado por ``producto_id``.
+
+    Recorre todos los tickets y acumula el importe total vendido para cada
+    producto. El resultado es un diccionario donde las claves son los
+    ``producto_id`` y los valores el monto total vendido de ese producto.
+
+    Returns:
+        dict[int, float]: Diccionario con el total vendido por ``producto_id``.
+    """
+    tickets = cargar_tickets()
+    ventas_por_producto = defaultdict(float)
+    for t in tickets:
+        if hasattr(t, 'items_venta') and t.items_venta:
+            for item in t.items_venta:
+                ventas_por_producto[item.producto_id] += item.total
+    return dict(ventas_por_producto)
+
 def obtener_ventas_por_dia():
     """
     Calcula el total de ventas agrupadas por día.
