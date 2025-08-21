@@ -1,4 +1,3 @@
-import os
 import logging
 from utils.json_utils import read_json, write_json
 from models.materia_prima import MateriaPrima
