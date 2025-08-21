@@ -8,7 +8,6 @@ import config
 # Ruta por defecto de almacenamiento de productos
 DATA_PATH = config.get_data_path("productos.json")
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 

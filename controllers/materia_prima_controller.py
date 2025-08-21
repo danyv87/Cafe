@@ -9,7 +9,6 @@ DATA_PATH = config.get_data_path("materias_primas.json")
 # Unidades permitidas para la materia prima
 ALLOWED_UNIDADES = ["kg", "g", "l", "ml", "unidad"]
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
