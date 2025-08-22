@@ -350,7 +350,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     content_cls = getattr(types_mod, "Content", None) if types_mod else None
 
     part_text = (
-        part_cls.from_text(prompt)
+        part_cls.from_text(text=prompt)
         if part_cls is not None and hasattr(part_cls, "from_text")
         else {"text": prompt}
     )
