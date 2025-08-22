@@ -12,10 +12,12 @@ pip install -r requirements.txt
 ```
 
 The application integrates with Google’s Gemini models through the
-`google-genai` library. Any feature that relies on this service requires
-an API key. Define the `GEMINI_API_KEY` environment variable or provide an
-encrypted configuration file before running the application. If the key is
-missing the program will raise an informative error.
+`google-genai` library. Version **1.0.0** or newer is required because the
+receipt parser relies on the `Client.models.generate_content` API introduced
+in that release. Any feature that relies on this service requires an API key.
+Define the `GEMINI_API_KEY` environment variable or provide an encrypted
+configuration file before running the application. If the key is missing the
+program will raise an informative error.
 
 ## Modules Overview
 
@@ -88,10 +90,11 @@ aplicación para que cargue la información actualizada.
 La aplicación puede extraer ítems de comprobantes usando los modelos de Gemini.
 El lector de facturas depende exclusivamente del módulo `utils/gemini_receipt_parser`.
 
-- **Instalación:** agrega la dependencia `google-genai`:
+- **Instalación:** agrega la dependencia `google-genai` en la versión
+  **1.0.0** (o superior):
 
 ```bash
-pip install google-genai
+pip install google-genai==1.0.0
 ```
 
 - **Credenciales:** define la variable de entorno `GEMINI_API_KEY` con tu clave o utiliza el archivo de configuración cifrado proporcionado por el equipo. Sin esta información el backend no estará disponible.
