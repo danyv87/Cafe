@@ -16,7 +16,11 @@ def _setup_dummy_genai(monkeypatch, response):
             return response
 
     dummy_google = types.ModuleType("google")
-    dummy_genai = types.SimpleNamespace(Client=DummyClient)
+    dummy_types = types.SimpleNamespace(
+        GenerateContentConfig=lambda **kwargs: None,
+        GenerationConfig=lambda **kwargs: None,
+    )
+    dummy_genai = types.SimpleNamespace(Client=DummyClient, types=dummy_types)
     dummy_google.genai = dummy_genai
     monkeypatch.setitem(sys.modules, "google", dummy_google)
     monkeypatch.setitem(sys.modules, "google.genai", dummy_genai)
@@ -54,3 +58,26 @@ def test_parse_receipt_image_bad_json(monkeypatch, tmp_path):
 
     with pytest.raises(ValueError):
         gemini_receipt_parser.parse_receipt_image(str(img))
+
+
+def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
+    """The parser should map alternative item keys to the expected schema."""
+
+    img = tmp_path / "recibo.png"
+    img.write_bytes(b"fake")
+    response = types.SimpleNamespace(
+        text='[{"descripcion": "Pan", "cantidad": 2, "precio_unitario": null, "subtotal": 7, "extra": "promo"}]'
+    )
+    _setup_dummy_genai(monkeypatch, response)
+    monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
+
+    items = gemini_receipt_parser.parse_receipt_image(str(img))
+
+    assert items == [
+        {
+            "producto": "Pan",
+            "cantidad": 2.0,
+            "precio": 7.0,
+            "descripcion_adicional": "extra: promo",
+        }
+    ]

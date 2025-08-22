@@ -102,12 +102,12 @@ def parse_receipt_image(path: str) -> List[Dict]:
                 }
             ],
         }
-        if "config" in genai.Client.models.generate_content.__code__.co_varnames:
+        generate_content_fn = client.models.generate_content  # type: ignore[attr-defined]
+        if "config" in generate_content_fn.__code__.co_varnames:
             params["config"] = gen_config
         else:  # pragma: no cover - legacy API
             params["generation_config"] = gen_config
-
-        response = client.models.generate_content(**params)  # type: ignore[attr-defined]
+        response = generate_content_fn(**params)  # type: ignore[arg-type]
     except Exception as exc:  # pragma: no cover - depends on network/service
         raise RuntimeError(
             f"Error al comunicarse con el servicio Gemini: {exc}"
@@ -141,22 +141,75 @@ def parse_receipt_image(path: str) -> List[Dict]:
             raise ValueError(
                 "La respuesta del modelo debe ser una lista de diccionarios"
             )
-        required = {"producto", "cantidad", "precio"}
-        if not required.issubset(raw_item):
+
+        # Nombre del producto: aceptar variantes comunes como ``descripcion``.
+        nombre = (
+            raw_item.get("producto")
+            or raw_item.get("nombre_producto")
+            or raw_item.get("descripcion")
+            or raw_item.get("description")
+        )
+        if not nombre:
             raise ValueError(
-                "Cada elemento debe contener 'producto', 'cantidad' y 'precio'"
+                "Cada elemento debe contener 'producto' o 'descripcion'"
             )
-        producto = str(raw_item["producto"])
+
+        # Cantidad es obligatoria y debe ser numérica.
+        if "cantidad" not in raw_item:
+            raise ValueError("Cada elemento debe contener 'cantidad'")
         try:
             cantidad = float(raw_item["cantidad"])
-            precio = float(raw_item["precio"])
         except (TypeError, ValueError) as exc:
             raise ValueError(
                 "Los campos 'cantidad' y 'precio' deben ser numéricos"
             ) from exc
-        item = {"producto": producto, "cantidad": cantidad, "precio": precio}
-        if "descripcion_adicional" in raw_item:
-            item["descripcion_adicional"] = str(raw_item["descripcion_adicional"])
+
+        # Determinar el precio preferentemente desde ``precio_unitario``.
+        precio_valor = raw_item.get("precio_unitario")
+        if precio_valor in (None, ""):
+            precio_valor = raw_item.get("costo_unitario")
+        if precio_valor in (None, ""):
+            precio_valor = raw_item.get("precio")
+        if precio_valor in (None, ""):
+            precio_valor = raw_item.get("subtotal")
+        if precio_valor in (None, ""):
+            raise ValueError(
+                "Cada elemento debe contener 'precio', 'precio_unitario' o 'subtotal'"
+            )
+        try:
+            precio = float(precio_valor)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "Los campos 'cantidad' y 'precio' deben ser numéricos"
+            ) from exc
+
+        item = {"producto": str(nombre), "cantidad": cantidad, "precio": precio}
+
+        # Mapear cualquier campo extra a ``descripcion_adicional``.
+        descripcion = raw_item.get("descripcion_adicional")
+        if descripcion is None:
+            extras = {
+                k: v
+                for k, v in raw_item.items()
+                if k
+                not in {
+                    "producto",
+                    "nombre_producto",
+                    "descripcion",
+                    "description",
+                    "cantidad",
+                    "precio",
+                    "precio_unitario",
+                    "costo_unitario",
+                    "subtotal",
+                    "descripcion_adicional",
+                }
+            }
+            if extras:
+                descripcion = ", ".join(f"{k}: {v}" for k, v in extras.items())
+        if descripcion:
+            item["descripcion_adicional"] = str(descripcion)
+
         items.append(item)
 
     return items
