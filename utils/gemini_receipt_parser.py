@@ -75,10 +75,24 @@ def parse_receipt_image(path: str) -> List[Dict]:
     )
 
     try:
-        response = client.models.generate_content(  # type: ignore[attr-defined]
-            model="gemini-1.5-flash",
-            generation_config={"response_mime_type": "application/json"},
-            contents=[
+        # ``GenerateContentConfig`` is available in newer versions of
+        # ``google-genai``.  Older releases exposed ``GenerationConfig`` and
+        # accepted it via the ``generation_config`` parameter.  Build the
+        # appropriate configuration object and pass it using the correct
+        # keyword for maximum compatibility.
+        gen_config = (
+            genai.types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
+            if hasattr(genai.types, "GenerateContentConfig")
+            else genai.types.GenerationConfig(
+                response_mime_type="application/json"
+            )
+        )
+
+        params = {
+            "model": "gemini-1.5-flash",
+            "contents": [
                 {
                     "role": "user",
                     "parts": [
@@ -87,22 +101,26 @@ def parse_receipt_image(path: str) -> List[Dict]:
                     ],
                 }
             ],
-        )
+        }
+        if "config" in genai.Client.models.generate_content.__code__.co_varnames:
+            params["config"] = gen_config
+        else:  # pragma: no cover - legacy API
+            params["generation_config"] = gen_config
+
+        response = client.models.generate_content(**params)  # type: ignore[attr-defined]
     except Exception as exc:  # pragma: no cover - depends on network/service
         raise RuntimeError(
             f"Error al comunicarse con el servicio Gemini: {exc}"
         ) from exc
 
-    text = getattr(response, "text", "") or (
-        response.candidates[0].content.parts[0].text
-        if getattr(response, "candidates", None)
-        and response.candidates
-        and getattr(response.candidates[0], "content", None)
-        and getattr(response.candidates[0].content, "parts", None)
-        and response.candidates[0].content.parts
-        and getattr(response.candidates[0].content.parts[0], "text", None)
-        else ""
-    )
+    text = getattr(response, "text", "")
+    if not text:
+        candidates = getattr(response, "candidates", None) or []
+        if candidates:
+            content = getattr(candidates[0], "content", None)
+            parts = getattr(content, "parts", None) or []
+            if parts:
+                text = getattr(parts[0], "text", "")
     if not text:
         logger.error("Gemini no devolvió texto utilizable: %s", response)
         raise RuntimeError("Gemini no devolvió texto utilizable")
