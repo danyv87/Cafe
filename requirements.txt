@@ -5,3 +5,4 @@ pandas
 pillow
 tkcalendar
 python-dotenv
+pydantic
