@@ -84,7 +84,12 @@ def _normalizar_items(
     omitidos_norm = {n.strip().lower() for n in (omitidos or [])}
 
     for raw in raw_items:
-        nombre = raw.get("nombre_producto") or raw.get("producto")
+        nombre = (
+            raw.get("nombre_producto")
+            or raw.get("producto")
+            or raw.get("descripcion")
+            or raw.get("description")
+        )
         if not nombre:
             raise ValueError("Falta el nombre del producto en el comprobante")
 
@@ -102,9 +107,40 @@ def _normalizar_items(
 
         try:
             cantidad = float(raw.get("cantidad", 0))
-            precio = float(raw.get("costo_unitario", raw.get("precio", 0)))
+            precio_valor = raw.get("costo_unitario")
+            if precio_valor in (None, ""):
+                precio_valor = raw.get("precio")
+            if precio_valor in (None, ""):
+                precio_valor = raw.get("precio_unitario")
+            if precio_valor in (None, ""):
+                precio_valor = raw.get("subtotal", 0)
+            precio = float(precio_valor)
         except Exception as exc:  # pragma: no cover - propagates formatting errors
             raise ValueError("Cantidad o precio inválidos en el comprobante") from exc
+
+        descripcion = raw.get("descripcion_adicional")
+        if descripcion is None:
+            extras = {
+                k: v
+                for k, v in raw.items()
+                if k
+                not in {
+                    "nombre_producto",
+                    "producto",
+                    "descripcion",
+                    "description",
+                    "cantidad",
+                    "precio",
+                    "costo_unitario",
+                    "precio_unitario",
+                    "subtotal",
+                    "descripcion_adicional",
+                }
+            }
+            if extras:
+                descripcion = ", ".join(f"{k}: {v}" for k, v in extras.items())
+        if not descripcion:
+            descripcion = ""
 
         items.append(
             {
@@ -112,7 +148,7 @@ def _normalizar_items(
                 "nombre_producto": mp.nombre,
                 "cantidad": cantidad,
                 "costo_unitario": precio,
-                "descripcion_adicional": raw.get("descripcion_adicional", ""),
+                "descripcion_adicional": descripcion,
             }
         )
     return items, faltantes

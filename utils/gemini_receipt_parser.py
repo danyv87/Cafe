@@ -1,7 +1,7 @@
 """Receipt parser powered by the Gemini API.
 
 This module communicates with Google's Gemini models to extract structured
-data from receipt images.  It relies on the external ``google-genai`` package
+data from receipt images. It relies on the external ``google-genai`` package
 and the :func:`utils.gemini_api.get_gemini_api_key` helper to obtain the
 authentication token from a safe location.
 """
@@ -44,11 +44,7 @@ class InvoiceOut:
 
 
 def normalize_numbers(inv: InvoiceOut) -> InvoiceOut:
-    """Normaliza números y fechas presentes en ``inv``.
-
-    Convierte cantidades y precios a ``float`` y formatea las fechas a ISO
-    (``YYYY-MM-DD``) cuando es posible.
-    """
+    """Normaliza números y fechas presentes en ``inv``."""
 
     def _to_float(value: Any) -> float:
         if value is None:
@@ -75,7 +71,7 @@ def normalize_numbers(inv: InvoiceOut) -> InvoiceOut:
             try:
                 inv.fecha = datetime.strptime(inv.fecha, fmt).date().isoformat()
                 break
-            except Exception:  # pragma: no cover - depende de formato
+            except Exception:
                 continue
 
     return inv
@@ -84,13 +80,14 @@ def normalize_numbers(inv: InvoiceOut) -> InvoiceOut:
 def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
     """Realiza una única llamada al modelo y devuelve ``InvoiceOut``."""
 
-    try:  # Obtiene módulo ``google.genai`` real o el doble usado en tests
+    try:
         import google.genai as genai  # type: ignore[import]
-    except Exception:  # pragma: no cover - solo si el import falla
+    except Exception:
         genai = None  # type: ignore[assignment]
 
-    params = {"model": model, "contents": [content]}
+    params: Dict[str, Any] = {"model": model, "contents": [content]}
 
+    # Compatibilidad con distintos releases de google-genai
     types_mod = getattr(genai, "types", None) if genai else None
     if types_mod is not None:
         gen_config = (
@@ -98,9 +95,10 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
             if hasattr(types_mod, "GenerateContentConfig")
             else getattr(types_mod, "GenerationConfig")(response_mime_type="application/json")
         )
-        if "config" in client.models.generate_content.__code__.co_varnames:
+        generate_content_fn = client.models.generate_content  # type: ignore[attr-defined]
+        if "config" in getattr(generate_content_fn.__code__, "co_varnames", ()):
             params["config"] = gen_config
-        else:  # pragma: no cover - compatibilidad con API antigua
+        else:  # API antigua
             params["generation_config"] = gen_config
 
     response = client.models.generate_content(**params)  # type: ignore[attr-defined]
@@ -164,7 +162,6 @@ def extract_invoice_with_fallback(
         try:
             return call_model_once(client, fallback, content)
         except Exception as exc2:
-            # Si ambos modelos fallan con errores de validación, propaga ``ValueError``
             if isinstance(exc2, ValueError):
                 raise exc2
             raise RuntimeError(
@@ -185,25 +182,11 @@ def parse_receipt_image(path: str) -> List[Dict]:
     -------
     list of dict
         A list of dictionaries describing the items found in the receipt.
-
-    Raises
-    ------
-    FileNotFoundError
-        If ``path`` does not exist.
-    ValueError
-        If the extension is not one of the supported formats.
-    ImportError
-        If the ``google-genai`` dependency is missing.
-    ValueError
-        If the model returns data that is not valid JSON or does not match the
-        expected structure.
-    RuntimeError
-        For errors raised by the remote service or network issues.
     """
 
     try:
         import google.genai as genai  # type: ignore[import]
-    except ImportError as exc:  # pragma: no cover - depends on environment
+    except ImportError as exc:
         raise ImportError(
             "Falta el paquete 'google-genai'. Instálalo con `pip install google-genai`."
         ) from exc
@@ -227,10 +210,10 @@ def parse_receipt_image(path: str) -> List[Dict]:
         "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
     )
 
-    # Construcción de Part y Content para la solicitud
+    # Construye el contenido usando tipos nativos si están disponibles
     types_mod = getattr(genai, "types", None)
-    part_cls = getattr(types_mod, "Part", None)
-    content_cls = getattr(types_mod, "Content", None)
+    part_cls = getattr(types_mod, "Part", None) if types_mod else None
+    content_cls = getattr(types_mod, "Content", None) if types_mod else None
 
     part_text = (
         part_cls.from_text(prompt)

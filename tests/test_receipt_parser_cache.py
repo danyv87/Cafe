@@ -42,3 +42,19 @@ def test_normalizar_items_uses_buscar_materia_prima_once_per_name():
         # Only two unique names, so the expensive lookup should run twice.
         assert mock_buscar.call_count == 2
 
+
+def test_normalizar_items_accepts_alternative_keys():
+    raw_items = [
+        {"descripcion": "Cafe", "cantidad": 1, "precio_unitario": 3, "extra": "promo"},
+        {"descripcion": "Leche", "cantidad": 2, "precio_unitario": None, "subtotal": 4},
+    ]
+
+    with patch("utils.receipt_parser._buscar_materia_prima") as mock_buscar:
+        mock_buscar.side_effect = _fake_mps()
+        items, faltantes = receipt_parser._normalizar_items(raw_items)
+
+    assert faltantes == []
+    assert items[0]["costo_unitario"] == 3.0
+    assert items[0]["descripcion_adicional"] == "extra: promo"
+    assert items[1]["costo_unitario"] == 4.0
+
