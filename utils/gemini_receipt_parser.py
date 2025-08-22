@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 from typing import Dict, List
 
 from .gemini_api import get_gemini_api_key
+
+logger = logging.getLogger(__name__)
 
 
 def parse_receipt_image(path: str) -> List[Dict]:
@@ -74,6 +77,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     try:
         response = client.models.generate_content(  # type: ignore[attr-defined]
             model="gemini-1.5-flash",
+            generation_config={"response_mime_type": "application/json"},
             contents=[
                 {
                     "role": "user",
@@ -89,11 +93,26 @@ def parse_receipt_image(path: str) -> List[Dict]:
             f"Error al comunicarse con el servicio Gemini: {exc}"
         ) from exc
 
-    text = getattr(response, "text", "")
+    text = getattr(response, "text", "") or (
+        response.candidates[0].content.parts[0].text
+        if getattr(response, "candidates", None)
+        and response.candidates
+        and getattr(response.candidates[0], "content", None)
+        and getattr(response.candidates[0].content, "parts", None)
+        and response.candidates[0].content.parts
+        and getattr(response.candidates[0].content.parts[0], "text", None)
+        else ""
+    )
+    if not text:
+        logger.error("Gemini no devolvió texto utilizable: %s", response)
+        raise RuntimeError("Gemini no devolvió texto utilizable")
+
     try:
         payload = json.loads(text)
-    except Exception as exc:
-        raise ValueError("Respuesta JSON malformada del modelo") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Respuesta JSON malformada del modelo: {text}"
+        ) from exc
 
     if not isinstance(payload, list):
         raise ValueError("La respuesta del modelo debe ser una lista de objetos")
