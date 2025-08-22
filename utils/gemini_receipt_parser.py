@@ -1,12 +1,14 @@
-"""Receipt parser powered by the Gemini API.
+"""Gemini based receipt parser.
 
-This module communicates with Google's Gemini models to extract structured
-data from receipt images.  It leverages ``google-genai`` and obtains the API
-key through :func:`utils.gemini_api.get_gemini_api_key`.
+This module mirrors the behaviour of ``testfactura.py`` while using Google's
+Gemini models to extract structured data from receipt images. The API key is
+retrieved via :func:`utils.gemini_api.get_gemini_api_key` and the results are
+normalised for the application.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
@@ -37,8 +39,11 @@ try:  # pydantic v2
     class Item(BaseModel):
         """Representa un producto detectado en la factura."""
 
-        producto: Optional[str] = None
+        descripcion: Optional[str] = None
         cantidad: Optional[float] = None
+        precio_unitario: Optional[float] = None
+        subtotal: Optional[float] = None
+        producto: Optional[str] = None
         precio: Optional[float] = None
         descripcion_adicional: Optional[str] = None
 
@@ -63,8 +68,11 @@ try:  # pydantic v2
 
 except Exception:  # pragma: no cover - pydantic v1 fallback
     class Item(BaseModel):  # type: ignore[no-redef]
-        producto: Optional[str] = None
+        descripcion: Optional[str] = None
         cantidad: Optional[float] = None
+        precio_unitario: Optional[float] = None
+        subtotal: Optional[float] = None
+        producto: Optional[str] = None
         precio: Optional[float] = None
         descripcion_adicional: Optional[str] = None
 
@@ -151,21 +159,14 @@ def _scale_money_fields(inv: InvoiceOut, factor: float) -> None:
         it.precio = s(it.precio)
 
 
-def _round_money_fields_to_int(inv: InvoiceOut) -> None:
-    def r(v: Optional[float]) -> Optional[int]:
-        return None if v is None else int(round(v))
-
-    inv.total = r(inv.total)
-    for it in inv.items:
-        it.precio = r(it.precio)
-
-
 def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut:
     """Normalise numeric fields and optionally scale to thousands."""
 
     for it in inv.items:
         it.cantidad = _to_float(it.cantidad) or 0.0
         it.precio = _to_float(it.precio)
+        it.precio_unitario = _to_float(it.precio_unitario)
+        it.subtotal = _to_float(it.subtotal)
 
     inv.total = _to_float(inv.total)
     inv.fecha = normalize_date(inv.fecha)
@@ -245,14 +246,13 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
             or ""
         )
         cantidad = raw.get("cantidad")
-        precio_valor = raw.get("precio")
-        if precio_valor in (None, ""):
-            precio_valor = raw.get("costo_unitario")
-        if precio_valor in (None, ""):
-            precio_valor = raw.get("precio_unitario")
-        if precio_valor in (None, ""):
-            precio_valor = raw.get("subtotal")
-        precio = precio_valor
+        precio_unit = raw.get("precio_unitario")
+        if precio_unit in (None, ""):
+            precio_unit = raw.get("precio")
+        if precio_unit in (None, ""):
+            precio_unit = raw.get("costo_unitario")
+        subtotal = raw.get("subtotal")
+        precio = precio_unit if precio_unit not in (None, "") else subtotal
         descripcion = raw.get("descripcion_adicional")
         conocidos = {
             "producto",
@@ -269,7 +269,15 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
         extras = {k: v for k, v in raw.items() if k not in conocidos}
         if descripcion is None and extras:
             descripcion = ", ".join(f"{k}: {v}" for k, v in extras.items())
-        item = Item(producto=str(nombre), cantidad=cantidad, precio=precio, descripcion_adicional=descripcion)
+        item = Item(
+            descripcion=str(nombre),
+            cantidad=cantidad,
+            precio_unitario=precio_unit,
+            subtotal=subtotal,
+            producto=str(nombre),
+            precio=precio,
+            descripcion_adicional=descripcion,
+        )
         items.append(item)
 
     inv = InvoiceOut(items=items, **{k: rest.get(k) for k in ["proveedor", "ruc", "numero", "fecha", "total"]})
@@ -328,7 +336,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     client = genai.Client(api_key=api_key)
 
     mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
-    with open(path, "rb") as fh:
+    with io.open(path, "rb") as fh:
         image_bytes = fh.read()
 
     prompt = (
@@ -342,7 +350,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     content_cls = getattr(types_mod, "Content", None) if types_mod else None
 
     part_text = (
-        part_cls.from_text(prompt)
+        part_cls.from_text(text=prompt)
         if part_cls is not None and hasattr(part_cls, "from_text")
         else {"text": prompt}
     )
