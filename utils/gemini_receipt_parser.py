@@ -1,7 +1,7 @@
 """Receipt parser powered by the Gemini API.
 
 This module communicates with Google's Gemini models to extract structured
-data from receipt images.  It relies on the external ``google-genai`` package
+data from receipt images. It relies on the external ``google-genai`` package
 and the :func:`utils.gemini_api.get_gemini_api_key` helper to obtain the
 authentication token from a safe location.
 """
@@ -11,11 +11,162 @@ from __future__ import annotations
 import os
 import json
 import logging
-from typing import Dict, List
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from .gemini_api import get_gemini_api_key
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Item:
+    """Representa un producto detectado en la factura."""
+
+    producto: str
+    cantidad: Any
+    precio: Any
+    descripcion_adicional: Optional[str] = None
+
+
+@dataclass
+class InvoiceOut:
+    """Estructura de salida de la factura devuelta por Gemini."""
+
+    items: List[Item] = field(default_factory=list)
+    proveedor: Optional[str] = None
+    ruc: Optional[str] = None
+    numero: Optional[str] = None
+    fecha: Optional[str] = None
+    total: Any = None
+    extras: Dict[str, Any] = field(default_factory=dict)
+
+
+def normalize_numbers(inv: InvoiceOut) -> InvoiceOut:
+    """Normaliza números y fechas presentes en ``inv``."""
+
+    def _to_float(value: Any) -> float:
+        if value is None:
+            return 0.0
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            cleaned = value.strip().replace(".", "").replace(",", ".")
+            try:
+                return float(cleaned)
+            except ValueError:
+                logger.debug("No se pudo convertir '%s' a float", value)
+        return 0.0
+
+    for it in inv.items:
+        it.cantidad = _to_float(it.cantidad)
+        it.precio = _to_float(it.precio)
+
+    if inv.total is not None:
+        inv.total = _to_float(inv.total)
+
+    if inv.fecha:
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                inv.fecha = datetime.strptime(inv.fecha, fmt).date().isoformat()
+                break
+            except Exception:
+                continue
+
+    return inv
+
+
+def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
+    """Realiza una única llamada al modelo y devuelve ``InvoiceOut``."""
+
+    try:
+        import google.genai as genai  # type: ignore[import]
+    except Exception:
+        genai = None  # type: ignore[assignment]
+
+    params: Dict[str, Any] = {"model": model, "contents": [content]}
+
+    # Compatibilidad con distintos releases de google-genai
+    types_mod = getattr(genai, "types", None) if genai else None
+    if types_mod is not None:
+        gen_config = (
+            getattr(types_mod, "GenerateContentConfig")(response_mime_type="application/json")
+            if hasattr(types_mod, "GenerateContentConfig")
+            else getattr(types_mod, "GenerationConfig")(response_mime_type="application/json")
+        )
+        generate_content_fn = client.models.generate_content  # type: ignore[attr-defined]
+        if "config" in getattr(generate_content_fn.__code__, "co_varnames", ()):
+            params["config"] = gen_config
+        else:  # API antigua
+            params["generation_config"] = gen_config
+
+    response = client.models.generate_content(**params)  # type: ignore[attr-defined]
+
+    text = getattr(response, "text", "")
+    if not text:
+        candidates = getattr(response, "candidates", None) or []
+        if candidates:
+            content0 = getattr(candidates[0], "content", None)
+            parts = getattr(content0, "parts", None) or []
+            if parts:
+                text = getattr(parts[0], "text", "")
+
+    if not text:
+        raise RuntimeError("Gemini no devolvió texto utilizable")
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Respuesta JSON malformada del modelo: {text}") from exc
+
+    if isinstance(data, list):
+        items_data = data
+        rest: Dict[str, Any] = {}
+    elif isinstance(data, dict):
+        items_data = data.get("items", [])
+        rest = {k: v for k, v in data.items() if k != "items"}
+    else:
+        raise ValueError("La respuesta del modelo debe ser una lista o un objeto con 'items'")
+
+    items: List[Item] = []
+    for raw in items_data:
+        if not isinstance(raw, dict):
+            continue
+        item = Item(
+            producto=str(raw.get("producto", "")),
+            cantidad=raw.get("cantidad", 0),
+            precio=raw.get("precio", 0),
+            descripcion_adicional=raw.get("descripcion_adicional"),
+        )
+        items.append(item)
+
+    inv = InvoiceOut(items=items, **{k: rest.get(k) for k in ["proveedor", "ruc", "numero", "fecha", "total"]})
+    extra_keys = set(rest) - {"proveedor", "ruc", "numero", "fecha", "total"}
+    if extra_keys:
+        inv.extras = {k: rest[k] for k in extra_keys}
+    return inv
+
+
+def extract_invoice_with_fallback(
+    client: Any, content: Any, primary: str, fallback: Optional[str] = None
+) -> InvoiceOut:
+    """Intenta extraer la factura usando ``primary`` y recurre a ``fallback``."""
+
+    try:
+        return call_model_once(client, primary, content)
+    except Exception as exc:
+        logger.warning("Modelo %s falló: %s", primary, exc)
+        if not fallback:
+            raise
+        try:
+            return call_model_once(client, fallback, content)
+        except Exception as exc2:
+            if isinstance(exc2, ValueError):
+                raise exc2
+            raise RuntimeError(
+                f"Fallo al invocar los modelos {primary} y {fallback}: {exc2}"
+            ) from exc2
 
 
 def parse_receipt_image(path: str) -> List[Dict]:
@@ -31,25 +182,11 @@ def parse_receipt_image(path: str) -> List[Dict]:
     -------
     list of dict
         A list of dictionaries describing the items found in the receipt.
-
-    Raises
-    ------
-    FileNotFoundError
-        If ``path`` does not exist.
-    ValueError
-        If the extension is not one of the supported formats.
-    ImportError
-        If the ``google-genai`` dependency is missing.
-    ValueError
-        If the model returns data that is not valid JSON or does not match the
-        expected structure.
-    RuntimeError
-        For errors raised by the remote service or network issues.
     """
 
     try:
         import google.genai as genai  # type: ignore[import]
-    except ImportError as exc:  # pragma: no cover - depends on environment
+    except ImportError as exc:
         raise ImportError(
             "Falta el paquete 'google-genai'. Instálalo con `pip install google-genai`."
         ) from exc
@@ -60,7 +197,6 @@ def parse_receipt_image(path: str) -> List[Dict]:
     if not path.lower().endswith((".jpeg", ".jpg", ".png")):
         raise ValueError("Unsupported format: only .jpeg, .jpg or .png images are allowed")
 
-    # Retrieve the API key without exposing secrets directly in the code
     api_key = get_gemini_api_key()
     client = genai.Client(api_key=api_key)
 
@@ -74,142 +210,47 @@ def parse_receipt_image(path: str) -> List[Dict]:
         "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
     )
 
+    # Construye el contenido usando tipos nativos si están disponibles
+    types_mod = getattr(genai, "types", None)
+    part_cls = getattr(types_mod, "Part", None) if types_mod else None
+    content_cls = getattr(types_mod, "Content", None) if types_mod else None
+
+    part_text = (
+        part_cls.from_text(prompt)
+        if part_cls is not None and hasattr(part_cls, "from_text")
+        else {"text": prompt}
+    )
+    part_image = (
+        part_cls.from_bytes(data=image_bytes, mime_type=mime)
+        if part_cls is not None and hasattr(part_cls, "from_bytes")
+        else {"inline_data": {"mime_type": mime, "data": image_bytes}}
+    )
+    content = (
+        content_cls(role="user", parts=[part_text, part_image])
+        if content_cls is not None
+        else {"role": "user", "parts": [part_text, part_image]}
+    )
+
     try:
-        # ``GenerateContentConfig`` is available in newer versions of
-        # ``google-genai``.  Older releases exposed ``GenerationConfig`` and
-        # accepted it via the ``generation_config`` parameter.  Build the
-        # appropriate configuration object and pass it using the correct
-        # keyword for maximum compatibility.
-        gen_config = (
-            genai.types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-            if hasattr(genai.types, "GenerateContentConfig")
-            else genai.types.GenerationConfig(
-                response_mime_type="application/json"
-            )
+        invoice = extract_invoice_with_fallback(
+            client, content, "gemini-1.5-flash", "gemini-1.5-pro"
         )
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"Error al comunicarse con el servicio Gemini: {exc}") from exc
 
-        params = {
-            "model": "gemini-1.5-flash",
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {"text": prompt},
-                        {"inline_data": {"mime_type": mime, "data": image_bytes}},
-                    ],
-                }
-            ],
-        }
-        generate_content_fn = client.models.generate_content  # type: ignore[attr-defined]
-        if "config" in generate_content_fn.__code__.co_varnames:
-            params["config"] = gen_config
-        else:  # pragma: no cover - legacy API
-            params["generation_config"] = gen_config
-        response = generate_content_fn(**params)  # type: ignore[arg-type]
-    except Exception as exc:  # pragma: no cover - depends on network/service
-        raise RuntimeError(
-            f"Error al comunicarse con el servicio Gemini: {exc}"
-        ) from exc
-
-    text = getattr(response, "text", "")
-    if not text:
-        candidates = getattr(response, "candidates", None) or []
-        if candidates:
-            content = getattr(candidates[0], "content", None)
-            parts = getattr(content, "parts", None) or []
-            if parts:
-                text = getattr(parts[0], "text", "")
-    if not text:
-        logger.error("Gemini no devolvió texto utilizable: %s", response)
-        raise RuntimeError("Gemini no devolvió texto utilizable")
-
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Respuesta JSON malformada del modelo: {text}"
-        ) from exc
-
-    if not isinstance(payload, list):
-        raise ValueError("La respuesta del modelo debe ser una lista de objetos")
+    invoice = normalize_numbers(invoice)
 
     items: List[Dict] = []
-    for raw_item in payload:
-        if not isinstance(raw_item, dict):
-            raise ValueError(
-                "La respuesta del modelo debe ser una lista de diccionarios"
-            )
-
-        # Nombre del producto: aceptar variantes comunes como ``descripcion``.
-        nombre = (
-            raw_item.get("producto")
-            or raw_item.get("nombre_producto")
-            or raw_item.get("descripcion")
-            or raw_item.get("description")
-        )
-        if not nombre:
-            raise ValueError(
-                "Cada elemento debe contener 'producto' o 'descripcion'"
-            )
-
-        # Cantidad es obligatoria y debe ser numérica.
-        if "cantidad" not in raw_item:
-            raise ValueError("Cada elemento debe contener 'cantidad'")
-        try:
-            cantidad = float(raw_item["cantidad"])
-        except (TypeError, ValueError) as exc:
-            raise ValueError(
-                "Los campos 'cantidad' y 'precio' deben ser numéricos"
-            ) from exc
-
-        # Determinar el precio preferentemente desde ``precio_unitario``.
-        precio_valor = raw_item.get("precio_unitario")
-        if precio_valor in (None, ""):
-            precio_valor = raw_item.get("costo_unitario")
-        if precio_valor in (None, ""):
-            precio_valor = raw_item.get("precio")
-        if precio_valor in (None, ""):
-            precio_valor = raw_item.get("subtotal")
-        if precio_valor in (None, ""):
-            raise ValueError(
-                "Cada elemento debe contener 'precio', 'precio_unitario' o 'subtotal'"
-            )
-        try:
-            precio = float(precio_valor)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(
-                "Los campos 'cantidad' y 'precio' deben ser numéricos"
-            ) from exc
-
-        item = {"producto": str(nombre), "cantidad": cantidad, "precio": precio}
-
-        # Mapear cualquier campo extra a ``descripcion_adicional``.
-        descripcion = raw_item.get("descripcion_adicional")
-        if descripcion is None:
-            extras = {
-                k: v
-                for k, v in raw_item.items()
-                if k
-                not in {
-                    "producto",
-                    "nombre_producto",
-                    "descripcion",
-                    "description",
-                    "cantidad",
-                    "precio",
-                    "precio_unitario",
-                    "costo_unitario",
-                    "subtotal",
-                    "descripcion_adicional",
-                }
-            }
-            if extras:
-                descripcion = ", ".join(f"{k}: {v}" for k, v in extras.items())
-        if descripcion:
-            item["descripcion_adicional"] = str(descripcion)
-
+    for it in invoice.items:
+        item = {
+            "producto": it.producto,
+            "cantidad": float(it.cantidad),
+            "precio": float(it.precio),
+        }
+        if it.descripcion_adicional:
+            item["descripcion_adicional"] = it.descripcion_adicional
         items.append(item)
 
     return items
