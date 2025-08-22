@@ -1,17 +1,16 @@
 """Receipt parser powered by the Gemini API.
 
 This module communicates with Google's Gemini models to extract structured
-data from receipt images. It relies on the external ``google-genai`` package
-and the :func:`utils.gemini_api.get_gemini_api_key` helper to obtain the
-authentication token from a safe location.
+data from receipt images.  It leverages ``google-genai`` and obtains the API
+key through :func:`utils.gemini_api.get_gemini_api_key`.
 """
 
 from __future__ import annotations
 
-import os
 import json
 import logging
-from dataclasses import dataclass, field
+import os
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -19,75 +18,181 @@ from .gemini_api import get_gemini_api_key
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Optional dependency for flexible date parsing
+# ---------------------------------------------------------------------------
+try:  # pragma: no cover - the package is optional
+    import dateparser as _dateparser  # type: ignore
+except Exception:  # pragma: no cover - missing dependency
+    _dateparser = None  # type: ignore
 
-@dataclass
-class Item:
-    """Representa un producto detectado en la factura."""
+# ---------------------------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------------------------
+from pydantic import BaseModel
 
-    producto: str
-    cantidad: Any
-    precio: Any
-    descripcion_adicional: Optional[str] = None
+try:  # pydantic v2
+    from pydantic import ConfigDict
 
+    class Item(BaseModel):
+        """Representa un producto detectado en la factura."""
 
-@dataclass
-class InvoiceOut:
-    """Estructura de salida de la factura devuelta por Gemini."""
+        producto: Optional[str] = None
+        cantidad: Optional[float] = None
+        precio: Optional[float] = None
+        descripcion_adicional: Optional[str] = None
 
-    items: List[Item] = field(default_factory=list)
-    proveedor: Optional[str] = None
-    ruc: Optional[str] = None
-    numero: Optional[str] = None
-    fecha: Optional[str] = None
-    total: Any = None
-    extras: Dict[str, Any] = field(default_factory=dict)
+        model_config = ConfigDict(extra="allow")
 
 
-def normalize_numbers(inv: InvoiceOut) -> InvoiceOut:
-    """Normaliza números y fechas presentes en ``inv``."""
+    class InvoiceOut(BaseModel):
+        """Estructura de salida del comprobante."""
 
-    def _to_float(value: Any) -> float:
-        if value is None:
-            return 0.0
-        if isinstance(value, (int, float)):
-            return float(value)
-        if isinstance(value, str):
-            cleaned = value.strip().replace(".", "").replace(",", ".")
+        items: List[Item] = []
+        proveedor: Optional[str] = None
+        ruc: Optional[str] = None
+        numero: Optional[str] = None
+        fecha: Optional[str] = None
+        total: Optional[float] = None
+        extras: Dict[str, Any] = {}
+
+        model_config = ConfigDict(extra="allow")
+
+        def apply_defaults_and_validate(self) -> None:
+            self.items = self.items or []
+
+except Exception:  # pragma: no cover - pydantic v1 fallback
+    class Item(BaseModel):  # type: ignore[no-redef]
+        producto: Optional[str] = None
+        cantidad: Optional[float] = None
+        precio: Optional[float] = None
+        descripcion_adicional: Optional[str] = None
+
+        class Config:
+            extra = "allow"
+
+    class InvoiceOut(BaseModel):  # type: ignore[no-redef]
+        items: List[Item] = []
+        proveedor: Optional[str] = None
+        ruc: Optional[str] = None
+        numero: Optional[str] = None
+        fecha: Optional[str] = None
+        total: Optional[float] = None
+        extras: Dict[str, Any] = {}
+
+        class Config:
+            extra = "allow"
+
+        def apply_defaults_and_validate(self) -> None:
+            self.items = self.items or []
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+def normalize_date(value: Optional[str]) -> Optional[str]:
+    """Normalise ``value`` to ``YYYY-MM-DD`` when possible."""
+
+    if not value:
+        return None
+    if _dateparser:
+        dt = _dateparser.parse(value, languages=["es"])  # pragma: no cover - depends on lib
+        if dt:
             try:
-                return float(cleaned)
-            except ValueError:
-                logger.debug("No se pudo convertir '%s' a float", value)
-        return 0.0
+                return dt.strftime("%Y-%m-%d")
+            except Exception:  # pragma: no cover - defensive
+                return None
+    m = re.search(r"\b([0-3]\d)[/\-.]([0-1]\d)[/\-.]([12]\d{3})\b", value)
+    if m:
+        try:
+            dt = datetime.strptime(f"{m.group(1)}/{m.group(2)}/{m.group(3)}", "%d/%m/%Y")
+            return dt.strftime("%Y-%m-%d")
+        except Exception:  # pragma: no cover - defensive
+            return None
+    return None
+
+
+def _to_float(value: Any) -> Optional[float]:
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        cleaned = value.strip().replace(".", "").replace(",", ".")
+        try:
+            return float(cleaned)
+        except ValueError:  # pragma: no cover - defensive
+            logger.debug("No se pudo convertir '%s' a float", value)
+    return None
+
+
+def _has_fraction(x: Optional[float]) -> bool:
+    try:
+        return x is not None and float(x) != int(round(float(x)))
+    except Exception:  # pragma: no cover - defensive
+        return False
+
+
+def _auto_should_scale_thousands(inv: InvoiceOut) -> bool:
+    prices = [it.precio for it in inv.items if it.precio and it.precio > 0]
+    if len(prices) < 2:
+        return False
+    small = [p for p in prices if p < 1000]
+    frac = [p for p in prices if p < 1000 and _has_fraction(p)]
+    return len(small) >= max(1, int(0.6 * len(prices))) and len(frac) >= max(1, int(0.5 * len(prices)))
+
+
+def _scale_money_fields(inv: InvoiceOut, factor: float) -> None:
+    def s(v: Optional[float]) -> Optional[float]:
+        return None if v is None else v * factor
+
+    inv.total = s(inv.total)
+    for it in inv.items:
+        it.precio = s(it.precio)
+
+
+def _round_money_fields_to_int(inv: InvoiceOut) -> None:
+    def r(v: Optional[float]) -> Optional[int]:
+        return None if v is None else int(round(v))
+
+    inv.total = r(inv.total)
+    for it in inv.items:
+        it.precio = r(it.precio)
+
+
+def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut:
+    """Normalise numeric fields and optionally scale to thousands."""
 
     for it in inv.items:
-        it.cantidad = _to_float(it.cantidad)
+        it.cantidad = _to_float(it.cantidad) or 0.0
         it.precio = _to_float(it.precio)
 
-    if inv.total is not None:
-        inv.total = _to_float(inv.total)
+    inv.total = _to_float(inv.total)
+    inv.fecha = normalize_date(inv.fecha)
 
-    if inv.fecha:
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
-            try:
-                inv.fecha = datetime.strptime(inv.fecha, fmt).date().isoformat()
-                break
-            except Exception:
-                continue
+    do_scale = False
+    if scale_policy == "x1000":
+        do_scale = True
+    elif scale_policy == "auto":
+        do_scale = _auto_should_scale_thousands(inv)
+    if do_scale:
+        _scale_money_fields(inv, 1000.0)
 
     return inv
 
 
+# ---------------------------------------------------------------------------
+# Gemini helpers
+# ---------------------------------------------------------------------------
 def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
-    """Realiza una única llamada al modelo y devuelve ``InvoiceOut``."""
+    """Invoke ``model`` once and parse the resulting ``InvoiceOut``."""
 
     try:
         import google.genai as genai  # type: ignore[import]
-    except Exception:
+    except Exception:  # pragma: no cover - the dependency is mandatory
         genai = None  # type: ignore[assignment]
 
     params: Dict[str, Any] = {"model": model, "contents": [content]}
-
-    # Compatibilidad con distintos releases de google-genai
     types_mod = getattr(genai, "types", None) if genai else None
     if types_mod is not None:
         gen_config = (
@@ -102,7 +207,6 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
             params["generation_config"] = gen_config
 
     response = client.models.generate_content(**params)  # type: ignore[attr-defined]
-
     text = getattr(response, "text", "")
     if not text:
         candidates = getattr(response, "candidates", None) or []
@@ -133,56 +237,79 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
     for raw in items_data:
         if not isinstance(raw, dict):
             continue
-        item = Item(
-            producto=str(raw.get("producto", "")),
-            cantidad=raw.get("cantidad", 0),
-            precio=raw.get("precio", 0),
-            descripcion_adicional=raw.get("descripcion_adicional"),
+        nombre = (
+            raw.get("producto")
+            or raw.get("nombre_producto")
+            or raw.get("descripcion")
+            or raw.get("description")
+            or ""
         )
+        cantidad = raw.get("cantidad")
+        precio_valor = raw.get("precio")
+        if precio_valor in (None, ""):
+            precio_valor = raw.get("costo_unitario")
+        if precio_valor in (None, ""):
+            precio_valor = raw.get("precio_unitario")
+        if precio_valor in (None, ""):
+            precio_valor = raw.get("subtotal")
+        precio = precio_valor
+        descripcion = raw.get("descripcion_adicional")
+        conocidos = {
+            "producto",
+            "nombre_producto",
+            "descripcion",
+            "description",
+            "cantidad",
+            "precio",
+            "costo_unitario",
+            "precio_unitario",
+            "subtotal",
+            "descripcion_adicional",
+        }
+        extras = {k: v for k, v in raw.items() if k not in conocidos}
+        if descripcion is None and extras:
+            descripcion = ", ".join(f"{k}: {v}" for k, v in extras.items())
+        item = Item(producto=str(nombre), cantidad=cantidad, precio=precio, descripcion_adicional=descripcion)
         items.append(item)
 
     inv = InvoiceOut(items=items, **{k: rest.get(k) for k in ["proveedor", "ruc", "numero", "fecha", "total"]})
     extra_keys = set(rest) - {"proveedor", "ruc", "numero", "fecha", "total"}
     if extra_keys:
         inv.extras = {k: rest[k] for k in extra_keys}
+    inv.apply_defaults_and_validate()
     return inv
 
 
 def extract_invoice_with_fallback(
     client: Any, content: Any, primary: str, fallback: Optional[str] = None
 ) -> InvoiceOut:
-    """Intenta extraer la factura usando ``primary`` y recurre a ``fallback``."""
+    """Try ``primary`` model first and fall back to ``fallback`` if needed."""
+
+    def _poor_detail(d: InvoiceOut) -> bool:
+        no_items = not d.items or all((not it.producto) for it in d.items)
+        return no_items
 
     try:
-        return call_model_once(client, primary, content)
+        data = call_model_once(client, primary, content)
     except Exception as exc:
         logger.warning("Modelo %s falló: %s", primary, exc)
         if not fallback:
             raise
+        return call_model_once(client, fallback, content)
+
+    if _poor_detail(data) and fallback:
         try:
             return call_model_once(client, fallback, content)
-        except Exception as exc2:
-            if isinstance(exc2, ValueError):
-                raise exc2
-            raise RuntimeError(
-                f"Fallo al invocar los modelos {primary} y {fallback}: {exc2}"
-            ) from exc2
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Fallback %s falló: %s", fallback, exc)
+    return data
 
 
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
 def parse_receipt_image(path: str) -> List[Dict]:
-    """Parse a receipt image using the Gemini backend.
-
-    Parameters
-    ----------
-    path: str
-        Path to an image (``.jpeg``, ``.jpg`` or ``.png``) containing the
-        receipt.
-
-    Returns
-    -------
-    list of dict
-        A list of dictionaries describing the items found in the receipt.
-    """
+    """Parse a receipt image using the Gemini backend."""
 
     try:
         import google.genai as genai  # type: ignore[import]
@@ -210,7 +337,6 @@ def parse_receipt_image(path: str) -> List[Dict]:
         "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
     )
 
-    # Construye el contenido usando tipos nativos si están disponibles
     types_mod = getattr(genai, "types", None)
     part_cls = getattr(types_mod, "Part", None) if types_mod else None
     content_cls = getattr(types_mod, "Content", None) if types_mod else None
@@ -231,26 +357,23 @@ def parse_receipt_image(path: str) -> List[Dict]:
         else {"role": "user", "parts": [part_text, part_image]}
     )
 
-    try:
-        invoice = extract_invoice_with_fallback(
-            client, content, "gemini-1.5-flash", "gemini-1.5-pro"
-        )
-    except ValueError:
-        raise
-    except Exception as exc:
-        raise RuntimeError(f"Error al comunicarse con el servicio Gemini: {exc}") from exc
-
+    invoice = extract_invoice_with_fallback(
+        client, content, "gemini-1.5-flash", "gemini-1.5-pro"
+    )
     invoice = normalize_numbers(invoice)
 
     items: List[Dict] = []
     for it in invoice.items:
-        item = {
-            "producto": it.producto,
-            "cantidad": float(it.cantidad),
-            "precio": float(it.precio),
+        nombre = it.producto or ""
+        precio = it.precio or 0.0
+        item: Dict[str, Any] = {
+            "producto": nombre,
+            "cantidad": float(it.cantidad or 0.0),
+            "precio": float(precio),
         }
         if it.descripcion_adicional:
             item["descripcion_adicional"] = it.descripcion_adicional
         items.append(item)
 
     return items
+
