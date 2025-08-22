@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List  # Add this import
 from utils.json_utils import read_json, write_json
 from models.materia_prima import MateriaPrima
 import config
@@ -11,8 +12,8 @@ ALLOWED_UNIDADES = ["kg", "g", "l", "ml", "unidad"]
 logger = logging.getLogger(__name__)
 
 # Cache de materias primas para evitar lecturas repetidas del disco.
-_MATERIAS_CACHE: list[MateriaPrima] | None = None
-_CACHE_PATH: str | None = None
+_MATERIAS_CACHE: Optional[List[MateriaPrima]] = None
+_CACHE_PATH: Optional[str] = None
 
 
 def clear_materias_cache() -> None:

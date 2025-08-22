@@ -183,7 +183,6 @@ def parse_receipt_image(path: str) -> List[Dict]:
     list of dict
         A list of dictionaries describing the items found in the receipt.
     """
-
     try:
         import google.genai as genai  # type: ignore[import]
     except ImportError as exc:
@@ -215,21 +214,33 @@ def parse_receipt_image(path: str) -> List[Dict]:
     part_cls = getattr(types_mod, "Part", None) if types_mod else None
     content_cls = getattr(types_mod, "Content", None) if types_mod else None
 
-    part_text = (
-        part_cls.from_text(prompt)
-        if part_cls is not None and hasattr(part_cls, "from_text")
-        else {"text": prompt}
-    )
-    part_image = (
-        part_cls.from_bytes(data=image_bytes, mime_type=mime)
-        if part_cls is not None and hasattr(part_cls, "from_bytes")
-        else {"inline_data": {"mime_type": mime, "data": image_bytes}}
-    )
-    content = (
-        content_cls(role="user", parts=[part_text, part_image])
-        if content_cls is not None
-        else {"role": "user", "parts": [part_text, part_image]}
-    )
+    # Handle part_text construction
+    if part_cls is not None and hasattr(part_cls, "from_text"):
+        try:
+            # Attempt to call from_text as a static method
+            part_text = part_cls.from_text(text=prompt)
+        except TypeError as e:
+            logger.error("Error calling Part.from_text: %s", e)
+            # Fallback to dictionary structure if from_text fails
+            part_text = {"text": prompt}
+    else:
+        part_text = {"text": prompt}
+
+    # Handle part_image construction
+    if part_cls is not None and hasattr(part_cls, "from_bytes"):
+        try:
+            part_image = part_cls.from_bytes(data=image_bytes, mime_type=mime)
+        except TypeError as e:
+            logger.error("Error calling Part.from_bytes: %s", e)
+            part_image = {"inline_data": {"mime_type": mime, "data": image_bytes}}
+    else:
+        part_image = {"inline_data": {"mime_type": mime, "data": image_bytes}}
+
+    # Construct content
+    if content_cls is not None:
+        content = content_cls(role="user", parts=[part_text, part_image])
+    else:
+        content = {"role": "user", "parts": [part_text, part_image]}
 
     try:
         invoice = extract_invoice_with_fallback(
