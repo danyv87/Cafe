@@ -10,27 +10,58 @@ ALLOWED_UNIDADES = ["kg", "g", "l", "ml", "unidad"]
 
 logger = logging.getLogger(__name__)
 
+# Cache de materias primas para evitar lecturas repetidas del disco.
+_MATERIAS_CACHE: list[MateriaPrima] | None = None
+_CACHE_PATH: str | None = None
+
+
+def clear_materias_cache() -> None:
+    """Limpia el cache de materias primas.
+
+    Esta función es útil en entornos de prueba para asegurar que cada test
+    comience sin datos en memoria. También se invalida la ruta asociada al cache
+    para que, en caso de cambiar ``DATA_PATH``, la próxima carga se realice
+    desde el nuevo archivo.
+    """
+    global _MATERIAS_CACHE, _CACHE_PATH
+    _MATERIAS_CACHE = None
+    _CACHE_PATH = None
+
 
 def cargar_materias_primas():
     """
     Carga la lista de materias primas desde el archivo JSON.
     Si el archivo no existe, devuelve una lista vacía.
     """
+    global _MATERIAS_CACHE, _CACHE_PATH
+
+    if _MATERIAS_CACHE is not None and _CACHE_PATH == DATA_PATH:
+        logger.debug("Retornando materias primas desde cache.")
+        return _MATERIAS_CACHE
+
     logger.debug(f"Intentando cargar materias primas desde: {DATA_PATH}")
     data = read_json(DATA_PATH)
     logger.debug(f"Materias primas cargadas (raw data): {data}")
-    return [MateriaPrima.from_dict(mp) for mp in data]
+    _MATERIAS_CACHE = [MateriaPrima.from_dict(mp) for mp in data]
+    _CACHE_PATH = DATA_PATH
+    return _MATERIAS_CACHE
 
 
 def guardar_materias_primas(materias_primas):
     """
     Guarda la lista de objetos MateriaPrima en el archivo JSON.
     """
+    global _MATERIAS_CACHE, _CACHE_PATH
+
     logger.debug(
         f"Intentando guardar {len(materias_primas)} materias primas en: {DATA_PATH}"
     )
     write_json(DATA_PATH, [mp.to_dict() for mp in materias_primas])
     logger.debug("Materias primas guardadas con éxito.")
+
+    # Actualizamos el cache para que refleje los datos persistidos.
+    _MATERIAS_CACHE = materias_primas
+    _CACHE_PATH = DATA_PATH
 
 
 def validar_materia_prima(nombre, unidad_medida, costo_unitario, stock, stock_minimo=0):
