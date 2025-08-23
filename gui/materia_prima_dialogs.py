@@ -170,6 +170,7 @@ def solicitar_datos_materia_prima_masivo(
         resultado: Dict[str, Tuple[str, float, float]] = {}
 
         def aceptar():
+            hubo_error = False
             for i, nombre in enumerate(nombres):
                 if vars_crear[i].get():
                     unidad = entradas_unidad[i].get().strip()
@@ -179,15 +180,18 @@ def solicitar_datos_materia_prima_masivo(
                             f"Unidad '{unidad}' no permitida para '{nombre}'.",
                             parent=top,
                         )
+                        hubo_error = True
                         continue
                     try:
                         costo = float(entradas_costo[i].get())
                         stock = float(entradas_stock[i].get())
                     except ValueError:
+                        hubo_error = True
                         continue
                     resultado[nombre] = (unidad, costo, stock)
-            top.destroy()
-            root.quit()
+            if not hubo_error:
+                top.destroy()
+                root.quit()
 
         ttk.Button(top, text="Aceptar", command=aceptar).pack(pady=5)
 
