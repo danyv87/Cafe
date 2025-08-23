@@ -6,25 +6,31 @@ from utils import gemini_receipt_parser
 
 
 def _setup_dummy_genai(monkeypatch, response):
-    """Helper to register a dummy google.genai module returning ``response``."""
-    class DummyClient:
-        def __init__(self, api_key):
-            self.api_key = api_key
-            self.models = self
+    """Helper to register a dummy google.generativeai module returning ``response``."""
+
+    class DummyGenerativeModel:
+        def __init__(self, name):
+            self.model_name = name
 
         def generate_content(self, *args, **kwargs):  # pragma: no cover - very small
             return response
 
     dummy_google = types.ModuleType("google")
     dummy_types = types.SimpleNamespace(
-        GenerateContentConfig=lambda **kwargs: None,
-        GenerationConfig=lambda **kwargs: None,
+        Part=types.SimpleNamespace(
+            from_text=lambda text: {"text": text},
+            from_bytes=lambda data, mime_type: {"inline_data": {"data": data, "mime_type": mime_type}},
+        )
     )
-    dummy_genai = types.SimpleNamespace(Client=DummyClient, types=dummy_types)
-    dummy_google.genai = dummy_genai
+    dummy_genai = types.SimpleNamespace(
+        configure=lambda **kwargs: None,
+        GenerativeModel=lambda name: DummyGenerativeModel(name),
+        types=dummy_types,
+    )
+    dummy_google.generativeai = dummy_genai
     monkeypatch.setitem(sys.modules, "google", dummy_google)
-    monkeypatch.setitem(sys.modules, "google.genai", dummy_genai)
-    return DummyClient
+    monkeypatch.setitem(sys.modules, "google.generativeai", dummy_genai)
+    return DummyGenerativeModel
 
 
 def test_parse_receipt_image_success(monkeypatch, tmp_path):
@@ -33,7 +39,7 @@ def test_parse_receipt_image_success(monkeypatch, tmp_path):
     response = types.SimpleNamespace(
         text='[{"producto": "Pan", "cantidad": 2, "precio": 3.5}]'
     )
-    DummyClient = _setup_dummy_genai(monkeypatch, response)
+    _DummyModel = _setup_dummy_genai(monkeypatch, response)
 
     called = {}
 
