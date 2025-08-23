@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
 from tkinter import messagebox
 
@@ -13,10 +14,12 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
     @patch('tkinter.messagebox.showinfo')
     @patch('controllers.compras_controller.receipt_parser.parse_receipt_image')
     def test_aceptar_items_actualiza_lista_y_total(self, mock_parse, mock_showinfo):
+        id_cafe = uuid4().hex
+        id_azucar = uuid4().hex
         mock_parse.return_value = iter([
             [
-                {"producto_id": 1, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
-                {"producto_id": 2, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
+                {"producto_id": id_cafe, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
+                {"producto_id": id_azucar, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
             ],
             [],
         ])

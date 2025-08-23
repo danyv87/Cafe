@@ -227,8 +227,11 @@ def registrar_compra_desde_imagen(
             )
             raise ValueError("Datos de compra inválidos en la imagen.") from e
 
-        if not isinstance(producto_id, int) or producto_id <= 0:
-            raise ValueError("producto_id inválido en la imagen.")
+        if not (
+            (isinstance(producto_id, int) and producto_id > 0)
+            or (isinstance(producto_id, str) and producto_id.strip())
+        ):
+            raise ValueError("producto_id vacío o inválido en la imagen.")
         if not isinstance(nombre, str) or not nombre:
             raise ValueError("nombre_producto inválido en la imagen.")
         if cantidad <= 0:
