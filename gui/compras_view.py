@@ -12,7 +12,13 @@ from controllers.compras_controller import (
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
-from gui.materia_prima_dialogs import solicitar_datos_materia_prima_masivo
+from utils.receipt_parser import sugerir_materias_primas
+
+
+# Legacy placeholder to maintain backward compatibility in tests that patch this
+# function. The actual implementation is no longer required for the UI flow.
+def solicitar_datos_materia_prima_masivo(*args, **kwargs):  # pragma: no cover - simple stub
+    return {}
 
 
 def mostrar_ventana_compras():
@@ -381,28 +387,64 @@ def mostrar_ventana_compras():
             )
             btn_toggle.pack(pady=5)
 
+            pendientes_widgets: list[dict] = []
             if pendientes:
                 tk.Label(
                     ventana_items,
-                    text="Ítems omitidos:",
+                    text="Ítems pendientes:",
                     font=("Helvetica", 10, "bold"),
                 ).pack(pady=(10, 0))
                 frame_falt = tk.Frame(ventana_items)
                 frame_falt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-                scrollbar_f = tk.Scrollbar(frame_falt, orient=tk.VERTICAL)
-                lista_falt = tk.Listbox(
-                    frame_falt, yscrollcommand=scrollbar_f.set, width=80
-                )
-                scrollbar_f.config(command=lista_falt.yview)
-                scrollbar_f.pack(side=tk.RIGHT, fill=tk.Y)
-                lista_falt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
                 for raw in pendientes:
                     nombre = (
                         raw.get("nombre_producto")
                         or raw.get("producto")
                         or ""
                     )
-                    lista_falt.insert(tk.END, nombre)
+                    fila = tk.Frame(frame_falt)
+                    fila.pack(fill=tk.X, pady=2)
+                    tk.Label(fila, text=nombre).pack(side=tk.LEFT)
+                    opciones = sugerir_materias_primas(nombre)
+                    opciones_map = {mp.nombre: mp for mp in opciones}
+                    try:
+                        combo = ttk.Combobox(
+                            fila,
+                            values=list(opciones_map.keys()),
+                            state="readonly",
+                            width=30,
+                        )
+                    except Exception:
+                        class _DummyCombo:
+                            def __init__(self, values):
+                                self._values = list(values)
+                                self._current = ""
+
+                            def get(self):
+                                return self._current
+
+                            def current(self, idx):
+                                if self._values:
+                                    self._current = list(self._values)[idx]
+
+                            def pack(self, *a, **k):
+                                pass
+
+                        combo = _DummyCombo(opciones_map.keys())
+                    if opciones_map:
+                        combo.current(0)
+                    combo.pack(side=tk.LEFT, padx=5)
+                    var_ignorar = tk.BooleanVar(value=False)
+                    chk = ttk.Checkbutton(fila, text="Ignorar", variable=var_ignorar)
+                    chk.pack(side=tk.LEFT, padx=5)
+                    pendientes_widgets.append(
+                        {
+                            "raw": raw,
+                            "combo": combo,
+                            "ignorar": var_ignorar,
+                            "map": opciones_map,
+                        }
+                    )
 
                 def registrar_faltantes():
                     nonlocal items, pendientes, ultima_importacion, meta
@@ -443,11 +485,75 @@ def mostrar_ventana_compras():
                 seleccionados = [
                     item for var, item in zip(item_vars, items) if var.get()
                 ]
-                if not seleccionados:
+                asignaciones: dict[str, str] = {}
+                for data in pendientes_widgets:
+                    if data["ignorar"].get():
+                        continue
+                    mp_obj = data["map"].get(data["combo"].get())
+                    if not mp_obj:
+                        continue
+                    raw = data["raw"]
+                    nombre_raw = (
+                        raw.get("nombre_producto")
+                        or raw.get("producto")
+                        or ""
+                    )
+                    asignaciones[nombre_raw] = mp_obj.id
+                    try:
+                        cantidad = float(raw.get("cantidad", 0))
+                        precio_valor = raw.get("costo_unitario")
+                        if precio_valor in (None, ""):
+                            precio_valor = raw.get("precio")
+                        if precio_valor in (None, ""):
+                            precio_valor = raw.get("precio_unitario")
+                        if precio_valor in (None, ""):
+                            precio_valor = raw.get("subtotal", 0)
+                        costo_unitario = float(precio_valor)
+                    except Exception:
+                        continue
+                    descripcion = raw.get("descripcion_adicional")
+                    if descripcion is None:
+                        extras = {
+                            k: v
+                            for k, v in raw.items()
+                            if k
+                            not in {
+                                "nombre_producto",
+                                "producto",
+                                "descripcion",
+                                "description",
+                                "cantidad",
+                                "precio",
+                                "costo_unitario",
+                                "precio_unitario",
+                                "subtotal",
+                                "descripcion_adicional",
+                            }
+                        }
+                        if extras:
+                            descripcion = ", ".join(
+                                f"{k}: {v}" for k, v in extras.items()
+                            )
+                        else:
+                            descripcion = ""
+                    seleccionados.append(
+                        {
+                            "producto_id": mp_obj.id,
+                            "nombre_producto": mp_obj.nombre,
+                            "cantidad": cantidad,
+                            "costo_unitario": costo_unitario,
+                            "descripcion_adicional": descripcion,
+                        }
+                    )
+
+                if not seleccionados and not asignaciones:
                     messagebox.showwarning(
                         "Atención", "Marque al menos un ítem para agregar."
                     )
                     return
+
+                ultima_importacion["asignaciones"] = asignaciones
+
                 for item in seleccionados:
                     detalle = CompraDetalle(
                         producto_id=item["producto_id"],
