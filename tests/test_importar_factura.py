@@ -1,4 +1,8 @@
+import json
+import sqlite3
 from unittest.mock import patch
+
+import pytest
 
 from controllers import compras_controller
 from models.compra import Compra
@@ -55,4 +59,45 @@ def test_importar_factura_desde_directorio(mock_registrar, tmp_path):
     assert detalle.descripcion_adicional == item["descripcion_adicional"]
 
     assert fecha_kw == inv["fecha"]
+
+
+@patch("controllers.compras_controller.registrar_compra")
+def test_importar_factura_desde_db(mock_registrar, tmp_path):
+    inv = _invoice_data()
+    conn = sqlite3.connect(tmp_path / "inv.db")
+    invoice_id = save_invoice(inv, conn)
+
+    expected_compra = Compra(proveedor_id=inv["proveedor_id"], items_compra=[])
+    mock_registrar.return_value = expected_compra
+
+    resultado = compras_controller.importar_factura(conn, invoice_id)
+
+    assert resultado is expected_compra
+
+    mock_registrar.assert_called_once()
+    proveedor_arg, detalles_arg = mock_registrar.call_args[0]
+    fecha_kw = mock_registrar.call_args.kwargs.get("fecha")
+
+    assert proveedor_arg.id == inv["proveedor_id"]
+    assert proveedor_arg.nombre == inv["proveedor"]
+    assert len(detalles_arg) == 1
+    assert fecha_kw == inv["fecha"]
+    conn.close()
+
+
+def test_importar_factura_no_encontrada(tmp_path):
+    with pytest.raises(ValueError):
+        compras_controller.importar_factura(tmp_path, "no-existe")
+
+
+@patch("controllers.compras_controller.registrar_compra")
+def test_importar_factura_datos_invalidos(mock_registrar, tmp_path):
+    path = tmp_path / "bad.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"proveedor_id": 1, "proveedor": "X"}, f)
+
+    with pytest.raises(ValueError):
+        compras_controller.importar_factura(path)
+
+    mock_registrar.assert_not_called()
 

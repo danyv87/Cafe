@@ -324,6 +324,70 @@ def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     return resultados
 
 
+def importar_factura(source, invoice_id: str | None = None):
+    """Carga una factura previamente guardada y la registra como compra.
+
+    Parameters
+    ----------
+    source: Union[str, os.PathLike, sqlite3.Connection]
+        Directorio que contiene la factura, ruta del archivo JSON o
+        conexión SQLite desde donde se cargará.
+    invoice_id: str | None, optional
+        Identificador de la factura cuando ``source`` es un directorio o
+        una conexión SQLite.  Ignorado cuando ``source`` apunta a un
+        archivo JSON específico.
+
+    Returns
+    -------
+    Compra
+        Objeto :class:`Compra` retornado por :func:`registrar_compra`.
+
+    Raises
+    ------
+    ValueError
+        Si la factura no existe o si los datos cargados son inválidos.
+    """
+
+    from utils.invoice_utils import load_invoice
+
+    try:
+        data = load_invoice(source, invoice_id)
+    except FileNotFoundError as exc:
+        raise ValueError("Factura no encontrada.") from exc
+    except Exception as exc:  # pragma: no cover - propagamos mensaje amigable
+        raise ValueError(str(exc)) from exc
+
+    try:
+        proveedor_id = data["proveedor_id"]
+        proveedor_nombre = data["proveedor"]
+        items_data = data["items"]
+    except (KeyError, TypeError) as exc:
+        raise ValueError("Datos de factura inválidos.") from exc
+
+    if not isinstance(items_data, list) or not items_data:
+        raise ValueError("Datos de factura inválidos.")
+
+    detalles = []
+    for item in items_data:
+        try:
+            detalles.append(
+                CompraDetalle(
+                    producto_id=item["producto_id"],
+                    nombre_producto=item["nombre_producto"],
+                    cantidad=item["cantidad"],
+                    costo_unitario=item["costo_unitario"],
+                    descripcion_adicional=item.get("descripcion_adicional", ""),
+                )
+            )
+        except Exception as exc:
+            raise ValueError("Datos de factura inválidos.") from exc
+
+    proveedor = Proveedor(proveedor_nombre, id=proveedor_id)
+    fecha = data.get("fecha")
+
+    return registrar_compra(proveedor, detalles, fecha=fecha)
+
+
 def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
@@ -363,6 +427,35 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
             raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
+
+
+def eliminar_compra(compra_id: str) -> bool:
+    """Elimina una compra existente por ``compra_id``.
+
+    Además de persistir el cambio, intenta revertir el stock de materias
+    primas involucradas.  Si alguna actualización de stock falla, se
+    registra el error pero la eliminación de la compra continúa.
+
+    Raises
+    ------
+    ValueError
+        Si la compra no existe.
+    """
+
+    compras = cargar_compras()
+    for i, compra in enumerate(compras):
+        if compra.id == compra_id:
+            eliminada = compras.pop(i)
+            guardar_compras(compras)
+            for item in eliminada.items_compra:
+                try:
+                    actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
+                except ValueError as exc:  # pragma: no cover - logging best effort
+                    logger.error(
+                        "Error al revertir stock de '%s': %s", item.nombre_producto, exc
+                    )
+            return True
+    raise ValueError("Compra no encontrada")
 
 
 def listar_compras():
