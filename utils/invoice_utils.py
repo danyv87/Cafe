@@ -33,14 +33,22 @@ def _invoice_to_dict(inv: Any) -> dict:
     raise TypeError("Unsupported invoice object type")
 
 
-def save_invoice(inv: Any, destination: Union[str, os.PathLike, sqlite3.Connection]) -> None:
-    """Persist *inv* to ``destination``.
+def save_invoice(
+    inv: Any, destination: Union[str, os.PathLike, sqlite3.Connection]
+) -> str:
+    """Persist *inv* to ``destination`` and return its identifier.
 
     ``destination`` can be a directory path where a JSON representation of the
     invoice will be stored, or a ``sqlite3.Connection`` instance in which case
     the data is inserted into a table named ``invoices``.  ``inv`` is expected to
     be an instance of ``InvoiceOut`` (or compatible) that can be converted to a
     dictionary via ``model_dump()``, ``dict()`` or ``dataclasses.asdict``.
+
+    Returns
+    -------
+    str
+        The identifier of the saved invoice.  If ``inv`` does not include one,
+        a new UUID4-based identifier is generated.
     """
 
     data = _invoice_to_dict(inv)
@@ -56,7 +64,7 @@ def save_invoice(inv: Any, destination: Union[str, os.PathLike, sqlite3.Connecti
             (invoice_id, json.dumps(data)),
         )
         destination.commit()
-        return
+        return invoice_id
 
     # treat destination as path
     dest_path = Path(destination)
@@ -64,6 +72,7 @@ def save_invoice(inv: Any, destination: Union[str, os.PathLike, sqlite3.Connecti
     file_path = dest_path / f"{invoice_id}.json"
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    return invoice_id
 
 def load_invoice(
     source: Union[str, os.PathLike, sqlite3.Connection],

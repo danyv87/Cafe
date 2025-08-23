@@ -146,7 +146,9 @@ def registrar_compra_desde_imagen(
         output_dir (str | Path | None): Directorio donde guardar la factura
             extraída en formato JSON. Se ignora si es ``None``.
         db_conn (sqlite3.Connection | None): Conexión a base de datos donde
-            guardar la factura. Tiene prioridad sobre ``output_dir``.
+            guardar la factura. Tiene prioridad sobre ``output_dir``. En ambos
+            casos, si la factura es guardada, su identificador se registra en el
+            log.
         omitidos (list[str] | None): Nombres de materias primas que deben
             omitirse durante el reconocimiento.
         selector (Callable[[dict], bool] | None): Función opcional que recibe
@@ -272,7 +274,8 @@ def registrar_compra_desde_imagen(
             "pendientes": pendientes,
         }
         try:
-            save_invoice(factura, destino)
+            invoice_id = save_invoice(factura, destino)
+            logger.info(f"Factura guardada con ID {invoice_id}")
         except Exception as exc:  # pragma: no cover - errores al guardar
             logger.error(f"No se pudo guardar la factura: {exc}")
 
