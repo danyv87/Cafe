@@ -369,22 +369,7 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
 
 
 def eliminar_compra(compra_id: str) -> bool:
-    """Elimina una compra existente y ajusta el stock.
-
-    Carga todas las compras, busca aquella con ``compra_id`` y, si la
-    encuentra, revierte su impacto en el stock de materias primas. En caso de
-    que el ID no exista se lanza :class:`ValueError`.
-
-    Args:
-        compra_id: Identificador de la compra a eliminar.
-
-    Returns:
-        bool: ``True`` si la compra se eliminó correctamente.
-
-    Raises:
-        ValueError: Si la compra no existe o si al actualizar el stock alguna
-            materia prima queda con stock negativo.
-    """
+    """Elimina una compra existente, ajusta el stock y reexporta a Excel."""
 
     compras = cargar_compras()
     compra_obj = next((c for c in compras if c.id == compra_id), None)
@@ -408,58 +393,21 @@ def eliminar_compra(compra_id: str) -> bool:
                 )
         raise e
 
-    compras_filtradas = [c for c in compras if c.id != compra_id]
-    guardar_compras(compras_filtradas)
+    nuevas_compras = [c for c in compras if c.id != compra_id]
+    guardar_compras(nuevas_compras)
+    exportar_compras_excel(nuevas_compras)
     return True
 
 
 def listar_compras():
-    """
-    Retorna la lista completa de compras.
-    """
+    """Retorna la lista completa de compras."""
     return cargar_compras()
 
 
-def eliminar_compra(compra_id):
-    """Elimina una compra por su ``id``.
-
-    Args:
-        compra_id (str): Identificador de la compra a eliminar.
-
-    Raises:
-        ValueError: Si no se encuentra una compra con el ``id`` dado.
-    """
-    compras = cargar_compras()
-    compras_filtradas = [c for c in compras if c.id != compra_id]
-    if len(compras_filtradas) == len(compras):
-        raise ValueError(f"No se encontró la compra con ID {compra_id}.")
-    guardar_compras(compras_filtradas)
-    return True
-
-
 def total_comprado():
-    """
-    Calcula y retorna el total de todas las compras registradas.
-    """
+    """Calcula y retorna el total de todas las compras registradas."""
     compras = listar_compras()
     return round(sum(c.total for c in compras), 2)
-
-
-def eliminar_compra(compra_id: str) -> None:
-    """Elimina una compra por ``compra_id`` y actualiza los archivos externos.
-
-    Se vuelve a exportar a Excel tras persistir los cambios para mantener
-    sincronizados los datos utilizados fuera de la aplicación.
-    """
-
-    compras = listar_compras()
-    nuevas_compras = [c for c in compras if c.id != compra_id]
-    if len(nuevas_compras) == len(compras):
-        raise ValueError("Compra no encontrada")
-
-    guardar_compras(nuevas_compras)
-    # Re-exportar explícitamente para asegurar sincronización externa
-    exportar_compras_excel(nuevas_compras)
 
 def obtener_compras_por_mes():
     """
