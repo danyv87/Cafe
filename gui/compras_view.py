@@ -1,66 +1,14 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog, ttk
+from tkinter import messagebox
 from tkcalendar import DateEntry
 import datetime
-import json
-from controllers.compras_controller import importar_factura, registrar_compra
+from controllers.compras_controller import registrar_compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import (
     listar_materias_primas,
     obtener_materia_prima_por_id,
 )
-from utils.preview_utils import mostrar_imagen
-from utils.ocr_utils import MODEL_NAME
-
-
-def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total):
-    """Permite al usuario seleccionar una factura y registrarla como compra."""
-
-    source = filedialog.askopenfilename(title="Seleccionar factura")
-    if not source:
-        return
-    if source.lower().endswith((".jpg", ".jpeg")):
-        try:
-            from google import genai
-            client = genai.Client()
-            resp = client.models.generate_content(model=MODEL_NAME, contents=[source])
-            data = json.loads(resp.text)
-
-            proveedor = Proveedor(
-                data.get("proveedor", ""), id=data.get("proveedor_id")
-            )
-            detalles = [
-                CompraDetalle(
-                    producto_id=item.get("producto_id"),
-                    nombre_producto=item.get("nombre_producto"),
-                    cantidad=item.get("cantidad"),
-                    costo_unitario=item.get("costo_unitario"),
-                    descripcion_adicional=item.get("descripcion_adicional", ""),
-                )
-                for item in data.get("items", [])
-            ]
-            registrar_compra(proveedor, detalles, fecha=data.get("fecha"))
-            messagebox.showinfo("Éxito", "Factura importada correctamente.")
-            compra_actual_items.clear()
-            actualizar_lista_compra_gui()
-            label_total.config(text="Total Compra: Gs 0")
-        except Exception as ex:  # pragma: no cover
-            messagebox.showerror("Error", str(ex))
-        return
-
-    invoice_id = simpledialog.askstring(
-        "ID de factura", "Ingrese el ID de la factura (opcional):",
-    )
-
-    try:
-        importar_factura(source, invoice_id)
-        messagebox.showinfo("Éxito", "Factura importada correctamente.")
-        compra_actual_items.clear()
-        actualizar_lista_compra_gui()
-        label_total.config(text="Total Compra: Gs 0")
-    except Exception as ex:  # pragma: no cover - mostrar errores al usuario
-        messagebox.showerror("Error", str(ex))
 
 
 def mostrar_ventana_compras():
@@ -415,21 +363,6 @@ def mostrar_ventana_compras():
         command=quitar_item_compra,
         width=25,
         bg="lightcoral",
-    ).pack(pady=5)
-    tk.Button(
-        ventana,
-        text="Vista previa factura",
-        command=lambda: importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total),
-        width=25,
-        bg="orange",
-    ).pack(pady=5)
-    tk.Button(
-        ventana,
-        text="Importar factura",
-        command=lambda: importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total),
-        width=25,
-        bg="green",
-        fg="white",
     ).pack(pady=5)
     tk.Button(
         ventana,
