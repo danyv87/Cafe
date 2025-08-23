@@ -1,4 +1,3 @@
-import json
 import sqlite3
 from utils.invoice_utils import save_invoice, load_invoice
 
@@ -22,10 +21,9 @@ def _sample_invoice():
 
 def test_load_invoice_from_directory(tmp_path):
     inv = _sample_invoice()
-    save_invoice(inv, tmp_path)
-    file_path = next(tmp_path.glob("*.json"))
-
-    loaded = load_invoice(file_path)
+    invoice_id = save_invoice(inv, tmp_path)
+    assert (tmp_path / f"{invoice_id}.json").exists()
+    loaded = load_invoice(tmp_path, invoice_id)
     assert loaded["proveedor"] == "Proveedor"
     assert loaded["items"][0]["nombre_producto"] == "Cafe"
     assert loaded["items"][0]["descripcion_adicional"] == "tostado"
@@ -34,9 +32,8 @@ def test_load_invoice_from_directory(tmp_path):
 def test_load_invoice_from_db(tmp_path):
     inv = _sample_invoice()
     conn = sqlite3.connect(tmp_path / "inv.db")
-    save_invoice(inv, conn)
-    invoice_id = conn.execute("SELECT id FROM invoices").fetchone()[0]
-
+    invoice_id = save_invoice(inv, conn)
+    assert conn.execute("SELECT id FROM invoices").fetchone()[0] == invoice_id
     loaded = load_invoice(conn, invoice_id)
     assert loaded["proveedor_id"] == 1
     assert loaded["items"][0]["costo_unitario"] == 5
