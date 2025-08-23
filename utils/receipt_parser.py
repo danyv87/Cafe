@@ -71,6 +71,39 @@ def _buscar_materia_prima(nombre: str, threshold: float = 0.85):
     return None
 
 
+def sugerir_materias_primas(
+    nombre: str, limit: int = 5, threshold: float = 0.6
+):
+    """Return a list of :class:`MateriaPrima` objects similar to ``nombre``.
+
+    This helper exposes the fuzzy matching used internally by
+    :func:`_buscar_materia_prima` but returns multiple candidates ordered by
+    similarity. It reuses the same cache of materias primas and falls back to an
+    empty list if the controller is unavailable.
+    """
+
+    global _MATERIAS_PRIMAS_CACHE
+
+    try:  # Import lazily to keep dependencies light
+        from controllers.materia_prima_controller import listar_materias_primas
+    except Exception:  # pragma: no cover - controller not available
+        return []
+
+    nombre_normalizado = nombre.strip().lower()
+
+    if _MATERIAS_PRIMAS_CACHE is None:
+        _MATERIAS_PRIMAS_CACHE = {
+            mp.nombre.strip().lower(): mp for mp in listar_materias_primas()  # type: ignore[arg-type]
+        }
+
+    from difflib import get_close_matches
+
+    matches = get_close_matches(
+        nombre_normalizado, _MATERIAS_PRIMAS_CACHE.keys(), n=limit, cutoff=threshold
+    )
+    return [_MATERIAS_PRIMAS_CACHE[m] for m in matches]
+
+
 def _normalizar_items(
     raw_items: List[Dict], omitidos: List[str] | None = None
 ) -> Tuple[List[Dict], List[Dict]]:
