@@ -6,7 +6,7 @@ from utils import gemini_receipt_parser
 
 
 def _setup_dummy_genai(monkeypatch, response):
-    """Helper to register a dummy google.generativeai module returning ``response``."""
+    """Helper to register a dummy google.genai module returning ``response``."""
 
     class DummyGenerativeModel:
         def __init__(self, name):
@@ -20,16 +20,26 @@ def _setup_dummy_genai(monkeypatch, response):
         Part=types.SimpleNamespace(
             from_text=lambda text: {"text": text},
             from_bytes=lambda data, mime_type: {"inline_data": {"data": data, "mime_type": mime_type}},
-        )
+        ),
+        Content=lambda **kwargs: types.SimpleNamespace(**kwargs),
     )
+    class DummyClient:
+        def __init__(self, api_key):
+            self.api_key = api_key
+            self.models = types.SimpleNamespace(
+                generate_content=lambda **kwargs: response
+            )
+
     dummy_genai = types.SimpleNamespace(
-        configure=lambda **kwargs: None,
-        GenerativeModel=lambda name: DummyGenerativeModel(name),
+        Client=lambda api_key: DummyClient(api_key),
         types=dummy_types,
     )
     dummy_google.generativeai = dummy_genai
+    dummy_google.genai = dummy_genai
     monkeypatch.setitem(sys.modules, "google", dummy_google)
     monkeypatch.setitem(sys.modules, "google.generativeai", dummy_genai)
+    monkeypatch.setitem(sys.modules, "google.genai", dummy_genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", dummy_types)
     return DummyGenerativeModel
 
 
@@ -51,7 +61,16 @@ def test_parse_receipt_image_success(monkeypatch, tmp_path):
 
     items = gemini_receipt_parser.parse_receipt_image(str(img))
 
-    assert items == [{"producto": "Pan", "cantidad": 2.0, "precio": 3.5}]
+    assert items == [
+        {
+            "producto": "Pan",
+            "cantidad": 2.0,
+            "precio": 3.5,
+            "unidad_medida": None,
+            "costo_unitario": 3.5,
+            "stock": 2.0,
+        }
+    ]
     assert called["used"]
 
 
@@ -85,6 +104,9 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
             "cantidad": 2.0,
             "precio": 7.0,
             "descripcion_adicional": "extra: promo",
+            "unidad_medida": None,
+            "costo_unitario": 7.0,
+            "stock": 2.0,
         }
     ]
 

@@ -13,8 +13,8 @@ def test_missing_google_genai(monkeypatch, tmp_path):
     real_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
-        if name == "google.generativeai" or name.startswith("google.generativeai"):
-            raise ImportError("No module named 'google.generativeai'")
+        if name.startswith("google.generativeai") or name.startswith("google.genai"):
+            raise ImportError("No module named 'google-generativeai'")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
