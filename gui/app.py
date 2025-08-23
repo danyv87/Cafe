@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk # Importar ttk para widgets estilizados
+from tkinter import ttk, messagebox, filedialog # Importar ttk para widgets estilizados
 from gui.productos_view import mostrar_ventana_productos
 from gui.ventas_view import mostrar_ventana_ventas
 from gui.compras_view import mostrar_ventana_compras
@@ -9,6 +9,8 @@ from gui.gastos_adicionales_view import mostrar_ventana_gastos_adicionales
 from gui.gestion_ventas import mostrar_ventana_gestion_ventas
 from gui.gestion_compras import mostrar_ventana_gestion_compras
 from gui.informes_menu import mostrar_informes_menu
+from controllers.compras_controller import importar_factura
+
 def iniciar_app():
     root = tk.Tk()
     root.title("Sistema de Ventas - Cafetería")
@@ -73,6 +75,21 @@ def iniciar_app():
     frame_daily_ops.pack(pady=10, fill=tk.X)
     ttk.Button(frame_daily_ops, text="Registrar Venta", command=mostrar_ventana_ventas).pack(pady=5, fill=tk.X)
     ttk.Button(frame_daily_ops, text="Registrar Compra", command=mostrar_ventana_compras).pack(pady=5, fill=tk.X)
+
+    def _importar_factura():
+        file_path = filedialog.askopenfilename(
+            title="Seleccionar factura",
+            filetypes=[("Archivos de factura", "*.json *.db"), ("Todos los archivos", "*.*")],
+        )
+        if not file_path:
+            return
+        try:
+            importar_factura(file_path)
+            messagebox.showinfo("Éxito", "Factura importada correctamente")
+        except Exception as e:  # pragma: no cover - interacción con GUI
+            messagebox.showerror("Error", f"No se pudo importar la factura:\n{e}")
+
+    ttk.Button(frame_daily_ops, text="Importar Factura", command=_importar_factura).pack(pady=5, fill=tk.X)
 
     # --- Grupo: Informes y Análisis ---
     frame_reports = ttk.LabelFrame(main_button_container, text="Informes y Análisis", padding=15)

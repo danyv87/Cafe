@@ -1,8 +1,10 @@
 import logging
 import sqlite3
 from typing import List
+from pathlib import Path
 
 from utils.json_utils import read_json, write_json
+from utils.invoice_utils import load_invoice
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
@@ -125,6 +127,61 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
             raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
+
+
+def importar_factura(ruta_archivo: str):
+    """Importa una factura desde un archivo ``.json`` o ``.db``.
+
+    Parameters
+    ----------
+    ruta_archivo: str
+        Ruta al archivo que contiene la factura.
+
+    Returns
+    -------
+    Compra
+        La compra registrada a partir de la factura importada.
+    """
+
+    if not ruta_archivo:
+        raise ValueError("La ruta de la factura no puede estar vacía.")
+
+    path = Path(ruta_archivo)
+    if not path.exists():
+        raise FileNotFoundError(ruta_archivo)
+
+    logger.extra.update({"archivo": path.name})
+
+    try:
+        if path.suffix.lower() == ".db":
+            conn = sqlite3.connect(path)
+            try:
+                invoice = load_invoice(conn)
+            finally:
+                conn.close()
+        else:
+            invoice = load_invoice(path)
+
+        logger.extra["proveedor"] = invoice.get("proveedor", "-")
+
+        proveedor = Proveedor(
+            nombre=invoice.get("proveedor", ""),
+            id=invoice.get("proveedor_id"),
+        )
+        items = [
+            CompraDetalle(
+                producto_id=item["producto_id"],
+                nombre_producto=item["nombre_producto"],
+                cantidad=item["cantidad"],
+                costo_unitario=item["costo_unitario"],
+                descripcion_adicional=item.get("descripcion_adicional", ""),
+            )
+            for item in invoice.get("items", [])
+        ]
+        return registrar_compra(proveedor, items)
+    except Exception as e:
+        logger.error(f"Error al importar factura: {e}")
+        raise
 
 
 def eliminar_compra(compra_id: str) -> bool:
@@ -269,6 +326,7 @@ __all__ = [
     "guardar_compras",
     "exportar_compras_excel",
     "registrar_compra",
+    "importar_factura",
     "eliminar_compra",
     "listar_compras",
     "total_comprado",
