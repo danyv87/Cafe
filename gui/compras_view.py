@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
+import threading
 from tkcalendar import DateEntry
 import datetime
 import os
@@ -159,7 +160,9 @@ def mostrar_ventana_compras():
         """Permite al usuario importar ítems desde una imagen o archivo JSON."""
         proveedor_nombre = entry_proveedor.get().strip()
         if not proveedor_nombre:
-            messagebox.showwarning("Atención", "Por favor, ingrese el nombre del proveedor antes de importar.")
+            messagebox.showwarning(
+                "Atención", "Por favor, ingrese el nombre del proveedor antes de importar."
+            )
             return
 
         ruta = filedialog.askopenfilename(
@@ -177,12 +180,52 @@ def mostrar_ventana_compras():
             )
             return
 
+        def ejecutar_registro(omitidos_local):
+            """Ejecuta registrar_compra_desde_imagen en un hilo mostrando una barra de progreso."""
+
+            resultado: dict = {}
+
+            def worker():
+                try:
+                    resultado["items"], resultado["faltantes"] = registrar_compra_desde_imagen(
+                        proveedor, ruta, omitidos=omitidos_local
+                    )
+                except Exception as exc:
+                    resultado["error"] = exc
+
+            ventana.attributes("-disabled", True)
+            progreso = tk.Toplevel(ventana)
+            progreso.title("Procesando...")
+            progreso.geometry("300x100")
+            progreso.transient(ventana)
+            progreso.grab_set()
+            ttk.Label(progreso, text="Procesando...").pack(pady=10)
+            barra = ttk.Progressbar(progreso, mode="indeterminate")
+            barra.pack(padx=20, pady=10, fill=tk.X)
+            barra.start()
+
+            hilo = threading.Thread(target=worker, daemon=True)
+            hilo.start()
+
+            def revisar_hilo():
+                if hilo.is_alive():
+                    ventana.after(100, revisar_hilo)
+                else:
+                    barra.stop()
+                    progreso.destroy()
+                    ventana.attributes("-disabled", False)
+
+            revisar_hilo()
+            ventana.wait_window(progreso)
+
+            if resultado.get("error"):
+                raise resultado["error"]
+            return resultado.get("items", []), resultado.get("faltantes", [])
+
         try:
             omitidos = []
             proveedor = Proveedor(proveedor_nombre)
-            items, faltantes = registrar_compra_desde_imagen(
-                proveedor, ruta, omitidos=omitidos
-            )
+            items, faltantes = ejecutar_registro(omitidos)
             pendientes: list[dict] = []
             while faltantes:
                 datos_creacion = solicitar_datos_materia_prima_masivo(faltantes)
@@ -197,9 +240,7 @@ def mostrar_ventana_compras():
                     ]
                 )
                 if registrados:
-                    items, faltantes = registrar_compra_desde_imagen(
-                        proveedor, ruta, omitidos=omitidos
-                    )
+                    items, faltantes = ejecutar_registro(omitidos)
                 else:
                     break
             pendientes.extend(faltantes)
@@ -208,9 +249,10 @@ def mostrar_ventana_compras():
             return
 
         if not items and not pendientes:
-            messagebox.showinfo("Sin ítems", "No se encontraron ítems en el comprobante.")
+            messagebox.showinfo(
+                "Sin ítems", "No se encontraron ítems en el comprobante."
+            )
             return
-
         ventana_items = tk.Toplevel(ventana)
         ventana_items.title("Ítems importados")
         ventana_items.geometry("600x400")
