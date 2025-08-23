@@ -404,6 +404,36 @@ def mostrar_ventana_compras():
                     )
                     lista_falt.insert(tk.END, nombre)
 
+                def crear_materias_primas_nuevas():
+                    nonlocal items, pendientes, ultima_importacion, meta
+                    datos_creacion = solicitar_datos_materia_prima_masivo(
+                        pendientes
+                    )
+                    registrados, omitidos_raw = registrar_materias_primas_faltantes(
+                        pendientes, datos_creacion
+                    )
+                    pendientes = omitidos_raw
+                    omitidos.extend(
+                        [
+                            r.get("nombre_producto")
+                            or r.get("producto")
+                            or ""
+                            for r in omitidos_raw
+                        ]
+                    )
+                    if registrados:
+                        items, faltantes_nuevos, meta = ejecutar_registro(omitidos)
+                        pendientes.extend(faltantes_nuevos)
+                        ultima_importacion = {
+                            "items": items,
+                            "pendientes": pendientes,
+                            "meta": meta,
+                        }
+                    # Recontruir la vista para actualizar los dropdowns
+                    ventana_items.destroy()
+                    if items or pendientes:
+                        mostrar_preview()
+
                 def registrar_faltantes():
                     nonlocal items, pendientes, ultima_importacion, meta
                     datos_creacion = solicitar_datos_materia_prima_masivo(
@@ -437,6 +467,11 @@ def mostrar_ventana_compras():
                     ventana_items,
                     text="Registrar faltantes",
                     command=registrar_faltantes,
+                ).pack(pady=5)
+                tk.Button(
+                    ventana_items,
+                    text="Crear materias primas nuevas",
+                    command=crear_materias_primas_nuevas,
                 ).pack(pady=5)
 
             def aceptar_items():
