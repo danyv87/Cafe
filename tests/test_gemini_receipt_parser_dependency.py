@@ -1,5 +1,4 @@
 import builtins
-from pathlib import Path
 
 import pytest
 
@@ -18,7 +17,7 @@ def test_missing_google_genai(monkeypatch, tmp_path):
             or name.startswith("google.generativeai")
             or name.startswith("google.genai")
         ):
-            raise ImportError("No module named 'google.generativeai'")
+            raise ImportError("No module named 'google-generativeai'")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
