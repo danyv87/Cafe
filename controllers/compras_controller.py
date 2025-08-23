@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 from typing import List
 
 from utils.json_utils import read_json, write_json
@@ -8,7 +7,6 @@ from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import (
-    agregar_materia_prima,
     actualizar_stock_materia_prima,
 )
 import config
@@ -133,7 +131,7 @@ def importar_factura(source, invoice_id: str | None = None):
 
     Parameters
     ----------
-    source: Union[str, os.PathLike, sqlite3.Connection]
+    source: Union[str, os.PathLike]
         Origen donde se encuentra almacenada la factura.
     invoice_id: str | None, optional
         Identificador de la factura. Se pasa directamente a
