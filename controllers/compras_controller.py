@@ -1,16 +1,13 @@
-from __future__ import annotations
-
 import logging
-import os
-import sqlite3
-from typing import List, Union
+from typing import List
 
 from utils.json_utils import read_json, write_json
-from utils.invoice_utils import load_invoice
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
+from utils import receipt_parser
 from controllers.materia_prima_controller import (
+    agregar_materia_prima,
     actualizar_stock_materia_prima,
 )
 import config
@@ -89,14 +86,250 @@ def exportar_compras_excel(compras):
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
-def registrar_compra(
-    proveedor: Proveedor, items_compra_detalle: List[CompraDetalle], fecha=None
-) -> Compra:
+def registrar_materias_primas_faltantes(
+    faltantes: List[dict], datos_creacion: dict[str, tuple]
+) -> tuple[list[str], list[dict]]:
+    """Registra materias primas faltantes a partir de datos ya validados.
+
+    Args:
+        faltantes: Lista de elementos detectados en el comprobante sin materia
+            prima asociada.
+        datos_creacion: Diccionario ``{nombre: (unidad, costo, stock)}`` con los
+            datos para las materias primas que se desean crear.
+
+    Returns:
+        tuple[list[str], list[dict]]: Una tupla con dos elementos:
+            - Lista de nombres de materias primas creadas.
+            - Lista de diccionarios correspondientes a las materias primas que
+              se decidieron omitir.
+    """
+
+    registrados: list[str] = []
+    omitidos: list[dict] = []
+
+    for raw in faltantes:
+        nombre = raw.get("nombre_producto") or raw.get("producto") or ""
+        if nombre in datos_creacion:
+            unidad, costo, stock = datos_creacion[nombre]
+            agregar_materia_prima(nombre, unidad, costo, stock)
+            registrados.append(nombre)
+        else:
+            omitidos.append(raw)
+
+    if registrados:
+        receipt_parser.clear_cache()
+
+    return registrados, omitidos
+
+
+def registrar_compra_desde_imagen(
+    proveedor: Proveedor,
+    path_imagen,
+    como_compra=False,
+    output_dir=None,
+    db_conn=None,
+    omitidos=None,
+):
+    """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
+
+    Además de los ítems validados, también se obtienen aquellos que quedan
+    pendientes por no tener una materia prima asociada. La información
+    recuperada **no** se persiste ni actualiza el stock hasta que los ítems sean
+    confirmados y registrados mediante :func:`registrar_compra`.
+
+    Args:
+        proveedor (Proveedor): Objeto del proveedor.
+        path_imagen (str): Ruta del archivo de imagen del comprobante.
+        como_compra (bool): Si es ``True`` se devuelve un objeto :class:`Compra`;
+            en caso contrario, se retorna la lista de diccionarios de ítems.
+        output_dir (str | Path | None): Directorio donde guardar la factura
+            extraída en formato JSON. Se ignora si es ``None``.
+        db_conn (sqlite3.Connection | None): Conexión a base de datos donde
+            guardar la factura. Tiene prioridad sobre ``output_dir``.
+        omitidos (list[str] | None): Nombres de materias primas que deben
+            omitirse durante el reconocimiento.
+
+    Returns:
+        tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
+            items_pendientes)`` o ``(Compra, items_pendientes)`` si
+            ``como_compra`` es ``True``. ``items_pendientes`` contiene los
+            productos del comprobante que no tienen una materia prima asociada.
+
+    Raises:
+        ValueError: Se propaga con alguno de los siguientes mensajes para
+            facilitar el diagnóstico del problema:
+
+            - ``"El nombre del proveedor no puede estar vacío."``
+            - ``"No se pudo procesar la imagen por un problema de conexión."``
+            - ``"No hay backend disponible para procesar imágenes de recibo."``
+            - Mensajes emitidos por :func:`parse_receipt_image` (por ejemplo,
+              ``"Cantidad o precio inválidos en el comprobante"``).
+            - ``"No se pudo interpretar la imagen del comprobante."`` cuando
+              ocurre un error inesperado.
+            - Mensajes de validación como ``"producto_id inválido en la
+              imagen"`` o ``"cantidad debe ser un número positivo."``.
+    """
+
+    if not isinstance(proveedor, Proveedor) or not proveedor.nombre.strip():
+        raise ValueError("El nombre del proveedor no puede estar vacío.")
+
+    omitidos = list(omitidos or [])
+    metadata = {"archivo": path_imagen, "proveedor": proveedor.nombre}
+    try:
+        items_dict, faltantes = receipt_parser.parse_receipt_image(
+            path_imagen, omitidos=omitidos
+        )
+    except (ConnectionError, TimeoutError) as e:
+        logger.exception("Error de red al procesar comprobante", extra=metadata)
+        raise ValueError(
+            "No se pudo procesar la imagen por un problema de conexión."
+        ) from e
+    except NotImplementedError as e:
+        logger.exception(
+            "Funcionalidad no disponible al procesar comprobante", extra=metadata
+        )
+        raise ValueError(str(e)) from e
+    except FileNotFoundError as e:
+        logger.exception("Comprobante no accesible", extra=metadata)
+        raise ValueError("El comprobante no existe o no es accesible.") from e
+    except ValueError as e:
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError(str(e)) from e
+    except RuntimeError as e:
+        # Errores de ejecución (p.ej. falta de clave API) también deben ser
+        # reportados al usuario para facilitar el diagnóstico.
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError(str(e)) from e
+    except Exception as e:
+        logger.exception("Error al interpretar la imagen", extra=metadata)
+        raise ValueError("No se pudo interpretar la imagen del comprobante.") from e
+
+    if not isinstance(items_dict, list):
+        raise ValueError("Formato de datos inválido del comprobante.")
+
+    pendientes: List[dict] = list(faltantes)
+    items_validados = []
+    for item in items_dict:
+        try:
+            producto_id = int(item["producto_id"])
+            nombre = item["nombre_producto"].strip()
+            cantidad = float(item["cantidad"])
+            costo_unitario = float(item["costo_unitario"])
+            descripcion = item.get("descripcion_adicional", "")
+        except Exception as e:  # pragma: no cover - fallthrough validation
+            logger.exception(
+                "Error al convertir datos del comprobante",
+                extra={"archivo": path_imagen, "proveedor": proveedor.nombre},
+            )
+            raise ValueError("Datos de compra inválidos en la imagen.") from e
+
+        if not producto_id:
+            raise ValueError("producto_id inválido en la imagen.")
+        if not isinstance(nombre, str) or not nombre:
+            raise ValueError("nombre_producto inválido en la imagen.")
+        if cantidad <= 0:
+            raise ValueError("cantidad debe ser un número positivo.")
+        if costo_unitario <= 0:
+            raise ValueError("costo_unitario debe ser un número positivo.")
+        if not isinstance(descripcion, str):
+            raise ValueError("descripcion_adicional debe ser texto.")
+
+        items_validados.append(
+            {
+                "producto_id": producto_id,
+                "nombre_producto": nombre,
+                "cantidad": cantidad,
+                "costo_unitario": costo_unitario,
+                "descripcion_adicional": descripcion,
+            }
+        )
+
+    # Guardar la factura si corresponde
+    destino = db_conn if db_conn is not None else output_dir
+    if destino is not None:
+        from utils.invoice_utils import save_invoice  # import local to avoid heavy deps
+
+        factura = {
+            "proveedor_id": proveedor.id,
+            "proveedor": proveedor.nombre,
+            "items": items_validados,
+            "pendientes": pendientes,
+        }
+        try:
+            save_invoice(factura, destino)
+        except Exception as exc:  # pragma: no cover - errores al guardar
+            logger.error(f"No se pudo guardar la factura: {exc}")
+
+    if como_compra:
+        detalles = [
+            CompraDetalle(
+                producto_id=item["producto_id"],
+                nombre_producto=item["nombre_producto"],
+                cantidad=item["cantidad"],
+                costo_unitario=item["costo_unitario"],
+                descripcion_adicional=item.get("descripcion_adicional", ""),
+            )
+            for item in items_validados
+        ]
+        return (
+            Compra(proveedor_id=proveedor.id, items_compra=detalles),
+            pendientes,
+        )
+
+    return items_validados, pendientes
+
+
+def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
+    """Procesa múltiples comprobantes y devuelve el estado por cada archivo.
+
+    Para cada comprobante se intentará registrar la compra utilizando
+    :func:`registrar_compra_desde_imagen`. En caso de error se registrará la
+    excepción junto con metadatos del archivo y se devolverá un estado de
+    error para ese comprobante.
+
+    Args:
+        proveedor (Proveedor): Objeto del proveedor.
+        archivos (List[str]): Rutas de los comprobantes a importar.
+
+    Returns:
+        List[dict]: Lista de resultados por archivo con la forma
+        ``{"archivo": str, "ok": bool, "compra": Compra | None, "pendientes": list, "error": str | None}``.
+    """
+
+    resultados = []
+    for archivo in archivos:
+        try:
+            compra, pendientes = registrar_compra_desde_imagen(
+                proveedor, archivo, como_compra=True
+            )
+            resultados.append(
+                {
+                    "archivo": archivo,
+                    "ok": True,
+                    "compra": compra,
+                    "pendientes": pendientes,
+                }
+            )
+        except Exception as exc:  # pragma: no cover - best effort logging
+            logger.exception(
+                "Error en importación masiva", extra={"archivo": archivo, "proveedor": proveedor.nombre}
+            )
+            resultados.append(
+                {
+                    "archivo": archivo,
+                    "ok": False,
+                    "error": str(exc),
+                }
+            )
+    return resultados
+
+
+def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
         proveedor (Proveedor): Objeto del proveedor.
-        items_compra_detalle (List[CompraDetalle]): Lista de objetos CompraDetalle que representan materias primas.
+        items_compra_detalle (list): Lista de objetos CompraDetalle (ahora representando materias primas).
         fecha (str, optional): Fecha y hora de la compra en formato "YYYY-MM-DD HH:MM:SS". Si no se
             proporciona, se utilizará la fecha y hora actuales.
     Raises:
@@ -132,91 +365,18 @@ def registrar_compra(
     return nueva_compra
 
 
-def importar_factura(
-    source: Union[str, os.PathLike, sqlite3.Connection],
-    invoice_id: Union[str, None] = None,
-) -> Compra:
-    """Importa una factura desde ``source`` y la registra como compra.
-
-    Parameters
-    ----------
-    source: Union[str, os.PathLike, sqlite3.Connection]
-        Origen donde se encuentra almacenada la factura.
-    invoice_id: Union[str, None], optional
-        Identificador de la factura. Se pasa directamente a
-        :func:`utils.invoice_utils.load_invoice`.
-
-    Returns
-    -------
-    Compra
-        El objeto ``Compra`` creado tras registrar la factura.
-
-    Raises
-    ------
-    Exception
-        Propaga cualquier excepción ocurrida durante la carga o registro de la
-        factura.
-    """
-
-    inv = load_invoice(source, invoice_id)
-
-    proveedor = Proveedor(
-        inv.get("proveedor", ""), id=inv.get("proveedor_id")
-    )
-
-    detalles = [
-        CompraDetalle(
-            producto_id=item.get("producto_id"),
-            nombre_producto=item.get("nombre_producto"),
-            cantidad=item.get("cantidad"),
-            costo_unitario=item.get("costo_unitario"),
-            descripcion_adicional=item.get("descripcion_adicional", ""),
-        )
-        for item in inv.get("items", [])
-    ]
-
-    return registrar_compra(proveedor, detalles, fecha=inv.get("fecha"))
-
-
-def eliminar_compra(compra_id: str) -> bool:
-    """Elimina una compra existente, ajusta el stock y reexporta a Excel."""
-
-    compras = cargar_compras()
-    compra_obj = next((c for c in compras if c.id == compra_id), None)
-    if not compra_obj:
-        raise ValueError(
-            f"Compra con ID '{compra_id}' no encontrada para eliminación."
-        )
-
-    procesados: List[CompraDetalle] = []
-    try:
-        for item in compra_obj.items_compra:
-            actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
-            procesados.append(item)
-    except Exception as e:  # pragma: no cover - rollback best effort
-        for item in procesados:
-            try:
-                actualizar_stock_materia_prima(item.producto_id, item.cantidad)
-            except Exception:
-                logger.exception(
-                    "Error al revertir stock al fallar eliminación de compra"
-                )
-        raise e
-
-    nuevas_compras = [c for c in compras if c.id != compra_id]
-    guardar_compras(nuevas_compras)
-    exportar_compras_excel(nuevas_compras)
-    return True
-
-
 def listar_compras():
-    """Retorna la lista completa de compras."""
+    """
+    Retorna la lista completa de compras.
+    """
     return cargar_compras()
 
 
 def total_comprado():
-    """Calcula y retorna el total de todas las compras registradas."""
-    compras = listar_compras()
+    """
+    Calcula y retorna el total de todas las compras registradas.
+    """
+    compras = cargar_compras()
     return round(sum(c.total for c in compras), 2)
 
 def obtener_compras_por_mes():
@@ -226,7 +386,7 @@ def obtener_compras_por_mes():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-01', 'Gs 50.000,00'), ('2023-02', 'Gs 75.000,00')]
     """
-    compras = listar_compras()
+    compras = cargar_compras()
     compras_mensuales = defaultdict(float)
 
     for compra in compras:
@@ -262,7 +422,7 @@ def obtener_compras_por_semana():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-W01', 'Gs 25.000,00'), ('2023-W02', 'Gs 30.000,00')]
     """
-    compras = listar_compras()
+    compras = cargar_compras()
     compras_semanales = defaultdict(float)
 
     for compra in compras:
@@ -297,7 +457,7 @@ def obtener_compras_por_dia():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2025-06-15', 'Gs 120.000'), ...]
     """
-    compras = listar_compras()
+    compras = cargar_compras()
     compras_dia = defaultdict(float)
     for compra in compras:
         try:
@@ -313,20 +473,5 @@ def obtener_compras_por_dia():
         total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
         formatted.append((dia, f"Gs {total_str}"))
     return formatted
-
-
-__all__ = [
-    "cargar_compras",
-    "guardar_compras",
-    "exportar_compras_excel",
-    "registrar_compra",
-    "importar_factura",
-    "eliminar_compra",
-    "listar_compras",
-    "total_comprado",
-    "obtener_compras_por_mes",
-    "obtener_compras_por_semana",
-    "obtener_compras_por_dia",
-]
 
 
