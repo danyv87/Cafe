@@ -81,3 +81,33 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
             "descripcion_adicional": "extra: promo",
         }
     ]
+
+
+def test_normalize_numbers_scales_all_money_fields():
+    inv = gemini_receipt_parser.InvoiceOut(
+        items=[
+            gemini_receipt_parser.Item(
+                cantidad="1",
+                precio="1.5",
+                precio_unitario="1.5",
+                subtotal="1.5",
+            ),
+            gemini_receipt_parser.Item(
+                cantidad="2",
+                precio="2.5",
+                precio_unitario="2.5",
+                subtotal="5",
+            ),
+        ],
+        total="4.0",
+        fecha="10/02/2024",
+    )
+
+    out = gemini_receipt_parser.normalize_numbers(inv, scale_policy="x1000")
+
+    it0 = out.items[0]
+    assert it0.precio == 1500.0
+    assert it0.precio_unitario == 1500.0
+    assert it0.subtotal == 1500.0
+    assert out.total == 4000.0
+    assert out.fecha == "2024-02-10"
