@@ -97,7 +97,13 @@ class InvoiceImporter:
         return list(agrupados.values())
 
     def persist(self, invoice: dict, destination: Optional[object]) -> Optional[str]:
-        """Persist ``invoice`` to ``destination`` if provided."""
+        """Persist ``invoice`` to ``destination`` if provided.
+
+        Raises
+        ------
+        RuntimeError
+            If the invoice could not be persisted.
+        """
 
         if destination is None:
             return None
@@ -110,4 +116,4 @@ class InvoiceImporter:
             return invoice_id
         except Exception as exc:  # pragma: no cover - persistence errors
             logger.error(f"No se pudo guardar la factura: {exc}")
-            return None
+            raise RuntimeError("No se pudo guardar la factura") from exc
