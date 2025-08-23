@@ -1,8 +1,5 @@
-google-genai==1.0.0
 matplotlib
 numpy
 pandas
-pillow
 tkcalendar
 python-dotenv
-pydantic
