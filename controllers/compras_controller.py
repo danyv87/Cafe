@@ -131,8 +131,8 @@ def registrar_compra_desde_imagen(
     output_dir=None,
     db_conn=None,
     omitidos=None,
-    selector: Optional[Callable[[dict], bool]] = None,  # <- fix
-    importer: InvoiceImporter | None = None,
+    selector: Optional[Callable[[dict], bool]] = None,
+    importer: Optional[InvoiceImporter] = None,
 ):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
