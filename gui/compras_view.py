@@ -1,14 +1,35 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from tkcalendar import DateEntry
 import datetime
-from controllers.compras_controller import registrar_compra
+from controllers.compras_controller import importar_factura, registrar_compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import (
     listar_materias_primas,
     obtener_materia_prima_por_id,
 )
+
+
+def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total):
+    """Permite al usuario seleccionar una factura y registrarla como compra."""
+
+    source = filedialog.askopenfilename(title="Seleccionar factura")
+    if not source:
+        return
+
+    invoice_id = simpledialog.askstring(
+        "ID de factura", "Ingrese el ID de la factura (opcional):",
+    )
+
+    try:
+        importar_factura(source, invoice_id)
+        messagebox.showinfo("Éxito", "Factura importada correctamente.")
+        compra_actual_items.clear()
+        actualizar_lista_compra_gui()
+        label_total.config(text="Total Compra: Gs 0")
+    except Exception as ex:  # pragma: no cover - mostrar errores al usuario
+        messagebox.showerror("Error", str(ex))
 
 
 def mostrar_ventana_compras():
@@ -364,7 +385,21 @@ def mostrar_ventana_compras():
         width=25,
         bg="lightcoral",
     ).pack(pady=5)
-    tk.Button(ventana, text="Registrar Compra", command=registrar_nueva_compra, width=25, bg="lightblue",
-              fg="black").pack(pady=10)
+    tk.Button(
+        ventana,
+        text="Importar factura",
+        command=lambda: importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total),
+        width=25,
+        bg="green",
+        fg="white",
+    ).pack(pady=5)
+    tk.Button(
+        ventana,
+        text="Registrar Compra",
+        command=registrar_nueva_compra,
+        width=25,
+        bg="lightblue",
+        fg="black",
+    ).pack(pady=10)
 
     cargar_materias_primas_disponibles()  # Carga inicial de materias primas

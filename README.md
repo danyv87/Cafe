@@ -53,13 +53,16 @@ El sistema permite registrar compras de materias primas y también eliminarlas
 si se registraron por error. Al borrar una compra se descuenta del stock la
 cantidad de cada ítem asociado para mantener la consistencia de inventario.
 
+Desde la ventana de **Registrar Compra** también es posible importar facturas
+existentes para cargarlas automáticamente en el sistema.
+
 ### Importar Facturas
 
 El sistema permite cargar facturas generadas en herramientas externas.
 Para hacerlo:
 
 1. Genere u obtenga una factura en un formato compatible.
-2. En la aplicación seleccione la opción **Importar Factura**.
+2. En la ventana de registro de compras haga clic en **Importar factura**.
 3. Confirme la operación y verifique que los datos se hayan cargado correctamente.
 
 Se admiten archivos `.json` y bases de datos SQLite que incluyan una tabla `invoices`.
