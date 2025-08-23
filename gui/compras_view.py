@@ -294,12 +294,29 @@ def mostrar_ventana_compras():
                 btn_toggle.config(text="Deseleccionar todo")
                 all_items_selected = True
 
+        def remover_items():
+            nonlocal all_items_selected
+            seleccionados = lista_items.curselection()
+            for idx in reversed(seleccionados):
+                del items[idx]
+                lista_items.delete(idx)
+            if lista_items.size() == 0:
+                all_items_selected = False
+                btn_toggle.config(text="Seleccionar todo")
+
         btn_toggle = tk.Button(
             ventana_items,
             text="Deseleccionar todo",
             command=toggle_select_all,
         )
         btn_toggle.pack(pady=5)
+
+        tk.Button(
+            ventana_items,
+            text="Remover",
+            command=remover_items,
+            bg="khaki",
+        ).pack(pady=5)
 
         if pendientes:
             tk.Label(

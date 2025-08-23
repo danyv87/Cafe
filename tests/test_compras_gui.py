@@ -54,6 +54,222 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             "Se agregaron 1 ítems importados.",
         )
 
+    def test_remover_items(self):
+        import tkinter as tk
+        import gui.compras_view as compras_view
+
+        items_data = [
+            {"producto_id": "id1", "nombre_producto": "Item1", "cantidad": 1, "costo_unitario": 10},
+            {"producto_id": "id2", "nombre_producto": "Item2", "cantidad": 2, "costo_unitario": 20},
+        ]
+
+        created = []
+
+        class DummyCompraDetalle:
+            def __init__(self, producto_id, nombre_producto, cantidad, costo_unitario, descripcion_adicional=""):
+                self.producto_id = producto_id
+                self.nombre_producto = nombre_producto
+                self.cantidad = cantidad
+                self.costo_unitario = costo_unitario
+                self.descripcion_adicional = descripcion_adicional
+                self.total = round(cantidad * costo_unitario, 2)
+                created.append(self)
+
+        class DummyToplevel:
+            def __init__(self, *a, **k):
+                pass
+
+            def title(self, *a):
+                pass
+
+            def geometry(self, *a):
+                pass
+
+            def attributes(self, *a, **k):
+                pass
+
+            def after(self, delay, func):
+                func()
+
+            def wait_window(self, *a):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def destroy(self):
+                pass
+
+            def transient(self, *a):
+                pass
+
+            def grab_set(self):
+                pass
+
+        class DummyFrame:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+        class DummyScrollbar:
+            def __init__(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def set(self, *a, **k):
+                pass
+
+        class DummyListbox:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.items = []
+                self.selection = ()
+                DummyListbox.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def insert(self, index, item):
+                self.items.append(item)
+
+            def delete(self, start, end=None):
+                if end is None:
+                    del self.items[start]
+                else:
+                    self.items = []
+
+            def yview(self, *a, **k):
+                pass
+
+            def curselection(self):
+                return self.selection
+
+            def select_set(self, start, end=None):
+                if end in (None, tk.END):
+                    self.selection = tuple(range(start, len(self.items)))
+                else:
+                    self.selection = tuple(range(start, end + 1))
+
+            def selection_clear(self, start, end=None):
+                self.selection = ()
+
+            def size(self):
+                return len(self.items)
+
+            def bind(self, *a, **k):
+                pass
+
+            def selection_set(self, start, end=None):
+                self.select_set(start, end)
+
+        class DummyButton:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.command = k.get('command')
+                self.text = k.get('text')
+                DummyButton.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+        class DummyLabel:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+        class DummyEntry:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.value = ""
+                DummyEntry.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def get(self):
+                return self.value
+
+            def insert(self, index, value):
+                self.value = value
+
+            def delete(self, start, end=None):
+                self.value = ""
+
+            def bind(self, *a, **k):
+                pass
+
+        class DummyProgressbar:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def start(self):
+                pass
+
+            def stop(self):
+                pass
+
+        class DummyThread:
+            def __init__(self, target, daemon=False):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+            def is_alive(self):
+                return False
+
+        mp_fake = type('MP', (), {'unidad_medida': 'u'})()
+
+        with patch('gui.compras_view.CompraDetalle', DummyCompraDetalle), \
+             patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, [])), \
+             patch('gui.compras_view.filedialog.askopenfilename', return_value='test.png'), \
+             patch('gui.compras_view.messagebox') as mock_msg, \
+             patch('gui.compras_view.listar_materias_primas', return_value=[]), \
+             patch('gui.compras_view.obtener_materia_prima_por_id', return_value=mp_fake), \
+             patch('gui.compras_view.tk.Toplevel', DummyToplevel), \
+             patch('gui.compras_view.tk.Frame', DummyFrame), \
+             patch('gui.compras_view.tk.Scrollbar', DummyScrollbar), \
+             patch('gui.compras_view.tk.Listbox', DummyListbox), \
+             patch('gui.compras_view.tk.Button', DummyButton), \
+             patch('gui.compras_view.tk.Label', DummyLabel), \
+             patch('gui.compras_view.tk.Entry', DummyEntry), \
+             patch('gui.compras_view.DateEntry', DummyEntry), \
+             patch('gui.compras_view.ttk.Label', DummyLabel), \
+             patch('gui.compras_view.ttk.Progressbar', DummyProgressbar), \
+             patch('gui.compras_view.threading.Thread', DummyThread):
+            compras_view.mostrar_ventana_compras()
+            DummyEntry.instances[0].insert(0, 'Proveedor')
+            import_btn = next(b for b in DummyButton.instances if b.text == 'Importar desde imagen')
+            import_btn.command()
+            remover_btn = next(b for b in DummyButton.instances if b.text == 'Remover')
+            agregar_btn = next(b for b in DummyButton.instances if b.text == 'Agregar a la compra')
+            lista_items = DummyListbox.instances[-1]
+            lista_items.selection = (0,)
+            remover_btn.command()
+            self.assertEqual(len(items_data), 1)
+            self.assertEqual(lista_items.size(), 1)
+            agregar_btn.command()
+            self.assertEqual(len(created), 1)
+            self.assertEqual(created[0].nombre_producto, 'Item2')
+
 
 class TestGestionComprasGUI(unittest.TestCase):
     def test_eliminar_compra_actualiza_lista(self):
