@@ -200,7 +200,6 @@ def eliminar_compra(compra_id: str) -> bool:
 
     nuevas_compras = [c for c in compras if c.id != compra_id]
     guardar_compras(nuevas_compras)
-    exportar_compras_excel(nuevas_compras)
     return True
 
 
