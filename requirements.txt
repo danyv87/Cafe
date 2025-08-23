@@ -4,3 +4,5 @@ pandas
 tkcalendar
 python-dotenv
 Pillow
+google-genai
+pydantic
