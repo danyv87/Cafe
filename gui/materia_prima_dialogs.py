@@ -142,8 +142,16 @@ def solicitar_datos_materia_prima_masivo(
             chk.grid(row=idx, column=1)
 
             e_unidad = ttk.Combobox(
-                scrollable_frame, values=ALLOWED_UNIDADES, width=10
+                scrollable_frame,
+                values=ALLOWED_UNIDADES,
+                width=10,
+                state="readonly",
             )
+            sugerida = raw.get("unidad_medida") or raw.get("unidad")
+            if sugerida in ALLOWED_UNIDADES:
+                e_unidad.set(sugerida)
+            else:
+                e_unidad.current(0)
             e_unidad.grid(row=idx, column=2)
             e_costo = ttk.Entry(scrollable_frame, width=10)
             e_costo.grid(row=idx, column=3)
@@ -157,12 +165,13 @@ def solicitar_datos_materia_prima_masivo(
             entradas_stock.append(e_stock)
 
         def toggle_fields(i: int):
-            estado = tk.NORMAL if vars_crear[i].get() else tk.DISABLED
+            estado_combo = "readonly" if vars_crear[i].get() else tk.DISABLED
+            estado_entry = tk.NORMAL if vars_crear[i].get() else tk.DISABLED
             texto = "Aceptar" if vars_crear[i].get() else "Remover"
             chkboxes[i].config(text=texto)
-            entradas_unidad[i].config(state=estado)
-            entradas_costo[i].config(state=estado)
-            entradas_stock[i].config(state=estado)
+            entradas_unidad[i].config(state=estado_combo)
+            entradas_costo[i].config(state=estado_entry)
+            entradas_stock[i].config(state=estado_entry)
 
         for i, chk in enumerate(chkboxes):
             chk.config(command=lambda idx=i: toggle_fields(idx))
