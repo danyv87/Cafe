@@ -55,6 +55,8 @@ try:  # pydantic v2
 
         items: List[Item] = []
         proveedor: Optional[str] = None
+        ruc_proveedor: Optional[str] = None
+        timbrado: Optional[str] = None
         ruc: Optional[str] = None
         numero: Optional[str] = None
         fecha: Optional[str] = None
@@ -82,6 +84,8 @@ except Exception:  # pragma: no cover - pydantic v1 fallback
     class InvoiceOut(BaseModel):  # type: ignore[no-redef]
         items: List[Item] = []
         proveedor: Optional[str] = None
+        ruc_proveedor: Optional[str] = None
+        timbrado: Optional[str] = None
         ruc: Optional[str] = None
         numero: Optional[str] = None
         fecha: Optional[str] = None
@@ -142,7 +146,12 @@ def _has_fraction(x: Optional[float]) -> bool:
 
 
 def _auto_should_scale_thousands(inv: InvoiceOut) -> bool:
-    prices = [it.precio for it in inv.items if it.precio and it.precio > 0]
+    prices: List[float] = []
+    for it in inv.items:
+        for p in [it.precio, it.precio_unitario, it.subtotal]:
+            if p and p > 0:
+                prices.append(p)
+                break
     if len(prices) < 2:
         return False
     small = [p for p in prices if p < 1000]
@@ -157,6 +166,8 @@ def _scale_money_fields(inv: InvoiceOut, factor: float) -> None:
     inv.total = s(inv.total)
     for it in inv.items:
         it.precio = s(it.precio)
+        it.precio_unitario = s(it.precio_unitario)
+        it.subtotal = s(it.subtotal)
 
 
 def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut:
@@ -280,8 +291,30 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
         )
         items.append(item)
 
-    inv = InvoiceOut(items=items, **{k: rest.get(k) for k in ["proveedor", "ruc", "numero", "fecha", "total"]})
-    extra_keys = set(rest) - {"proveedor", "ruc", "numero", "fecha", "total"}
+    inv = InvoiceOut(
+        items=items,
+        **{
+            k: rest.get(k)
+            for k in [
+                "proveedor",
+                "ruc_proveedor",
+                "timbrado",
+                "ruc",
+                "numero",
+                "fecha",
+                "total",
+            ]
+        },
+    )
+    extra_keys = set(rest) - {
+        "proveedor",
+        "ruc_proveedor",
+        "timbrado",
+        "ruc",
+        "numero",
+        "fecha",
+        "total",
+    }
     if extra_keys:
         inv.extras = {k: rest[k] for k in extra_keys}
     inv.apply_defaults_and_validate()
