@@ -1,9 +1,10 @@
 """Receipt parsing powered by the Gemini API.
 
 This module sends receipt images to Google's Gemini models and returns
-structured data for each line item.  It follows the behaviour of the working
+structured data for each line item. It follows the behaviour of the working
 ``testfactura.py`` script supplied by the user while keeping a small surface
-area required by the rest of the project.
+area required by the rest of the project. The API key is embedded for
+demonstration only and must not be used in production.
 """
 
 from __future__ import annotations
