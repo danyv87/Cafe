@@ -2,12 +2,10 @@ import logging
 from typing import Optional, List  # Add this import
 from utils.json_utils import read_json, write_json
 from models.materia_prima import MateriaPrima
+from models.unidades import ALLOWED_UNIDADES
 import config
 
 DATA_PATH = config.get_data_path("materias_primas.json")
-
-# Unidades permitidas para la materia prima
-ALLOWED_UNIDADES = ["kg", "g", "l", "ml", "unidad"]
 
 logger = logging.getLogger(__name__)
 
