@@ -30,12 +30,15 @@ def clear_cache() -> None:
     _MATERIAS_PRIMAS_CACHE = None
 
 
-def _buscar_materia_prima(nombre: str):
-    """Return ``MateriaPrima`` whose name matches ``nombre``.
+def _buscar_materia_prima(nombre: str, threshold: float = 0.85):
+    """Return ``MateriaPrima`` whose name approximately matches ``nombre``.
 
     The search is case-insensitive and relies on ``listar_materias_primas``.
     ``None`` is returned if no match is found. Results are cached so repeated
-    lookups avoid querying the controller repeatedly.
+    lookups avoid querying the controller repeatedly. When an exact match is
+    not found, a secondary fuzzy search is performed using
+    :func:`difflib.get_close_matches`. ``threshold`` specifies the minimum
+    similarity ratio required to accept a fuzzy match.
     """
 
     global _MATERIAS_PRIMAS_CACHE
@@ -53,7 +56,19 @@ def _buscar_materia_prima(nombre: str):
             mp.nombre.strip().lower(): mp for mp in listar_materias_primas()  # type: ignore[arg-type]
         }
 
-    return _MATERIAS_PRIMAS_CACHE.get(nombre_normalizado)
+    mp = _MATERIAS_PRIMAS_CACHE.get(nombre_normalizado)
+    if mp is not None:
+        return mp
+
+    # Fallback to fuzzy matching when an exact key lookup fails
+    from difflib import get_close_matches
+
+    closest = get_close_matches(
+        nombre_normalizado, _MATERIAS_PRIMAS_CACHE.keys(), n=1, cutoff=threshold
+    )
+    if closest:
+        return _MATERIAS_PRIMAS_CACHE[closest[0]]
+    return None
 
 
 def _normalizar_items(
