@@ -5,6 +5,8 @@ from utils.json_utils import read_json, write_json
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
+# Módulo encargado de la interpretación de comprobantes a partir de imágenes
+# (delegando en utilidades de OCR cuando están disponibles).
 from utils import receipt_parser
 from controllers.materia_prima_controller import (
     agregar_materia_prima,
@@ -279,6 +281,40 @@ def registrar_compra_desde_imagen(
     return items_validados, pendientes
 
 
+def importar_factura(source, invoice_id=None):
+    """Cargar una factura previamente procesada y registrar la compra.
+
+    Este helper se utiliza principalmente por la interfaz de usuario al
+    importar facturas almacenadas en disco o en una base de datos.  Se apoya en
+    :func:`utils.invoice_utils.load_invoice` para obtener los datos y luego
+    delega el registro de la compra a :func:`registrar_compra`.
+
+    Args:
+        source (str | pathlib.Path | sqlite3.Connection): Origen de la factura.
+        invoice_id (str | None): Identificador de la factura cuando ``source``
+            es un directorio o conexión a base de datos.
+
+    Returns:
+        Compra: Resultado devuelto por :func:`registrar_compra`.
+    """
+
+    from utils.invoice_utils import load_invoice
+
+    data = load_invoice(source, invoice_id)
+    proveedor = Proveedor(data.get("proveedor", ""), id=data.get("proveedor_id"))
+    detalles = [
+        CompraDetalle(
+            producto_id=item.get("producto_id"),
+            nombre_producto=item.get("nombre_producto"),
+            cantidad=item.get("cantidad"),
+            costo_unitario=item.get("costo_unitario"),
+            descripcion_adicional=item.get("descripcion_adicional", ""),
+        )
+        for item in data.get("items", [])
+    ]
+    return registrar_compra(proveedor, detalles, fecha=data.get("fecha"))
+
+
 def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     """Procesa múltiples comprobantes y devuelve el estado por cada archivo.
 
@@ -506,6 +542,37 @@ def obtener_compras_por_mes():
         formatted_compras.append((mes_año, f"Gs {total_str}"))
 
     return formatted_compras
+
+
+def eliminar_compra(compra_id: str) -> bool:
+    """Elimina una compra existente y actualiza los reportes.
+
+    Se invierte el stock de las materias primas asociadas a la compra y se
+    persisten los cambios en el archivo JSON.  En caso de que la compra no
+    exista se lanza ``ValueError``.
+    """
+
+    compras = cargar_compras()
+    compra_obj = None
+    for c in compras:
+        if c.id == compra_id:
+            compra_obj = c
+            break
+    if compra_obj is None:
+        raise ValueError(f"Compra con ID '{compra_id}' no encontrada para eliminación.")
+
+    # Revertir el stock de las materias primas involucradas.
+    for item in compra_obj.items_compra:  # pragma: no cover - simple loop
+        try:
+            actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
+        except Exception:
+            logger.exception(
+                "Error al revertir stock de materia prima", extra={"compra": compra_id}
+            )
+
+    compras = [c for c in compras if c.id != compra_id]
+    guardar_compras(compras)
+    return True
 
 def obtener_compras_por_semana():
     """
