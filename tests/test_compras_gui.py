@@ -253,6 +253,33 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             def set(self, val):
                 self.value = val
 
+        class DummyStringVar:
+            def __init__(self, value=""):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, val):
+                self.value = val
+
+        class DummyCombobox:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.values = k.get('values', [])
+                self.variable = k.get('textvariable')
+                self.current_index = None
+                DummyCombobox.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def current(self, idx):
+                self.current_index = idx
+                if self.variable:
+                    self.variable.set(self.values[idx])
+
         mp_fake = type('MP', (), {'unidad_medida': 'u'})()
 
         with patch('gui.compras_view.CompraDetalle', DummyCompraDetalle), \
@@ -261,23 +288,19 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
              patch('gui.compras_view.messagebox'), \
              patch('gui.compras_view.listar_materias_primas', return_value=[]), \
              patch('gui.compras_view.obtener_materia_prima_por_id', return_value=mp_fake), \
-             patch('gui.compras_view.tk.Toplevel', DummyToplevel), \
-             patch('gui.compras_view.tk.Frame', DummyFrame), \
-             patch('gui.compras_view.tk.Scrollbar', DummyScrollbar), \
-             patch('gui.compras_view.tk.Listbox', DummyListbox), \
-             patch('gui.compras_view.tk.Button', DummyButton), \
-             patch('gui.compras_view.tk.Label', DummyLabel), \
-             patch('gui.compras_view.tk.Entry', DummyEntry), \
              patch('gui.compras_view.DateEntry', DummyEntry), \
              patch('gui.compras_view.ttk.Label', DummyLabel), \
              patch('gui.compras_view.ttk.Progressbar', DummyProgressbar), \
              patch('gui.compras_view.ttk.Checkbutton', DummyCheckbutton), \
-             patch('gui.compras_view.tk.BooleanVar', DummyBooleanVar), \
-             patch('gui.compras_view.threading.Thread', DummyThread):
+             patch('gui.compras_view.ttk.Combobox', DummyCombobox), \
+             patch('gui.compras_view.threading.Thread', DummyThread), \
+             patch.multiple('gui.compras_view.tk', Toplevel=DummyToplevel, Frame=DummyFrame, Scrollbar=DummyScrollbar, Listbox=DummyListbox, Button=DummyButton, Label=DummyLabel, Entry=DummyEntry, BooleanVar=DummyBooleanVar, StringVar=DummyStringVar):
             compras_view.mostrar_ventana_compras()
             DummyEntry.instances[0].insert(0, 'Proveedor')
             import_btn = next(b for b in DummyButton.instances if b.text == 'Importar desde imagen')
             import_btn.command()
+            self.assertEqual(DummyCombobox.instances[0].current_index, 1)
+            self.assertEqual(DummyCombobox.instances[0].variable.get(), 'Eliminar')
             DummyCheckbutton.instances[0].variable.set(False)
             agregar_btn = next(b for b in DummyButton.instances if b.text == 'Agregar a la compra')
             agregar_btn.command()

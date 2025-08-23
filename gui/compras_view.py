@@ -257,6 +257,16 @@ def mostrar_ventana_compras():
         ventana_items.title("Ítems importados")
         ventana_items.geometry("600x400")
 
+        accion_var = tk.StringVar(value="Eliminar")
+        cb_accion = ttk.Combobox(
+            ventana_items,
+            values=["Agregar", "Eliminar"],
+            textvariable=accion_var,
+            state="readonly",
+        )
+        cb_accion.current(1)
+        cb_accion.pack(pady=5)
+
         frame_items = tk.Frame(ventana_items)
         frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
