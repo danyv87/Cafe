@@ -119,13 +119,14 @@ def solicitar_datos_materia_prima_masivo(
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        headers = ["Nombre", "Crear", "Unidad", "Costo", "Stock"]
+        headers = ["Nombre", "Aceptar", "Unidad", "Costo", "Stock"]
         for col, text in enumerate(headers):
             ttk.Label(scrollable_frame, text=text, font=("Helvetica", 9, "bold")).grid(
                 row=0, column=col, padx=5, pady=5
             )
 
         vars_crear: List[tk.BooleanVar] = []
+        chkboxes: List[ttk.Checkbutton] = []
         entradas_unidad: List[ttk.Combobox] = []
         entradas_costo: List[ttk.Entry] = []
         entradas_stock: List[ttk.Entry] = []
@@ -137,7 +138,7 @@ def solicitar_datos_materia_prima_masivo(
 
             ttk.Label(scrollable_frame, text=nombre).grid(row=idx, column=0, sticky="w")
             var = tk.BooleanVar(value=True)
-            chk = ttk.Checkbutton(scrollable_frame, variable=var)
+            chk = ttk.Checkbutton(scrollable_frame, variable=var, text="Aceptar")
             chk.grid(row=idx, column=1)
 
             e_unidad = ttk.Combobox(
@@ -150,9 +151,21 @@ def solicitar_datos_materia_prima_masivo(
             e_stock.grid(row=idx, column=4)
 
             vars_crear.append(var)
+            chkboxes.append(chk)
             entradas_unidad.append(e_unidad)
             entradas_costo.append(e_costo)
             entradas_stock.append(e_stock)
+
+        def toggle_fields(i: int):
+            estado = tk.NORMAL if vars_crear[i].get() else tk.DISABLED
+            texto = "Aceptar" if vars_crear[i].get() else "Remover"
+            chkboxes[i].config(text=texto)
+            entradas_unidad[i].config(state=estado)
+            entradas_costo[i].config(state=estado)
+            entradas_stock[i].config(state=estado)
+
+        for i, chk in enumerate(chkboxes):
+            chk.config(command=lambda idx=i: toggle_fields(idx))
 
         resultado: Dict[str, Tuple[str, float, float]] = {}
 
