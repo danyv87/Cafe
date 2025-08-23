@@ -1,16 +1,22 @@
 """Utilities for parsing receipt images.
 
 This module exposes :func:`parse_receipt_image` which takes the path to a
-receipt image (or JSON file) and returns a list of dictionaries representing
-purchase items. The implementation favours light dependencies so the function
-tries to import parsers lazily and provides a JSON fallback for offline usage.
-In unit tests the function is commonly patched to provide deterministic
-results."""
+receipt image (or JSON file) and yields dictionaries representing purchase
+items. The implementation favours light dependencies so the function tries to
+import parsers lazily and provides a JSON fallback for offline usage. In unit
+tests the function is commonly patched to provide deterministic results.
+
+The normalisation helpers operate in *streaming* mode: instead of materialising
+intermediate lists, :func:`parse_receipt_image` yields tuples
+``(item_validado, pendiente)`` one by one. Callers that need the full lists may
+collect them explicitly while consumers interested in only a subset benefit
+from reduced memory usage.
+"""
 
 from __future__ import annotations
 
 import json
-from typing import Dict, List, Tuple
+from typing import Dict, Iterable, Iterator, Tuple
 
 
 # Cache of normalised materia prima names to their objects. Populated lazily
@@ -57,29 +63,31 @@ def _buscar_materia_prima(nombre: str):
 
 
 def _normalizar_items(
-    raw_items: List[Dict], omitidos: List[str] | None = None
-) -> Tuple[List[Dict], List[Dict]]:
-    """Convert a list of raw dictionaries to the expected schema.
+    raw_items: Iterable[Dict], omitidos: Iterable[str] | None = None
+) -> Iterator[Tuple[Dict | None, Dict | None]]:
+    """Yield normalised items from ``raw_items``.
 
     ``raw_items`` is expected to contain at least the keys ``producto`` (or
     ``nombre_producto``), ``cantidad`` y ``precio`` (o ``costo_unitario``).
+
+    Each iteration yields a tuple ``(item_validado, pendiente)``. Exactly one
+    element of the tuple will be ``None`` depending on whether the raw element
+    could be matched to an existing :class:`~models.materia_prima.MateriaPrima`.
 
     Args
     ----
     raw_items:
         Items obtenidos del backend del comprobante.
     omitidos:
-        Lista opcional de nombres de productos a ignorar.
+        Iterable opcional de nombres de productos a ignorar.
 
-    Returns
-    -------
-    tuple(list, list)
-        Una tupla con ``items`` normalizados y ``faltantes`` que no pudieron
-        emparejarse con una materia prima.
+    Yields
+    ------
+    tuple(dict | None, dict | None)
+        ``item_validado`` junto con ``pendiente`` si no se encontró una materia
+        prima asociada.
     """
 
-    items: List[Dict] = []
-    faltantes: List[Dict] = []
     encontrados: Dict[str, "MateriaPrima"] = {}
     omitidos_norm = {n.strip().lower() for n in (omitidos or [])}
 
@@ -102,7 +110,7 @@ def _normalizar_items(
             mp = _buscar_materia_prima(nombre)
             encontrados[nombre_normalizado] = mp
         if not mp:
-            faltantes.append(raw)
+            yield None, raw
             continue
 
         try:
@@ -142,22 +150,19 @@ def _normalizar_items(
         if not descripcion:
             descripcion = ""
 
-        items.append(
-            {
-                "producto_id": mp.id,
-                "nombre_producto": mp.nombre,
-                "cantidad": cantidad,
-                "costo_unitario": precio,
-                "descripcion_adicional": descripcion,
-            }
-        )
-    return items, faltantes
+        yield {
+            "producto_id": mp.id,
+            "nombre_producto": mp.nombre,
+            "cantidad": cantidad,
+            "costo_unitario": precio,
+            "descripcion_adicional": descripcion,
+        }, None
 
 
 def parse_receipt_image(
-    path_imagen: str, omitidos: List[str] | None = None
-) -> Tuple[List[Dict], List[Dict]]:
-    """Parse a receipt image and return a tuple of item dictionaries.
+    path_imagen: str, omitidos: Iterable[str] | None = None
+) -> Iterator[Tuple[Dict | None, Dict | None]]:
+    """Parse a receipt image and yield normalised items lazily.
 
     The function currently supports two backends:
 
@@ -167,11 +172,11 @@ def parse_receipt_image(
        which relies on the Gemini API to process ``.jpeg``, ``.jpg`` or
        ``.png`` images.
 
-    Returns
-    -------
-    tuple(list, list)
-        ``items`` normalizados y ``faltantes`` cuyos nombres no coincidieron
-        con ninguna materia prima conocida.
+    Yields
+    ------
+    tuple(dict | None, dict | None)
+        Tuplas ``(item_validado, pendiente)`` como las generadas por
+        :func:`_normalizar_items`.
     """
 
     if not path_imagen:

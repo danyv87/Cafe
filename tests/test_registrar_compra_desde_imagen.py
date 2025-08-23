@@ -9,16 +9,18 @@ from models.proveedor import Proveedor
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_ok(mock_parse):
-    mock_parse.return_value = (
+    mock_parse.return_value = iter(
         [
-            {
-                "producto_id": 1,
-                "nombre_producto": "Cafe",
-                "cantidad": 2,
-                "costo_unitario": 5,
-            }
-        ],
-        [],
+            (
+                {
+                    "producto_id": 1,
+                    "nombre_producto": "Cafe",
+                    "cantidad": 2,
+                    "costo_unitario": 5,
+                },
+                None,
+            )
+        ]
     )
 
     proveedor = Proveedor("Proveedor")
@@ -60,26 +62,30 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
     mock_parse, mock_agregar, mock_clear
 ):
     mock_parse.side_effect = [
-        (
-            [],
+        iter(
             [
-                {
-                    "nombre_producto": "Azucar",
-                    "cantidad": 2,
-                    "costo_unitario": 50,
-                }
-            ],
+                (
+                    None,
+                    {
+                        "nombre_producto": "Azucar",
+                        "cantidad": 2,
+                        "costo_unitario": 50,
+                    },
+                )
+            ]
         ),
-        (
+        iter(
             [
-                {
-                    "producto_id": 1,
-                    "nombre_producto": "Azucar",
-                    "cantidad": 2,
-                    "costo_unitario": 50,
-                }
-            ],
-            [],
+                (
+                    {
+                        "producto_id": 1,
+                        "nombre_producto": "Azucar",
+                        "cantidad": 2,
+                        "costo_unitario": 50,
+                    },
+                    None,
+                )
+            ]
         ),
     ]
 
@@ -114,33 +120,39 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
     mock_parse, mock_agregar, mock_clear
 ):
     mock_parse.side_effect = [
-        (
+        iter(
             [
-                {
-                    "producto_id": 1,
-                    "nombre_producto": "Cafe",
-                    "cantidad": 2,
-                    "costo_unitario": 5,
-                }
-            ],
-            [
-                {
-                    "nombre_producto": "Azucar",
-                    "cantidad": 1,
-                    "costo_unitario": 3,
-                }
-            ],
+                (
+                    {
+                        "producto_id": 1,
+                        "nombre_producto": "Cafe",
+                        "cantidad": 2,
+                        "costo_unitario": 5,
+                    },
+                    None,
+                ),
+                (
+                    None,
+                    {
+                        "nombre_producto": "Azucar",
+                        "cantidad": 1,
+                        "costo_unitario": 3,
+                    },
+                ),
+            ]
         ),
-        (
+        iter(
             [
-                {
-                    "producto_id": 1,
-                    "nombre_producto": "Cafe",
-                    "cantidad": 2,
-                    "costo_unitario": 5,
-                }
-            ],
-            [],
+                (
+                    {
+                        "producto_id": 1,
+                        "nombre_producto": "Cafe",
+                        "cantidad": 2,
+                        "costo_unitario": 5,
+                    },
+                    None,
+                )
+            ]
         ),
     ]
 
@@ -185,7 +197,7 @@ def test_registrar_compra_desde_imagen_archivo_no_encontrado(mock_parse):
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_datos_malos(mock_parse):
-    mock_parse.return_value = ({"producto": "mal"}, [])  # no es una lista
+    mock_parse.return_value = ({"producto": "mal"}, [])  # no es iterable correcto
     with pytest.raises(ValueError):
         compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
 
@@ -193,16 +205,18 @@ def test_registrar_compra_desde_imagen_datos_malos(mock_parse):
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 @pytest.mark.parametrize("producto_id", [None, "", 0, "abc"])
 def test_registrar_compra_desde_imagen_producto_id_invalido(mock_parse, producto_id):
-    mock_parse.return_value = (
+    mock_parse.return_value = iter(
         [
-            {
-                "producto_id": producto_id,
-                "nombre_producto": "Cafe",
-                "cantidad": 1,
-                "costo_unitario": 5,
-            }
-        ],
-        [],
+            (
+                {
+                    "producto_id": producto_id,
+                    "nombre_producto": "Cafe",
+                    "cantidad": 1,
+                    "costo_unitario": 5,
+                },
+                None,
+            )
+        ]
     )
 
     with pytest.raises(ValueError):
@@ -219,28 +233,36 @@ def test_flujo_selecciona_subconjunto_items(
     original_data_path = compras_controller.DATA_PATH
     compras_controller.DATA_PATH = tmp_path / "compras.json"
 
-    mock_parse.return_value = (
+    mock_parse.return_value = iter(
         [
-            {
-                "producto_id": 1,
-                "nombre_producto": "Cafe",
-                "cantidad": 1,
-                "costo_unitario": 10,
-            },
-            {
-                "producto_id": 2,
-                "nombre_producto": "Azucar",
-                "cantidad": 2,
-                "costo_unitario": 5,
-            },
-            {
-                "producto_id": 3,
-                "nombre_producto": "Harina",
-                "cantidad": 1,
-                "costo_unitario": 7,
-            },
-        ],
-        [],
+            (
+                {
+                    "producto_id": 1,
+                    "nombre_producto": "Cafe",
+                    "cantidad": 1,
+                    "costo_unitario": 10,
+                },
+                None,
+            ),
+            (
+                {
+                    "producto_id": 2,
+                    "nombre_producto": "Azucar",
+                    "cantidad": 2,
+                    "costo_unitario": 5,
+                },
+                None,
+            ),
+            (
+                {
+                    "producto_id": 3,
+                    "nombre_producto": "Harina",
+                    "cantidad": 1,
+                    "costo_unitario": 7,
+                },
+                None,
+            ),
+        ]
     )
 
     try:

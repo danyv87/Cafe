@@ -9,12 +9,27 @@ from models.proveedor import Proveedor
 class TestCompraDesdeImagenGUI(unittest.TestCase):
     @patch('controllers.compras_controller.receipt_parser.parse_receipt_image')
     def test_aceptar_items_actualiza_lista_y_total(self, mock_parse):
-        mock_parse.return_value = (
+        mock_parse.return_value = iter(
             [
-                {"producto_id": 1, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
-                {"producto_id": 2, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
-            ],
-            [],
+                (
+                    {
+                        "producto_id": 1,
+                        "nombre_producto": "Cafe",
+                        "cantidad": 1,
+                        "costo_unitario": 10,
+                    },
+                    None,
+                ),
+                (
+                    {
+                        "producto_id": 2,
+                        "nombre_producto": "Azucar",
+                        "cantidad": 3,
+                        "costo_unitario": 5,
+                    },
+                    None,
+                ),
+            ]
         )
 
         proveedor = Proveedor('Proveedor')

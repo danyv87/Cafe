@@ -38,7 +38,7 @@ def test_normalizar_items_uses_buscar_materia_prima_once_per_name():
 
     with patch("utils.receipt_parser._buscar_materia_prima") as mock_buscar:
         mock_buscar.side_effect = _fake_mps()
-        receipt_parser._normalizar_items(raw_items)
+        list(receipt_parser._normalizar_items(raw_items))
         # Only two unique names, so the expensive lookup should run twice.
         assert mock_buscar.call_count == 2
 
@@ -51,10 +51,31 @@ def test_normalizar_items_accepts_alternative_keys():
 
     with patch("utils.receipt_parser._buscar_materia_prima") as mock_buscar:
         mock_buscar.side_effect = _fake_mps()
-        items, faltantes = receipt_parser._normalizar_items(raw_items)
+        stream = receipt_parser._normalizar_items(raw_items)
+        items, faltantes = [], []
+        for item, pendiente in stream:
+            if item:
+                items.append(item)
+            if pendiente:
+                faltantes.append(pendiente)
 
     assert faltantes == []
     assert items[0]["costo_unitario"] == 3.0
     assert items[0]["descripcion_adicional"] == "extra: promo"
     assert items[1]["costo_unitario"] == 4.0
+
+
+def test_normalizar_items_partial_iteration():
+    """The generator should only resolve items that are iterated."""
+
+    raw_items = [
+        {"nombre_producto": "Cafe", "cantidad": 1, "precio": 1},
+        {"nombre_producto": "Leche", "cantidad": 1, "precio": 1},
+    ]
+
+    with patch("utils.receipt_parser._buscar_materia_prima") as mock_buscar:
+        mock_buscar.side_effect = _fake_mps()
+        gen = receipt_parser._normalizar_items(raw_items)
+        next(gen)  # consume only first item
+        assert mock_buscar.call_count == 1
 

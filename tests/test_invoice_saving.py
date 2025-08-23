@@ -7,16 +7,18 @@ from models.proveedor import Proveedor
 
 @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
 def test_registrar_compra_desde_imagen_guarda_factura(mock_parse, tmp_path):
-    mock_parse.return_value = (
+    mock_parse.return_value = iter(
         [
-            {
-                "producto_id": 1,
-                "nombre_producto": "Cafe",
-                "cantidad": 2,
-                "costo_unitario": 5,
-            }
-        ],
-        [],
+            (
+                {
+                    "producto_id": 1,
+                    "nombre_producto": "Cafe",
+                    "cantidad": 2,
+                    "costo_unitario": 5,
+                },
+                None,
+            )
+        ]
     )
 
     proveedor = Proveedor("Proveedor")

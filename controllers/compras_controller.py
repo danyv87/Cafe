@@ -176,7 +176,7 @@ def registrar_compra_desde_imagen(
     omitidos = list(omitidos or [])
     metadata = {"archivo": path_imagen, "proveedor": proveedor.nombre}
     try:
-        items_dict, faltantes = receipt_parser.parse_receipt_image(
+        items_stream = receipt_parser.parse_receipt_image(
             path_imagen, omitidos=omitidos
         )
     except (ConnectionError, TimeoutError) as e:
@@ -204,12 +204,13 @@ def registrar_compra_desde_imagen(
         logger.exception("Error al interpretar la imagen", extra=metadata)
         raise ValueError("No se pudo interpretar la imagen del comprobante.") from e
 
-    if not isinstance(items_dict, list):
-        raise ValueError("Formato de datos inválido del comprobante.")
-
-    pendientes: List[dict] = list(faltantes)
+    pendientes: List[dict] = []
     items_validados = []
-    for item in items_dict:
+    for item, faltante in items_stream:
+        if faltante is not None:
+            pendientes.append(faltante)
+            continue
+
         try:
             producto_id = int(item["producto_id"])
             nombre = item["nombre_producto"].strip()

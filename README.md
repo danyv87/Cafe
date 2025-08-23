@@ -103,4 +103,27 @@ pip install google-genai==1.0.0
 
 La función `utils/receipt_parser.parse_receipt_image` detecta automáticamente imágenes (`.png`, `.jpg`, `.jpeg`) y emplea este backend cuando está instalado y configurado.
 
+### Procesamiento en streaming
+
+El normalizador de comprobantes funciona ahora en modo *streaming*. En lugar de
+devolver listas completas, `parse_receipt_image` produce un generador que
+emite tuplas `(item_validado, pendiente)` una por una. Esto permite consumir
+parcialmente los resultados o materializarlos solo cuando la interfaz lo
+requiera:
+
+```python
+from utils.receipt_parser import parse_receipt_image
+
+items = []
+pendientes = []
+for item, pendiente in parse_receipt_image("ticket.json"):
+    if item:
+        items.append(item)
+    if pendiente:
+        pendientes.append(pendiente)
+```
+
+Al iterar parcialmente se minimiza el uso de memoria y el tiempo de búsqueda de
+materias primas se realiza únicamente para los elementos consumidos.
+
 
