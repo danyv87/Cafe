@@ -3,3 +3,4 @@ numpy
 pandas
 tkcalendar
 python-dotenv
+Pillow

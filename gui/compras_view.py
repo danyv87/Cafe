@@ -9,6 +9,7 @@ from controllers.materia_prima_controller import (
     listar_materias_primas,
     obtener_materia_prima_por_id,
 )
+from utils.preview_utils import mostrar_imagen
 
 
 def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total):
@@ -16,6 +17,9 @@ def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, lab
 
     source = filedialog.askopenfilename(title="Seleccionar factura")
     if not source:
+        return
+    if source.lower().endswith((".jpg", ".jpeg")):
+        mostrar_imagen(source)
         return
 
     invoice_id = simpledialog.askstring(
@@ -384,6 +388,13 @@ def mostrar_ventana_compras():
         command=quitar_item_compra,
         width=25,
         bg="lightcoral",
+    ).pack(pady=5)
+    tk.Button(
+        ventana,
+        text="Vista previa factura",
+        command=lambda: importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total),
+        width=25,
+        bg="orange",
     ).pack(pady=5)
     tk.Button(
         ventana,
