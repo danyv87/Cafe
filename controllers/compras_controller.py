@@ -157,10 +157,11 @@ def registrar_compra_desde_imagen(
             ``False`` el ítem se omite.
 
     Returns:
-        tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
-            items_pendientes)`` o ``(Compra, items_pendientes)`` si
-            ``como_compra`` es ``True``. ``items_pendientes`` contiene los
-            productos del comprobante que no tienen una materia prima asociada.
+        tuple[list[dict], list[dict], dict] | tuple[Compra, list[dict], dict]:
+            ``(items_validos, items_pendientes, meta)`` o ``(Compra,
+            items_pendientes, meta)`` si ``como_compra`` es ``True``. ``meta``
+            incluye información adicional del comprobante como proveedor,
+            número, fecha y total.
 
     Raises:
         ValueError: Se propaga con alguno de los siguientes mensajes para
@@ -183,9 +184,12 @@ def registrar_compra_desde_imagen(
     omitidos = list(omitidos or [])
     metadata = {"archivo": path_imagen, "proveedor": proveedor.nombre}
     try:
-        items_dict, faltantes = receipt_parser.parse_receipt_image(
-            path_imagen, omitidos=omitidos
-        )
+        parsed = receipt_parser.parse_receipt_image(path_imagen, omitidos=omitidos)
+        if len(parsed) == 3:
+            items_dict, faltantes, meta = parsed
+        else:  # Compatibilidad con implementaciones antiguas
+            items_dict, faltantes = parsed  # type: ignore[misc]
+            meta = {}
     except (ConnectionError, TimeoutError) as e:
         logger.exception("Error de red al procesar comprobante", extra=metadata)
         raise ValueError(
@@ -274,6 +278,8 @@ def registrar_compra_desde_imagen(
             "items": items_validados,
             "pendientes": pendientes,
         }
+        if meta:
+            factura.update(meta)
         try:
             invoice_id = save_invoice(factura, destino)
             logger.info(f"Factura guardada con ID {invoice_id}")
@@ -294,9 +300,10 @@ def registrar_compra_desde_imagen(
         return (
             Compra(proveedor_id=proveedor.id, items_compra=detalles),
             pendientes,
+            meta,
         )
 
-    return items_validados, pendientes
+    return items_validados, pendientes, meta
 
 
 def importar_factura_simple(
@@ -323,7 +330,7 @@ def importar_factura_simple(
 
     db_conn = destino if isinstance(destino, sqlite3.Connection) else None
     output_dir = None if db_conn is not None else destino
-    return registrar_compra_desde_imagen(
+    compra, pendientes, _ = registrar_compra_desde_imagen(
         proveedor,
         path_imagen,
         como_compra=True,
@@ -332,6 +339,7 @@ def importar_factura_simple(
         omitidos=None,
         selector=None,
     )
+    return compra, pendientes
 
 
 def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
@@ -354,7 +362,7 @@ def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     resultados = []
     for archivo in archivos:
         try:
-            compra, pendientes = registrar_compra_desde_imagen(
+            compra, pendientes, _ = registrar_compra_desde_imagen(
                 proveedor, archivo, como_compra=True
             )
             resultados.append(
