@@ -11,6 +11,7 @@ from controllers.materia_prima_controller import (
     obtener_materia_prima_por_id,
 )
 from utils.preview_utils import mostrar_imagen
+from utils.ocr_utils import MODEL_NAME
 
 
 def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, label_total):
@@ -23,7 +24,7 @@ def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, lab
         try:
             from google import genai
             client = genai.Client()
-            resp = client.models.generate_content(model="invoice", contents=[source])
+            resp = client.models.generate_content(model=MODEL_NAME, contents=[source])
             data = json.loads(resp.text)
 
             proveedor = Proveedor(
