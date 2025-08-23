@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 from tkcalendar import DateEntry
 import datetime
+import json
 from controllers.compras_controller import importar_factura, registrar_compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
@@ -19,7 +20,32 @@ def importar_desde_archivo(compra_actual_items, actualizar_lista_compra_gui, lab
     if not source:
         return
     if source.lower().endswith((".jpg", ".jpeg")):
-        mostrar_imagen(source)
+        try:
+            from google import genai
+            client = genai.Client()
+            resp = client.models.generate_content(model="invoice", contents=[source])
+            data = json.loads(resp.text)
+
+            proveedor = Proveedor(
+                data.get("proveedor", ""), id=data.get("proveedor_id")
+            )
+            detalles = [
+                CompraDetalle(
+                    producto_id=item.get("producto_id"),
+                    nombre_producto=item.get("nombre_producto"),
+                    cantidad=item.get("cantidad"),
+                    costo_unitario=item.get("costo_unitario"),
+                    descripcion_adicional=item.get("descripcion_adicional", ""),
+                )
+                for item in data.get("items", [])
+            ]
+            registrar_compra(proveedor, detalles, fecha=data.get("fecha"))
+            messagebox.showinfo("Éxito", "Factura importada correctamente.")
+            compra_actual_items.clear()
+            actualizar_lista_compra_gui()
+            label_total.config(text="Total Compra: Gs 0")
+        except Exception as ex:  # pragma: no cover
+            messagebox.showerror("Error", str(ex))
         return
 
     invoice_id = simpledialog.askstring(
