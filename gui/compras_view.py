@@ -219,7 +219,12 @@ def mostrar_ventana_compras():
         frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         scrollbar = tk.Scrollbar(frame_items, orient=tk.VERTICAL)
-        lista_items = tk.Listbox(frame_items, yscrollcommand=scrollbar.set, width=80)
+        lista_items = tk.Listbox(
+            frame_items,
+            yscrollcommand=scrollbar.set,
+            width=80,
+            selectmode="extended",
+        )
         scrollbar.config(command=lista_items.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         lista_items.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -251,7 +256,14 @@ def mostrar_ventana_compras():
                 lista_falt.insert(tk.END, nombre)
 
         def aceptar_items():
-            for item in items:
+            seleccionados = lista_items.curselection()
+            if not seleccionados:
+                messagebox.showwarning(
+                    "Atención", "Seleccione al menos un ítem para agregar."
+                )
+                return
+            for idx in seleccionados:
+                item = items[idx]
                 detalle = CompraDetalle(
                     producto_id=item["producto_id"],
                     nombre_producto=item["nombre_producto"],
@@ -263,7 +275,7 @@ def mostrar_ventana_compras():
             actualizar_lista_compra_gui()
             ventana_items.destroy()
             messagebox.showinfo(
-                "Éxito", f"Se agregaron {len(items)} ítems importados."
+                "Éxito", f"Se agregaron {len(seleccionados)} ítems importados."
             )
 
         tk.Button(ventana_items, text="Agregar a la compra", command=aceptar_items, bg="lightgreen").pack(pady=5)

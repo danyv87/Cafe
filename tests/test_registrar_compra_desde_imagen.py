@@ -265,3 +265,36 @@ def test_flujo_selecciona_subconjunto_items(
         assert mock_actualizar.call_count == 2
     finally:
         compras_controller.DATA_PATH = original_data_path
+
+
+@patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
+def test_registrar_compra_desde_imagen_selector(mock_parse):
+    """El parámetro ``selector`` debe permitir excluir ítems válidos."""
+    mock_parse.return_value = (
+        [
+            {
+                "producto_id": 1,
+                "nombre_producto": "Cafe",
+                "cantidad": 1,
+                "costo_unitario": 10,
+            },
+            {
+                "producto_id": 2,
+                "nombre_producto": "Azucar",
+                "cantidad": 2,
+                "costo_unitario": 5,
+            },
+        ],
+        [],
+    )
+
+    proveedor = Proveedor("Proveedor")
+    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        proveedor,
+        "img.jpg",
+        selector=lambda i: i["nombre_producto"] != "Azucar",
+    )
+
+    assert pendientes == []
+    assert len(items) == 1
+    assert items[0]["nombre_producto"] == "Cafe"

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Callable
 
 from utils.json_utils import read_json, write_json
 from models.compra import Compra
@@ -129,6 +129,7 @@ def registrar_compra_desde_imagen(
     output_dir=None,
     db_conn=None,
     omitidos=None,
+    selector: Callable[[dict], bool] | None = None,
 ):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
@@ -148,6 +149,9 @@ def registrar_compra_desde_imagen(
             guardar la factura. Tiene prioridad sobre ``output_dir``.
         omitidos (list[str] | None): Nombres de materias primas que deben
             omitirse durante el reconocimiento.
+        selector (Callable[[dict], bool] | None): Función opcional que recibe
+            cada ítem validado y devuelve ``True`` para incluirlo. Si retorna
+            ``False`` el ítem se omite.
 
     Returns:
         tuple[list[dict], list[dict]] | tuple[Compra, list[dict]]: ``(items_validos,
@@ -233,16 +237,15 @@ def registrar_compra_desde_imagen(
             raise ValueError("costo_unitario debe ser un número positivo.")
         if not isinstance(descripcion, str):
             raise ValueError("descripcion_adicional debe ser texto.")
-
-        items_validados.append(
-            {
-                "producto_id": producto_id,
-                "nombre_producto": nombre,
-                "cantidad": cantidad,
-                "costo_unitario": costo_unitario,
-                "descripcion_adicional": descripcion,
-            }
-        )
+        item_validado = {
+            "producto_id": producto_id,
+            "nombre_producto": nombre,
+            "cantidad": cantidad,
+            "costo_unitario": costo_unitario,
+            "descripcion_adicional": descripcion,
+        }
+        if selector is None or selector(item_validado):
+            items_validados.append(item_validado)
 
     # Guardar la factura si corresponde
     destino = db_conn if db_conn is not None else output_dir
@@ -365,18 +368,45 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
     return nueva_compra
 
 
+def eliminar_compra(compra_id: str) -> bool:
+    """Elimina una compra existente, ajusta el stock y reexporta a Excel."""
+
+    compras = cargar_compras()
+    compra_obj = next((c for c in compras if c.id == compra_id), None)
+    if not compra_obj:
+        raise ValueError(
+            f"Compra con ID '{compra_id}' no encontrada para eliminación."
+        )
+
+    procesados: list[CompraDetalle] = []
+    try:
+        for item in compra_obj.items_compra:
+            actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
+            procesados.append(item)
+    except Exception as e:  # pragma: no cover - rollback best effort
+        for item in procesados:
+            try:
+                actualizar_stock_materia_prima(item.producto_id, item.cantidad)
+            except Exception:
+                logger.exception(
+                    "Error al revertir stock al fallar eliminación de compra"
+                )
+        raise e
+
+    nuevas_compras = [c for c in compras if c.id != compra_id]
+    guardar_compras(nuevas_compras)
+    exportar_compras_excel(nuevas_compras)
+    return True
+
+
 def listar_compras():
-    """
-    Retorna la lista completa de compras.
-    """
+    """Retorna la lista completa de compras."""
     return cargar_compras()
 
 
 def total_comprado():
-    """
-    Calcula y retorna el total de todas las compras registradas.
-    """
-    compras = cargar_compras()
+    """Calcula y retorna el total de todas las compras registradas."""
+    compras = listar_compras()
     return round(sum(c.total for c in compras), 2)
 
 def obtener_compras_por_mes():
@@ -386,7 +416,7 @@ def obtener_compras_por_mes():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-01', 'Gs 50.000,00'), ('2023-02', 'Gs 75.000,00')]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_mensuales = defaultdict(float)
 
     for compra in compras:
@@ -422,7 +452,7 @@ def obtener_compras_por_semana():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-W01', 'Gs 25.000,00'), ('2023-W02', 'Gs 30.000,00')]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_semanales = defaultdict(float)
 
     for compra in compras:
@@ -457,7 +487,7 @@ def obtener_compras_por_dia():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2025-06-15', 'Gs 120.000'), ...]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_dia = defaultdict(float)
     for compra in compras:
         try:
