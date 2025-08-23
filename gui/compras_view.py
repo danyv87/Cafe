@@ -307,8 +307,11 @@ def mostrar_ventana_compras():
         try:
             proveedor = Proveedor(proveedor_nombre)
             meta = {}
-            items, faltantes, meta = ejecutar_registro([])
+            omitidos: list[str] = []
+            items, faltantes, meta = ejecutar_registro(omitidos)
             pendientes: list[dict] = list(faltantes)
+            # Nombres de materias primas que el usuario decide omitir
+            omitidos: list[str] = []
             ultima_importacion = {
                 "items": items,
                 "pendientes": pendientes,
@@ -446,7 +449,7 @@ def mostrar_ventana_compras():
                     )
 
                 def crear_materias_primas_nuevas():
-                    nonlocal items, pendientes, ultima_importacion, meta
+                    nonlocal items, pendientes, ultima_importacion, meta, omitidos
                     datos_creacion = solicitar_datos_materia_prima_masivo(
                         pendientes
                     )

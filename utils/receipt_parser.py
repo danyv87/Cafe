@@ -250,7 +250,12 @@ def parse_receipt_image(
                 "numero": data.get("numero_comprobante") or data.get("numero"),
                 "fecha": data.get("fecha"),
                 "total": data.get("total"),
+                "ruc_proveedor": data.get("ruc_proveedor"),
+                "ruc": data.get("ruc"),
+                "timbrado": data.get("timbrado"),
             }
+            if "extras" in data:
+                meta["extras"] = data.get("extras")
         elif isinstance(data, list):
             raw_items = data
         else:
@@ -278,7 +283,12 @@ def parse_receipt_image(
             "numero": raw.get("numero_comprobante") or raw.get("numero"),
             "fecha": raw.get("fecha"),
             "total": raw.get("total"),
+            "ruc_proveedor": raw.get("ruc_proveedor"),
+            "ruc": raw.get("ruc"),
+            "timbrado": raw.get("timbrado"),
         }
+        if "extras" in raw:
+            meta["extras"] = raw.get("extras")
     elif isinstance(raw, list):
         raw_items = raw
     else:

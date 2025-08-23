@@ -380,8 +380,12 @@ def extract_invoice_with_fallback(
             logger.warning("Fallback %s falló: %s", fallback, exc)
     return data
 
-def parse_receipt_image(path: str) -> List[Dict]:
-    """Parse a receipt image using the Gemini backend and autocomplete unit, cost, and stock."""
+def parse_receipt_image(path: str) -> Dict[str, Any]:
+    """Parse a receipt image using the Gemini backend.
+
+    Returns a dictionary containing a normalised ``items`` list and metadata
+    extracted from the invoice such as ``proveedor``, ``fecha`` and ``total``.
+    """
     try:
         from google import genai
         from google.genai.types import Part
@@ -464,4 +468,18 @@ def parse_receipt_image(path: str) -> List[Dict]:
 
         items.append(item)
 
-    return items
+    # Build output with items and relevant metadata
+    result: Dict[str, Any] = {
+        "items": items,
+        "proveedor": invoice.proveedor,
+        "ruc_proveedor": invoice.ruc_proveedor,
+        "timbrado": invoice.timbrado,
+        "ruc": invoice.ruc,
+        "numero": invoice.numero,
+        "fecha": invoice.fecha,
+        "total": invoice.total,
+    }
+    if invoice.extras:
+        result["extras"] = invoice.extras
+
+    return result

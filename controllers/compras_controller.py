@@ -217,7 +217,14 @@ def registrar_compra_desde_imagen(
     }
     if meta:
         factura.update(meta)
-    importer.persist(factura, destino)
+    try:
+        importer.persist(factura, destino)
+    except RuntimeError:
+        logger.exception(
+            "Error al guardar la factura",
+            extra={"archivo": path_imagen, "proveedor": proveedor.nombre},
+        )
+        raise ValueError("No se pudo guardar la factura.")
 
     if como_compra:
         detalles = [

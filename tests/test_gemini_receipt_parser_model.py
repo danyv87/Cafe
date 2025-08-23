@@ -59,9 +59,9 @@ def test_parse_receipt_image_success(monkeypatch, tmp_path):
 
     monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", fake_key)
 
-    items = gemini_receipt_parser.parse_receipt_image(str(img))
+    data = gemini_receipt_parser.parse_receipt_image(str(img))
 
-    assert items == [
+    assert data["items"] == [
         {
             "producto": "Pan",
             "cantidad": 2.0,
@@ -96,9 +96,9 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
     _setup_dummy_genai(monkeypatch, response)
     monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
 
-    items = gemini_receipt_parser.parse_receipt_image(str(img))
+    data = gemini_receipt_parser.parse_receipt_image(str(img))
 
-    assert items == [
+    assert data["items"] == [
         {
             "producto": "Pan",
             "cantidad": 2.0,
@@ -109,6 +109,24 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
             "stock": 2.0,
         }
     ]
+
+
+def test_parse_receipt_image_returns_metadata(monkeypatch, tmp_path):
+    """The returned dictionary should expose invoice metadata."""
+
+    img = tmp_path / "recibo.jpg"
+    img.write_bytes(b"fake")
+    response = types.SimpleNamespace(
+        text='{"proveedor": "Tienda", "fecha": "01/03/2024", "total": 7, "items": [{"producto": "Pan", "cantidad": 2, "precio": 3.5}]}'
+    )
+    _setup_dummy_genai(monkeypatch, response)
+    monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
+
+    data = gemini_receipt_parser.parse_receipt_image(str(img))
+
+    assert data["proveedor"] == "Tienda"
+    assert data["total"] == 7.0
+    assert data["fecha"] == "2024-03-01"
 
 
 def test_normalize_numbers_scales_all_money_fields():
