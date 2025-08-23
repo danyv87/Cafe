@@ -3,6 +3,7 @@ import sqlite3
 from typing import List
 
 from utils.json_utils import read_json, write_json
+from utils.invoice_utils import load_invoice
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
@@ -125,6 +126,35 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
             raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
+
+
+def importar_factura(path_factura: str) -> Compra:
+    """Importa una factura desde ``path_factura`` y la registra como compra.
+
+    Parameters
+    ----------
+    path_factura: str
+        Ruta al archivo JSON que representa la factura.
+
+    Returns
+    -------
+    Compra
+        La compra registrada a partir de la factura.
+    """
+    data = load_invoice(path_factura)
+    proveedor = Proveedor(data.get("proveedor", ""), id=data.get("proveedor_id"))
+    items = [
+        CompraDetalle(
+            producto_id=item["producto_id"],
+            nombre_producto=item["nombre_producto"],
+            cantidad=item["cantidad"],
+            costo_unitario=item["costo_unitario"],
+            descripcion_adicional=item.get("descripcion_adicional", ""),
+        )
+        for item in data.get("items", [])
+    ]
+    fecha = data.get("fecha")
+    return registrar_compra(proveedor, items, fecha=fecha)
 
 
 def eliminar_compra(compra_id: str) -> bool:
@@ -269,6 +299,7 @@ __all__ = [
     "guardar_compras",
     "exportar_compras_excel",
     "registrar_compra",
+    "importar_factura",
     "eliminar_compra",
     "listar_compras",
     "total_comprado",
