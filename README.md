@@ -85,6 +85,24 @@ cp data/history/2024-01-30/*.json data/
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
 
+
+
+### Eliminación de compras
+
+Desde el menú **Informes y Análisis** puedes abrir la opción *Eliminar Compras* para
+quitar una compra registrada. Al confirmar la eliminación se revertirá el stock de
+cada materia prima incluida en esa compra.
+
+⚠️ **Advertencia:** si el stock actual es menor al que se pretende revertir, la operación
+fallará y la compra no será eliminada.
+
+#### Uso por consola / API
+
+```python
+from controllers.compras_controller import eliminar_compra
+eliminar_compra("ID_DE_COMPRA")
+```
+El método devuelve ``True`` si la compra se eliminó.
 ## Receipts con Gemini
 
 La aplicación puede extraer ítems de comprobantes usando los modelos de Gemini.

@@ -475,3 +475,33 @@ def obtener_compras_por_dia():
     return formatted
 
 
+def eliminar_compra(compra_id: str) -> bool:
+    """
+    Elimina una compra existente y revierte el stock asociado.
+
+    Args:
+        compra_id (str): Identificador único de la compra a eliminar.
+
+    Returns:
+        bool: ``True`` si la compra se eliminó correctamente. ``False`` si no se encontró la compra.
+
+    Raises:
+        ValueError: Si al revertir el stock alguna materia prima queda con stock negativo
+            o la materia prima no existe.
+
+    Notes:
+        Esta operación **no se puede deshacer**. Se restará del stock la cantidad de cada
+        materia prima incluida en la compra eliminada.
+    """
+    compras = cargar_compras()
+    compra_obj = next((c for c in compras if c.id == compra_id), None)
+    if not compra_obj:
+        return False
+
+    for item in compra_obj.items_compra:
+        # Revertir el stock sumado por la compra
+        actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
+
+    compras = [c for c in compras if c.id != compra_id]
+    guardar_compras(compras)
+    return True
