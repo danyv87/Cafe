@@ -376,8 +376,25 @@ def total_comprado():
     """
     Calcula y retorna el total de todas las compras registradas.
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     return round(sum(c.total for c in compras), 2)
+
+
+def eliminar_compra(compra_id: str) -> None:
+    """Elimina una compra por ``compra_id`` y actualiza los archivos externos.
+
+    Se vuelve a exportar a Excel tras persistir los cambios para mantener
+    sincronizados los datos utilizados fuera de la aplicación.
+    """
+
+    compras = listar_compras()
+    nuevas_compras = [c for c in compras if c.id != compra_id]
+    if len(nuevas_compras) == len(compras):
+        raise ValueError("Compra no encontrada")
+
+    guardar_compras(nuevas_compras)
+    # Re-exportar explícitamente para asegurar sincronización externa
+    exportar_compras_excel(nuevas_compras)
 
 def obtener_compras_por_mes():
     """
@@ -386,7 +403,7 @@ def obtener_compras_por_mes():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-01', 'Gs 50.000,00'), ('2023-02', 'Gs 75.000,00')]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_mensuales = defaultdict(float)
 
     for compra in compras:
@@ -422,7 +439,7 @@ def obtener_compras_por_semana():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2023-W01', 'Gs 25.000,00'), ('2023-W02', 'Gs 30.000,00')]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_semanales = defaultdict(float)
 
     for compra in compras:
@@ -457,7 +474,7 @@ def obtener_compras_por_dia():
     con el total formateado con separador de miles y signo de moneda.
     Ejemplo: [('2025-06-15', 'Gs 120.000'), ...]
     """
-    compras = cargar_compras()
+    compras = listar_compras()
     compras_dia = defaultdict(float)
     for compra in compras:
         try:
