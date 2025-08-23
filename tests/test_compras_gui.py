@@ -56,6 +56,279 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             "Se agregaron 1 ítems importados.",
         )
 
+    def test_resolver_faltantes_con_coincidencias_y_creacion_masiva(self):
+        import gui.compras_view as compras_view
+
+        pendientes_data = [
+            {"nombre_producto": "Cafee", "cantidad": 1, "costo_unitario": 10},
+            {"nombre_producto": "Azucra", "cantidad": 2, "costo_unitario": 5},
+            {"nombre_producto": "Yerba", "cantidad": 3, "costo_unitario": 8},
+        ]
+
+        class DummyToplevel:
+            def __init__(self, *a, **k):
+                pass
+
+            def title(self, *a):
+                pass
+
+            def geometry(self, *a):
+                pass
+
+            def attributes(self, *a, **k):
+                pass
+
+            def after(self, delay, func):
+                func()
+
+            def wait_window(self, *a):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def destroy(self):
+                pass
+
+            def transient(self, *a):
+                pass
+
+            def grab_set(self):
+                pass
+
+        class DummyFrame:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+        class DummyScrollbar:
+            def __init__(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def set(self, *a, **k):
+                pass
+
+        class DummyListbox:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.items = []
+                self.selection = ()
+                DummyListbox.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def delete(self, start, end=None):
+                self.items = []
+
+            def insert(self, index, item):
+                self.items.append(item)
+
+            def size(self):
+                return len(self.items)
+
+            def curselection(self):
+                return self.selection
+
+            def selection_set(self, start, end=None):
+                if end is None:
+                    self.selection = (start,)
+                else:
+                    self.selection = tuple(range(start, end + 1))
+
+            def selection_clear(self, start, end=None):
+                self.selection = ()
+
+            def yview(self, *a, **k):
+                pass
+
+            def bind(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+        class DummyButton:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.command = k.get("command")
+                self.text = k.get("text")
+                DummyButton.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+        class DummyLabel:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.text = k.get("text")
+                DummyLabel.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def config(self, *a, **k):
+                pass
+
+        class DummyEntry:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.value = ""
+                DummyEntry.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+            def get(self):
+                return self.value
+
+            def insert(self, index, value):
+                self.value = value
+
+            def delete(self, start, end=None):
+                self.value = ""
+
+            def bind(self, *a, **k):
+                pass
+
+        class DummyProgressbar:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+            def start(self):
+                pass
+
+            def stop(self):
+                pass
+
+        class DummyThread:
+            def __init__(self, target, daemon=False):
+                self.target = target
+
+            def start(self):
+                self.target()
+
+            def is_alive(self):
+                return False
+
+        class DummyCheckbutton:
+            def __init__(self, *a, **k):
+                self.variable = k.get("variable")
+
+            def pack(self, *a, **k):
+                pass
+
+        class DummyBooleanVar:
+            def __init__(self, value=False):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, val):
+                self.value = val
+
+        mp_fake = type("MP", (), {"unidad_medida": "u"})()
+
+        normalized_items = [
+            {
+                "producto_id": "id_fuzzy",
+                "nombre_producto": "Cafe",
+                "cantidad": 1,
+                "costo_unitario": 10,
+                "descripcion_adicional": "",
+            },
+            {
+                "producto_id": "id_nuevo",
+                "nombre_producto": "Yerba",
+                "cantidad": 3,
+                "costo_unitario": 8,
+                "descripcion_adicional": "",
+            },
+        ]
+
+        with patch(
+            "gui.compras_view.registrar_compra_desde_imagen",
+            return_value=([], pendientes_data, {}),
+        ) as mock_registrar, patch(
+            "gui.compras_view.solicitar_datos_materia_prima_masivo",
+            return_value={"Yerba": ("kg", 8, 0)},
+        ) as mock_solicitar, patch(
+            "gui.compras_view.registrar_materias_primas_faltantes",
+            return_value=( ["Yerba"], [pendientes_data[1]] ),
+        ) as mock_registrar_falt, patch(
+            "gui.compras_view.receipt_parser._normalizar_items",
+            return_value=(normalized_items, []),
+        ) as mock_match, patch(
+            "gui.compras_view.filedialog.askopenfilename",
+            return_value="test.png",
+        ), patch(
+            "gui.compras_view.messagebox",
+        ), patch(
+            "gui.compras_view.listar_materias_primas",
+            return_value=[],
+        ), patch(
+            "gui.compras_view.obtener_materia_prima_por_id",
+            return_value=mp_fake,
+        ), patch(
+            "gui.compras_view.DateEntry",
+            DummyEntry,
+        ), patch(
+            "gui.compras_view.ttk.Label",
+            DummyLabel,
+        ), patch(
+            "gui.compras_view.ttk.Progressbar",
+            DummyProgressbar,
+        ), patch(
+            "gui.compras_view.ttk.Checkbutton",
+            DummyCheckbutton,
+        ), patch(
+            "gui.compras_view.threading.Thread",
+            DummyThread,
+        ), patch.multiple(
+            "gui.compras_view.tk",
+            Toplevel=DummyToplevel,
+            Frame=DummyFrame,
+            Scrollbar=DummyScrollbar,
+            Listbox=DummyListbox,
+            Button=DummyButton,
+            Label=DummyLabel,
+            Entry=DummyEntry,
+            BooleanVar=DummyBooleanVar,
+        ):
+            compras_view.mostrar_ventana_compras()
+            DummyEntry.instances[0].insert(0, "Proveedor")
+            import_btn = next(
+                b for b in DummyButton.instances if b.text == "Importar desde imagen"
+            )
+            import_btn.command()
+            registrar_btn = next(
+                b for b in DummyButton.instances if b.text == "Registrar faltantes"
+            )
+            registrar_btn.command()
+            self.assertEqual(mock_registrar.call_count, 1)
+            mock_solicitar.assert_called_once()
+            mock_registrar_falt.assert_called_once()
+            mock_match.assert_called_once()
+
     def test_items_deseleccionados_no_agregados(self):
         import gui.compras_view as compras_view
 

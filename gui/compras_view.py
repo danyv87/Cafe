@@ -13,6 +13,7 @@ from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import listar_materias_primas, obtener_materia_prima_por_id
 from gui.materia_prima_dialogs import solicitar_datos_materia_prima_masivo
+from utils import receipt_parser
 
 
 def mostrar_ventana_compras():
@@ -409,10 +410,11 @@ def mostrar_ventana_compras():
                     datos_creacion = solicitar_datos_materia_prima_masivo(
                         pendientes
                     )
+                    pendientes_original = list(pendientes)
                     registrados, omitidos_raw = registrar_materias_primas_faltantes(
                         pendientes, datos_creacion
                     )
-                    pendientes = omitidos_raw
+                    pendientes = list(omitidos_raw)
                     omitidos.extend(
                         [
                             r.get("nombre_producto")
@@ -422,13 +424,19 @@ def mostrar_ventana_compras():
                         ]
                     )
                     if registrados:
-                        items, faltantes_nuevos, meta = ejecutar_registro(omitidos)
+                        a_reprocesar = [
+                            r for r in pendientes_original if r not in omitidos_raw
+                        ]
+                        nuevos_items, faltantes_nuevos = receipt_parser._normalizar_items(
+                            a_reprocesar, omitidos
+                        )
+                        items.extend(nuevos_items)
                         pendientes.extend(faltantes_nuevos)
-                        ultima_importacion = {
-                            "items": items,
-                            "pendientes": pendientes,
-                            "meta": meta,
-                        }
+                    ultima_importacion = {
+                        "items": items,
+                        "pendientes": pendientes,
+                        "meta": meta,
+                    }
                     ventana_items.destroy()
                     if items or pendientes:
                         mostrar_preview()
