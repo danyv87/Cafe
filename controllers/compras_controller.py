@@ -365,6 +365,51 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
     return nueva_compra
 
 
+def eliminar_compra(compra_id: str) -> bool:
+    """Elimina una compra existente y ajusta el stock.
+
+    Carga todas las compras, busca aquella con ``compra_id`` y, si la
+    encuentra, revierte su impacto en el stock de materias primas. En caso de
+    que el ID no exista se lanza :class:`ValueError`.
+
+    Args:
+        compra_id: Identificador de la compra a eliminar.
+
+    Returns:
+        bool: ``True`` si la compra se eliminó correctamente.
+
+    Raises:
+        ValueError: Si la compra no existe o si al actualizar el stock alguna
+            materia prima queda con stock negativo.
+    """
+
+    compras = cargar_compras()
+    compra_obj = next((c for c in compras if c.id == compra_id), None)
+    if not compra_obj:
+        raise ValueError(
+            f"Compra con ID '{compra_id}' no encontrada para eliminación."
+        )
+
+    procesados: list[CompraDetalle] = []
+    try:
+        for item in compra_obj.items_compra:
+            actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
+            procesados.append(item)
+    except Exception as e:  # pragma: no cover - rollback best effort
+        for item in procesados:
+            try:
+                actualizar_stock_materia_prima(item.producto_id, item.cantidad)
+            except Exception:
+                logger.exception(
+                    "Error al revertir stock al fallar eliminación de compra"
+                )
+        raise e
+
+    compras_filtradas = [c for c in compras if c.id != compra_id]
+    guardar_compras(compras_filtradas)
+    return True
+
+
 def listar_compras():
     """
     Retorna la lista completa de compras.

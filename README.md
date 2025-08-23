@@ -55,6 +55,12 @@ export CAFE_DATA_PATH=/path/to/my/data
 python main.py
 ```
 
+### Gestión de compras
+
+El sistema permite registrar compras de materias primas y también eliminarlas
+si se registraron por error. Al borrar una compra se descuenta del stock la
+cantidad de cada ítem asociado para mantener la consistencia de inventario.
+
 ## Respaldo y restauración
 
 Los archivos JSON con los datos de la aplicación se pueden respaldar y
