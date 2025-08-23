@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
 from uuid import uuid4
 
 from controllers import compras_controller
@@ -138,10 +138,13 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
     assert len(faltantes) == 1
 
     datos = {"Azucar": ("kg", 50.0, 10.0)}
+    mp_mock = MagicMock()
+    mp_mock.id = azucar_id
+    mock_agregar.return_value = mp_mock
     registrados, omitidos = compras_controller.registrar_materias_primas_faltantes(
         faltantes, datos
     )
-    assert registrados == ["Azucar"]
+    assert registrados == {"Azucar": azucar_id}
     assert omitidos == []
     mock_agregar.assert_called_once_with("Azucar", "kg", 50.0, 10.0)
     mock_clear.assert_called_once()
@@ -207,7 +210,7 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
     registrados, omitidos_raw = compras_controller.registrar_materias_primas_faltantes(
         faltantes, {}
     )
-    assert registrados == []
+    assert registrados == {}
     assert omitidos_raw == [
         {"nombre_producto": "Azucar", "cantidad": 1, "costo_unitario": 3}
     ]
