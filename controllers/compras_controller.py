@@ -90,7 +90,7 @@ def exportar_compras_excel(compras):
 
 def registrar_materias_primas_faltantes(
     faltantes: List[dict], datos_creacion: dict[str, tuple]
-) -> tuple[list[str], list[dict]]:
+) -> tuple[dict[str, str], list[dict]]:
     """Registra materias primas faltantes a partir de datos ya validados.
 
     Args:
@@ -100,21 +100,21 @@ def registrar_materias_primas_faltantes(
             datos para las materias primas que se desean crear.
 
     Returns:
-        tuple[list[str], list[dict]]: Una tupla con dos elementos:
-            - Lista de nombres de materias primas creadas.
+        tuple[dict[str, str], list[dict]]: Una tupla con dos elementos:
+            - Diccionario ``{nombre: id}`` de materias primas creadas.
             - Lista de diccionarios correspondientes a las materias primas que
               se decidieron omitir.
     """
 
-    registrados: list[str] = []
+    registrados: dict[str, str] = {}
     omitidos: list[dict] = []
 
     for raw in faltantes:
         nombre = raw.get("nombre_producto") or raw.get("producto") or ""
         if nombre in datos_creacion:
             unidad, costo, stock = datos_creacion[nombre]
-            agregar_materia_prima(nombre, unidad, costo, stock)
-            registrados.append(nombre)
+            mp = agregar_materia_prima(nombre, unidad, costo, stock)
+            registrados[nombre] = mp.id
         else:
             omitidos.append(raw)
 

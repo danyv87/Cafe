@@ -299,10 +299,9 @@ def mostrar_ventana_compras():
             )
 
         try:
-            omitidos: list[str] = []
             proveedor = Proveedor(proveedor_nombre)
             meta = {}
-            items, faltantes, meta = ejecutar_registro(omitidos)
+            items, faltantes, meta = ejecutar_registro([])
             pendientes: list[dict] = list(faltantes)
             ultima_importacion = {
                 "items": items,
@@ -409,28 +408,64 @@ def mostrar_ventana_compras():
                     datos_creacion = solicitar_datos_materia_prima_masivo(
                         pendientes
                     )
-                    registrados, omitidos_raw = registrar_materias_primas_faltantes(
+                    registros, _ = registrar_materias_primas_faltantes(
                         pendientes, datos_creacion
                     )
-                    pendientes = omitidos_raw
-                    omitidos.extend(
-                        [
-                            r.get("nombre_producto")
-                            or r.get("producto")
+
+                    nuevos_items = []
+                    pendientes_restantes = []
+                    for raw in pendientes:
+                        nombre = (
+                            raw.get("nombre_producto")
+                            or raw.get("producto")
                             or ""
-                            for r in omitidos_raw
-                        ]
-                    )
-                    if registrados:
-                        items, faltantes_nuevos, meta = ejecutar_registro(omitidos)
-                        pendientes.extend(faltantes_nuevos)
-                        ultima_importacion = {
-                            "items": items,
-                            "pendientes": pendientes,
-                            "meta": meta,
-                        }
+                        )
+                        if nombre in registros:
+                            mp_id = registros[nombre]
+                            try:
+                                cantidad = float(raw.get("cantidad", 0))
+                                precio_valor = raw.get("costo_unitario")
+                                if precio_valor in (None, ""):
+                                    precio_valor = raw.get("precio")
+                                if precio_valor in (None, ""):
+                                    precio_valor = raw.get("precio_unitario")
+                                if precio_valor in (None, ""):
+                                    precio_valor = raw.get("subtotal", 0)
+                                costo = float(precio_valor)
+                            except Exception:
+                                cantidad = 0.0
+                                costo = 0.0
+                            descripcion = raw.get("descripcion_adicional") or ""
+                            item_dict = {
+                                "producto_id": mp_id,
+                                "nombre_producto": nombre,
+                                "cantidad": cantidad,
+                                "costo_unitario": costo,
+                                "descripcion_adicional": descripcion,
+                            }
+                            nuevos_items.append(item_dict)
+                            compra_actual_items.append(
+                                CompraDetalle(
+                                    producto_id=mp_id,
+                                    nombre_producto=nombre,
+                                    cantidad=cantidad,
+                                    costo_unitario=costo,
+                                    descripcion_adicional=descripcion,
+                                )
+                            )
+                        else:
+                            pendientes_restantes.append(raw)
+
+                    items.extend(nuevos_items)
+                    pendientes = pendientes_restantes
+                    ultima_importacion = {
+                        "items": items,
+                        "pendientes": pendientes,
+                        "meta": meta,
+                    }
+                    actualizar_lista_compra_gui()
                     ventana_items.destroy()
-                    if items or pendientes:
+                    if pendientes:
                         mostrar_preview()
 
                 tk.Button(
