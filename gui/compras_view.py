@@ -223,27 +223,10 @@ def mostrar_ventana_compras():
             return resultado.get("items", []), resultado.get("faltantes", [])
 
         try:
-            omitidos = []
+            omitidos: list[str] = []
             proveedor = Proveedor(proveedor_nombre)
             items, faltantes = ejecutar_registro(omitidos)
-            pendientes: list[dict] = []
-            while faltantes:
-                datos_creacion = solicitar_datos_materia_prima_masivo(faltantes)
-                registrados, omitidos_raw = registrar_materias_primas_faltantes(
-                    faltantes, datos_creacion
-                )
-                pendientes.extend(omitidos_raw)
-                omitidos.extend(
-                    [
-                        r.get("nombre_producto") or r.get("producto") or ""
-                        for r in omitidos_raw
-                    ]
-                )
-                if registrados:
-                    items, faltantes = ejecutar_registro(omitidos)
-                else:
-                    break
-            pendientes.extend(faltantes)
+            pendientes: list[dict] = list(faltantes)
         except Exception as e:
             messagebox.showerror("Error", str(e))
             return
@@ -253,97 +236,140 @@ def mostrar_ventana_compras():
                 "Sin ítems", "No se encontraron ítems en el comprobante."
             )
             return
-        ventana_items = tk.Toplevel(ventana)
-        ventana_items.title("Ítems importados")
-        ventana_items.geometry("600x400")
 
-        accion_var = tk.StringVar(value="Eliminar")
-        cb_accion = ttk.Combobox(
-            ventana_items,
-            values=["Agregar", "Eliminar"],
-            textvariable=accion_var,
-            state="readonly",
-        )
-        cb_accion.current(1)
-        cb_accion.pack(pady=5)
+        def mostrar_preview():
+            nonlocal items, pendientes
+            ventana_items = tk.Toplevel(ventana)
+            ventana_items.title("Ítems importados")
+            ventana_items.geometry("600x400")
 
-        frame_items = tk.Frame(ventana_items)
-        frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            frame_items = tk.Frame(ventana_items)
+            frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        item_vars: list[tk.BooleanVar] = []
-        for item in items:
-            total_item = item["cantidad"] * item["costo_unitario"]
-            linea = (
-                f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
-                .replace(",", "X").replace(".", ",").replace("X", ".")
-            )
-            var = tk.BooleanVar(value=True)
-            chk = ttk.Checkbutton(frame_items, text=linea, variable=var)
-            chk.pack(anchor="w")
-            item_vars.append(var)
+            item_vars: list[tk.BooleanVar] = []
+            for item in items:
+                total_item = item["cantidad"] * item["costo_unitario"]
+                linea = (
+                    f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
+                    .replace(",", "X").replace(".", ",").replace("X", ".")
+                )
+                var = tk.BooleanVar(value=True)
+                chk = ttk.Checkbutton(frame_items, text=linea, variable=var)
+                chk.pack(anchor="w")
+                item_vars.append(var)
 
-        all_items_selected = True
+            all_items_selected = True
 
-        def toggle_select_all():
-            nonlocal all_items_selected
-            new_value = not all_items_selected
-            for var in item_vars:
-                var.set(new_value)
-            btn_toggle.config(text="Desmarcar todo" if new_value else "Marcar todo")
-            all_items_selected = new_value
+            def toggle_select_all():
+                nonlocal all_items_selected
+                new_value = not all_items_selected
+                for var in item_vars:
+                    var.set(new_value)
+                btn_toggle.config(
+                    text="Desmarcar todo" if new_value else "Marcar todo"
+                )
+                all_items_selected = new_value
 
-        btn_toggle = tk.Button(
-            ventana_items,
-            text="Desmarcar todo",
-            command=toggle_select_all,
-        )
-        btn_toggle.pack(pady=5)
-
-        if pendientes:
-            tk.Label(
+            btn_toggle = tk.Button(
                 ventana_items,
-                text="Ítems omitidos:",
-                font=("Helvetica", 10, "bold"),
-            ).pack(pady=(10, 0))
-            frame_falt = tk.Frame(ventana_items)
-            frame_falt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-            scrollbar_f = tk.Scrollbar(frame_falt, orient=tk.VERTICAL)
-            lista_falt = tk.Listbox(
-                frame_falt, yscrollcommand=scrollbar_f.set, width=80
+                text="Desmarcar todo",
+                command=toggle_select_all,
             )
-            scrollbar_f.config(command=lista_falt.yview)
-            scrollbar_f.pack(side=tk.RIGHT, fill=tk.Y)
-            lista_falt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            for raw in pendientes:
-                nombre = raw.get("nombre_producto") or raw.get("producto") or ""
-                lista_falt.insert(tk.END, nombre)
+            btn_toggle.pack(pady=5)
 
-        def aceptar_items():
-            seleccionados = [
-                item for var, item in zip(item_vars, items) if var.get()
-            ]
-            if not seleccionados:
-                messagebox.showwarning(
-                    "Atención", "Marque al menos un ítem para agregar."
+            if pendientes:
+                tk.Label(
+                    ventana_items,
+                    text="Ítems omitidos:",
+                    font=("Helvetica", 10, "bold"),
+                ).pack(pady=(10, 0))
+                frame_falt = tk.Frame(ventana_items)
+                frame_falt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+                scrollbar_f = tk.Scrollbar(frame_falt, orient=tk.VERTICAL)
+                lista_falt = tk.Listbox(
+                    frame_falt, yscrollcommand=scrollbar_f.set, width=80
                 )
-                return
-            for item in seleccionados:
-                detalle = CompraDetalle(
-                    producto_id=item["producto_id"],
-                    nombre_producto=item["nombre_producto"],
-                    cantidad=item["cantidad"],
-                    costo_unitario=item["costo_unitario"],
-                    descripcion_adicional=item.get("descripcion_adicional", ""),
-                )
-                compra_actual_items.append(detalle)
-            actualizar_lista_compra_gui()
-            ventana_items.destroy()
-            messagebox.showinfo(
-                "Éxito", f"Se agregaron {len(seleccionados)} ítems importados."
-            )
+                scrollbar_f.config(command=lista_falt.yview)
+                scrollbar_f.pack(side=tk.RIGHT, fill=tk.Y)
+                lista_falt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+                for raw in pendientes:
+                    nombre = (
+                        raw.get("nombre_producto")
+                        or raw.get("producto")
+                        or ""
+                    )
+                    lista_falt.insert(tk.END, nombre)
 
-        tk.Button(ventana_items, text="Agregar a la compra", command=aceptar_items, bg="lightgreen").pack(pady=5)
-        tk.Button(ventana_items, text="Cancelar", command=ventana_items.destroy, bg="lightcoral").pack(pady=5)
+                def registrar_faltantes():
+                    nonlocal items, pendientes
+                    datos_creacion = solicitar_datos_materia_prima_masivo(
+                        pendientes
+                    )
+                    registrados, omitidos_raw = registrar_materias_primas_faltantes(
+                        pendientes, datos_creacion
+                    )
+                    pendientes = omitidos_raw
+                    omitidos.extend(
+                        [
+                            r.get("nombre_producto")
+                            or r.get("producto")
+                            or ""
+                            for r in omitidos_raw
+                        ]
+                    )
+                    if registrados:
+                        items, faltantes_nuevos = ejecutar_registro(omitidos)
+                        pendientes.extend(faltantes_nuevos)
+                    ventana_items.destroy()
+                    if items or pendientes:
+                        mostrar_preview()
+
+                tk.Button(
+                    ventana_items,
+                    text="Registrar faltantes",
+                    command=registrar_faltantes,
+                ).pack(pady=5)
+
+            def aceptar_items():
+                seleccionados = [
+                    item for var, item in zip(item_vars, items) if var.get()
+                ]
+                if not seleccionados:
+                    messagebox.showwarning(
+                        "Atención", "Marque al menos un ítem para agregar."
+                    )
+                    return
+                for item in seleccionados:
+                    detalle = CompraDetalle(
+                        producto_id=item["producto_id"],
+                        nombre_producto=item["nombre_producto"],
+                        cantidad=item["cantidad"],
+                        costo_unitario=item["costo_unitario"],
+                        descripcion_adicional=item.get(
+                            "descripcion_adicional", ""
+                        ),
+                    )
+                    compra_actual_items.append(detalle)
+                actualizar_lista_compra_gui()
+                ventana_items.destroy()
+                messagebox.showinfo(
+                    "Éxito", f"Se agregaron {len(seleccionados)} ítems importados."
+                )
+
+            tk.Button(
+                ventana_items,
+                text="Agregar a la compra",
+                command=aceptar_items,
+                bg="lightgreen",
+            ).pack(pady=5)
+            tk.Button(
+                ventana_items,
+                text="Cancelar",
+                command=ventana_items.destroy,
+                bg="lightcoral",
+            ).pack(pady=5)
+
+        mostrar_preview()
 
     def agregar_o_editar_item_a_compra():
         """
