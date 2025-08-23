@@ -3,6 +3,7 @@ import sqlite3
 from typing import List
 
 from utils.json_utils import read_json, write_json
+from utils.invoice_utils import load_invoice
 from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
@@ -125,6 +126,49 @@ def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
             raise ValueError(f"Error al actualizar stock de '{item.nombre_producto}': {e}")
 
     return nueva_compra
+
+
+def importar_factura(source, invoice_id: str | None = None):
+    """Importa una factura desde ``source`` y la registra como compra.
+
+    Parameters
+    ----------
+    source: Union[str, os.PathLike, sqlite3.Connection]
+        Origen donde se encuentra almacenada la factura.
+    invoice_id: str | None, optional
+        Identificador de la factura. Se pasa directamente a
+        :func:`utils.invoice_utils.load_invoice`.
+
+    Returns
+    -------
+    Compra
+        El objeto ``Compra`` creado tras registrar la factura.
+
+    Raises
+    ------
+    Exception
+        Propaga cualquier excepción ocurrida durante la carga o registro de la
+        factura.
+    """
+
+    inv = load_invoice(source, invoice_id)
+
+    proveedor = Proveedor(
+        inv.get("proveedor", ""), id=inv.get("proveedor_id")
+    )
+
+    detalles = [
+        CompraDetalle(
+            producto_id=item.get("producto_id"),
+            nombre_producto=item.get("nombre_producto"),
+            cantidad=item.get("cantidad"),
+            costo_unitario=item.get("costo_unitario"),
+            descripcion_adicional=item.get("descripcion_adicional", ""),
+        )
+        for item in inv.get("items", [])
+    ]
+
+    return registrar_compra(proveedor, detalles, fecha=inv.get("fecha"))
 
 
 def eliminar_compra(compra_id: str) -> bool:
@@ -269,6 +313,7 @@ __all__ = [
     "guardar_compras",
     "exportar_compras_excel",
     "registrar_compra",
+    "importar_factura",
     "eliminar_compra",
     "listar_compras",
     "total_comprado",
