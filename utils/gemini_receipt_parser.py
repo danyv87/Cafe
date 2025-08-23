@@ -196,29 +196,15 @@ def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut
 # ---------------------------------------------------------------------------
 # Gemini helpers
 # ---------------------------------------------------------------------------
-def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
+def call_model_once(model: Any, content: Any) -> InvoiceOut:
     """Invoke ``model`` once and parse the resulting ``InvoiceOut``."""
 
-    try:
-        import google.genai as genai  # type: ignore[import]
-    except Exception:  # pragma: no cover - the dependency is mandatory
-        genai = None  # type: ignore[assignment]
+    import google.generativeai as genai  # type: ignore[import]
 
-    params: Dict[str, Any] = {"model": model, "contents": [content]}
-    types_mod = getattr(genai, "types", None) if genai else None
-    if types_mod is not None:
-        gen_config = (
-            getattr(types_mod, "GenerateContentConfig")(response_mime_type="application/json")
-            if hasattr(types_mod, "GenerateContentConfig")
-            else getattr(types_mod, "GenerationConfig")(response_mime_type="application/json")
-        )
-        generate_content_fn = client.models.generate_content  # type: ignore[attr-defined]
-        if "config" in getattr(generate_content_fn.__code__, "co_varnames", ()):
-            params["config"] = gen_config
-        else:  # API antigua
-            params["generation_config"] = gen_config
-
-    response = client.models.generate_content(**params)  # type: ignore[attr-defined]
+    response = model.generate_content(
+        content,
+        generation_config={"response_mime_type": "application/json"},
+    )
     text = getattr(response, "text", "")
     if not text:
         candidates = getattr(response, "candidates", None) or []
@@ -322,7 +308,7 @@ def call_model_once(client: Any, model: str, content: Any) -> InvoiceOut:
 
 
 def extract_invoice_with_fallback(
-    client: Any, content: Any, primary: str, fallback: Optional[str] = None
+    content: Any, primary: Any, fallback: Optional[Any] = None
 ) -> InvoiceOut:
     """Try ``primary`` model first and fall back to ``fallback`` if needed."""
 
@@ -331,18 +317,18 @@ def extract_invoice_with_fallback(
         return no_items
 
     try:
-        data = call_model_once(client, primary, content)
+        data = call_model_once(primary, content)
     except Exception as exc:
-        logger.warning("Modelo %s falló: %s", primary, exc)
+        logger.warning("Modelo %s falló: %s", getattr(primary, "model_name", primary), exc)
         if not fallback:
             raise
-        return call_model_once(client, fallback, content)
+        return call_model_once(fallback, content)
 
     if _poor_detail(data) and fallback:
         try:
-            return call_model_once(client, fallback, content)
+            return call_model_once(fallback, content)
         except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("Fallback %s falló: %s", fallback, exc)
+            logger.warning("Fallback %s falló: %s", getattr(fallback, "model_name", fallback), exc)
     return data
 
 
@@ -353,10 +339,10 @@ def parse_receipt_image(path: str) -> List[Dict]:
     """Parse a receipt image using the Gemini backend."""
 
     try:
-        import google.genai as genai  # type: ignore[import]
+        import google.generativeai as genai  # type: ignore[import]
     except ImportError as exc:
         raise ImportError(
-            "Falta el paquete 'google-genai'. Instálalo con `pip install google-genai`."
+            "Falta el paquete 'google-generativeai'. Instálalo con `pip install google-generativeai`."
         ) from exc
 
     if not os.path.isfile(path):
@@ -365,8 +351,7 @@ def parse_receipt_image(path: str) -> List[Dict]:
     if not path.lower().endswith((".jpeg", ".jpg", ".png")):
         raise ValueError("Unsupported format: only .jpeg, .jpg or .png images are allowed")
 
-    api_key = get_gemini_api_key()
-    client = genai.Client(api_key=api_key)
+    genai.configure(api_key=get_gemini_api_key())
 
     mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
     with io.open(path, "rb") as fh:
@@ -378,29 +363,14 @@ def parse_receipt_image(path: str) -> List[Dict]:
         "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
     )
 
-    types_mod = getattr(genai, "types", None)
-    part_cls = getattr(types_mod, "Part", None) if types_mod else None
-    content_cls = getattr(types_mod, "Content", None) if types_mod else None
+    prompt_part = genai.types.Part.from_text(text=prompt)
+    image_part = genai.types.Part.from_bytes(data=image_bytes, mime_type=mime)
+    content = [prompt_part, image_part]
 
-    part_text = (
-        part_cls.from_text(text=prompt)
-        if part_cls is not None and hasattr(part_cls, "from_text")
-        else {"text": prompt}
-    )
-    part_image = (
-        part_cls.from_bytes(data=image_bytes, mime_type=mime)
-        if part_cls is not None and hasattr(part_cls, "from_bytes")
-        else {"inline_data": {"mime_type": mime, "data": image_bytes}}
-    )
-    content = (
-        content_cls(role="user", parts=[part_text, part_image])
-        if content_cls is not None
-        else {"role": "user", "parts": [part_text, part_image]}
-    )
+    model_flash = genai.GenerativeModel("gemini-1.5-flash")
+    model_pro = genai.GenerativeModel("gemini-1.5-pro")
 
-    invoice = extract_invoice_with_fallback(
-        client, content, "gemini-1.5-flash", "gemini-1.5-pro"
-    )
+    invoice = extract_invoice_with_fallback(content, model_flash, model_pro)
     invoice = normalize_numbers(invoice)
 
     items: List[Dict] = []
