@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from typing import List, Callable, Optional
 
 from utils.json_utils import read_json, write_json
@@ -295,6 +296,41 @@ def registrar_compra_desde_imagen(
     return items_validados, pendientes
 
 
+def importar_factura_simple(
+    proveedor: Proveedor, path_imagen: str, destino: Optional[object] = None
+):
+    """Importa una factura de forma simplificada.
+
+    Este *helper* delega en :func:`registrar_compra_desde_imagen` utilizando
+    valores por defecto para los parámetros menos utilizados.  Sólo requiere el
+    proveedor, la ruta de la imagen del comprobante y, opcionalmente, un
+    ``destino`` donde persistir la factura en formato JSON o en una base de
+    datos SQLite.
+
+    Args:
+        proveedor: Proveedor al que pertenece la factura.
+        path_imagen: Ruta al archivo de imagen del comprobante.
+        destino: Directorio o conexión ``sqlite3.Connection`` donde guardar la
+            factura.  Si es ``None`` la factura no se persiste.
+
+    Returns:
+        tuple[Compra, list[dict]]: El objeto :class:`Compra` generado a partir
+        del comprobante y la lista de ítems pendientes.
+    """
+
+    db_conn = destino if isinstance(destino, sqlite3.Connection) else None
+    output_dir = None if db_conn is not None else destino
+    return registrar_compra_desde_imagen(
+        proveedor,
+        path_imagen,
+        como_compra=True,
+        output_dir=output_dir,
+        db_conn=db_conn,
+        omitidos=None,
+        selector=None,
+    )
+
+
 def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     """Procesa múltiples comprobantes y devuelve el estado por cada archivo.
 
@@ -516,5 +552,23 @@ def obtener_compras_por_dia():
         total_str = f"{total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
         formatted.append((dia, f"Gs {total_str}"))
     return formatted
+
+
+__all__ = [
+    "cargar_compras",
+    "guardar_compras",
+    "exportar_compras_excel",
+    "registrar_materias_primas_faltantes",
+    "registrar_compra_desde_imagen",
+    "importar_factura_simple",
+    "importar_comprobantes_masivos",
+    "registrar_compra",
+    "eliminar_compra",
+    "listar_compras",
+    "total_comprado",
+    "obtener_compras_por_mes",
+    "obtener_compras_por_semana",
+    "obtener_compras_por_dia",
+]
 
 
