@@ -310,6 +310,8 @@ def mostrar_ventana_compras():
             omitidos: list[str] = []
             items, faltantes, meta = ejecutar_registro(omitidos)
             pendientes: list[dict] = list(faltantes)
+            # Nombres de materias primas que el usuario decide omitir
+            omitidos: list[str] = []
             ultima_importacion = {
                 "items": items,
                 "pendientes": pendientes,
