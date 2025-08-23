@@ -236,6 +236,29 @@ def mostrar_ventana_compras():
                 .replace(",", "X").replace(".", ",").replace("X", ".")
             )
             lista_items.insert(tk.END, linea)
+
+        # Preseleccionar todos los ítems importados
+        lista_items.select_set(0, tk.END)
+        all_items_selected = True
+
+        def toggle_select_all():
+            nonlocal all_items_selected
+            if all_items_selected:
+                lista_items.selection_clear(0, tk.END)
+                btn_toggle.config(text="Seleccionar todo")
+                all_items_selected = False
+            else:
+                lista_items.select_set(0, tk.END)
+                btn_toggle.config(text="Deseleccionar todo")
+                all_items_selected = True
+
+        btn_toggle = tk.Button(
+            ventana_items,
+            text="Deseleccionar todo",
+            command=toggle_select_all,
+        )
+        btn_toggle.pack(pady=5)
+
         if pendientes:
             tk.Label(
                 ventana_items,
@@ -257,6 +280,8 @@ def mostrar_ventana_compras():
 
         def aceptar_items():
             seleccionados = lista_items.curselection()
+            if all_items_selected:
+                seleccionados = range(lista_items.size())
             if not seleccionados:
                 messagebox.showwarning(
                     "Atención", "Seleccione al menos un ítem para agregar."
