@@ -226,8 +226,12 @@ def mostrar_ventana_compras():
 
         for item in items:
             total_item = item["cantidad"] * item["costo_unitario"]
+            unidad = item.get("unidad_medida", "")
+            unidad_txt = f" {unidad}" if unidad else ""
+            stock = item.get("stock")
+            stock_txt = f" (stock {stock})" if stock is not None else ""
             linea = (
-                f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
+                f"{item['nombre_producto']} x {item['cantidad']}{unidad_txt}{stock_txt} = Gs {total_item:,.0f}"
                 .replace(",", "X").replace(".", ",").replace("X", ".")
             )
             lista_items.insert(tk.END, linea)

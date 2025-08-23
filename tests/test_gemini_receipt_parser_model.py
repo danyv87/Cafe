@@ -16,20 +16,35 @@ def _setup_dummy_genai(monkeypatch, response):
             return response
 
     dummy_google = types.ModuleType("google")
-    dummy_types = types.SimpleNamespace(
-        Part=types.SimpleNamespace(
-            from_text=lambda text: {"text": text},
-            from_bytes=lambda data, mime_type: {"inline_data": {"data": data, "mime_type": mime_type}},
-        )
+
+    dummy_types_mod = types.ModuleType("google.genai.types")
+    dummy_types_mod.Part = types.SimpleNamespace(
+        from_text=lambda text: {"text": text},
+        from_bytes=lambda data, mime_type: {"inline_data": {"data": data, "mime_type": mime_type}},
     )
-    dummy_genai = types.SimpleNamespace(
-        configure=lambda **kwargs: None,
-        GenerativeModel=lambda name: DummyGenerativeModel(name),
-        types=dummy_types,
-    )
-    dummy_google.generativeai = dummy_genai
+    class DummyContent:
+        def __init__(self, parts):
+            self.parts = parts
+    dummy_types_mod.Content = DummyContent
+
+    dummy_genai_mod = types.ModuleType("google.genai")
+    dummy_genai_mod.configure = lambda **kwargs: None
+    dummy_genai_mod.GenerativeModel = lambda name: DummyGenerativeModel(name)
+    dummy_genai_mod.types = dummy_types_mod
+    class DummyClient:
+        def __init__(self, api_key):
+            self.models = types.SimpleNamespace(
+                generate_content=lambda model, contents, config=None: response
+            )
+    dummy_genai_mod.Client = DummyClient
+
+    dummy_google.genai = dummy_genai_mod
+    dummy_google.generativeai = dummy_genai_mod
+
     monkeypatch.setitem(sys.modules, "google", dummy_google)
-    monkeypatch.setitem(sys.modules, "google.generativeai", dummy_genai)
+    monkeypatch.setitem(sys.modules, "google.genai", dummy_genai_mod)
+    monkeypatch.setitem(sys.modules, "google.genai.types", dummy_types_mod)
+    monkeypatch.setitem(sys.modules, "google.generativeai", dummy_genai_mod)
     return DummyGenerativeModel
 
 
@@ -48,10 +63,24 @@ def test_parse_receipt_image_success(monkeypatch, tmp_path):
         return "APIKEY"
 
     monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", fake_key)
+    monkeypatch.setattr(
+        gemini_receipt_parser,
+        "image_to_part",
+        lambda path: {"inline_data": {"data": b"fake", "mime_type": "image/png"}},
+    )
 
     items = gemini_receipt_parser.parse_receipt_image(str(img))
 
-    assert items == [{"producto": "Pan", "cantidad": 2.0, "precio": 3.5}]
+    assert items == [
+        {
+            "producto": "Pan",
+            "cantidad": 2.0,
+            "precio": 3.5,
+            "unidad_medida": None,
+            "costo_unitario": 3.5,
+            "stock": 2.0,
+        }
+    ]
     assert called["used"]
 
 
@@ -61,6 +90,11 @@ def test_parse_receipt_image_bad_json(monkeypatch, tmp_path):
     response = types.SimpleNamespace(text="not json")
     _setup_dummy_genai(monkeypatch, response)
     monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
+    monkeypatch.setattr(
+        gemini_receipt_parser,
+        "image_to_part",
+        lambda path: {"inline_data": {"data": b"fake", "mime_type": "image/png"}},
+    )
 
     with pytest.raises(ValueError):
         gemini_receipt_parser.parse_receipt_image(str(img))
@@ -76,6 +110,11 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
     )
     _setup_dummy_genai(monkeypatch, response)
     monkeypatch.setattr(gemini_receipt_parser, "get_gemini_api_key", lambda: "KEY")
+    monkeypatch.setattr(
+        gemini_receipt_parser,
+        "image_to_part",
+        lambda path: {"inline_data": {"data": b"fake", "mime_type": "image/png"}},
+    )
 
     items = gemini_receipt_parser.parse_receipt_image(str(img))
 
@@ -85,6 +124,9 @@ def test_parse_receipt_image_maps_new_fields(monkeypatch, tmp_path):
             "cantidad": 2.0,
             "precio": 7.0,
             "descripcion_adicional": "extra: promo",
+            "unidad_medida": None,
+            "costo_unitario": 7.0,
+            "stock": 2.0,
         }
     ]
 

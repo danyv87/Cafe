@@ -216,6 +216,10 @@ def registrar_compra_desde_imagen(
             cantidad = float(item["cantidad"])
             costo_unitario = float(item["costo_unitario"])
             descripcion = item.get("descripcion_adicional", "")
+            unidad_medida = item.get("unidad_medida")
+            stock = item.get("stock")
+            if stock is not None:
+                stock = float(stock)
         except Exception as e:  # pragma: no cover - fallthrough validation
             logger.exception(
                 "Error al convertir datos del comprobante",
@@ -233,16 +237,23 @@ def registrar_compra_desde_imagen(
             raise ValueError("costo_unitario debe ser un número positivo.")
         if not isinstance(descripcion, str):
             raise ValueError("descripcion_adicional debe ser texto.")
+        if unidad_medida is not None and not isinstance(unidad_medida, str):
+            raise ValueError("unidad_medida debe ser texto.")
+        if stock is not None and stock < 0:
+            raise ValueError("stock debe ser un número no negativo.")
 
-        items_validados.append(
-            {
-                "producto_id": producto_id,
-                "nombre_producto": nombre,
-                "cantidad": cantidad,
-                "costo_unitario": costo_unitario,
-                "descripcion_adicional": descripcion,
-            }
-        )
+        item_validado = {
+            "producto_id": producto_id,
+            "nombre_producto": nombre,
+            "cantidad": cantidad,
+            "costo_unitario": costo_unitario,
+            "descripcion_adicional": descripcion,
+        }
+        if unidad_medida is not None:
+            item_validado["unidad_medida"] = unidad_medida
+        if stock is not None:
+            item_validado["stock"] = stock
+        items_validados.append(item_validado)
 
     # Guardar la factura si corresponde
     destino = db_conn if db_conn is not None else output_dir

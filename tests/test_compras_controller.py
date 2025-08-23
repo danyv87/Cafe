@@ -74,7 +74,16 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["nombre_producto"], "Leche")
 
-        detalles = [CompraDetalle(**item) for item in items]
+        detalles = [
+            CompraDetalle(
+                producto_id=it["producto_id"],
+                nombre_producto=it["nombre_producto"],
+                cantidad=it["cantidad"],
+                costo_unitario=it["costo_unitario"],
+                descripcion_adicional=it.get("descripcion_adicional", ""),
+            )
+            for it in items
+        ]
 
         # Aún no se guardó en el archivo
         compras = compras_controller.cargar_compras()

@@ -23,13 +23,29 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
         compra_actual_items = []
 
         # Aceptar primer ítem
-        compra_actual_items.append(CompraDetalle(**items[0]))
+        compra_actual_items.append(
+            CompraDetalle(
+                producto_id=items[0]["producto_id"],
+                nombre_producto=items[0]["nombre_producto"],
+                cantidad=items[0]["cantidad"],
+                costo_unitario=items[0]["costo_unitario"],
+                descripcion_adicional=items[0].get("descripcion_adicional", ""),
+            )
+        )
         total = sum(i.total for i in compra_actual_items)
         self.assertEqual(len(compra_actual_items), 1)
         self.assertEqual(total, 10)
 
         # Aceptar segundo ítem
-        compra_actual_items.append(CompraDetalle(**items[1]))
+        compra_actual_items.append(
+            CompraDetalle(
+                producto_id=items[1]["producto_id"],
+                nombre_producto=items[1]["nombre_producto"],
+                cantidad=items[1]["cantidad"],
+                costo_unitario=items[1]["costo_unitario"],
+                descripcion_adicional=items[1].get("descripcion_adicional", ""),
+            )
+        )
         total = sum(i.total for i in compra_actual_items)
         self.assertEqual(len(compra_actual_items), 2)
         self.assertEqual(total, 10 + 15)

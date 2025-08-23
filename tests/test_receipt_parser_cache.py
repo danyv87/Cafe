@@ -45,7 +45,14 @@ def test_normalizar_items_uses_buscar_materia_prima_once_per_name():
 
 def test_normalizar_items_accepts_alternative_keys():
     raw_items = [
-        {"descripcion": "Cafe", "cantidad": 1, "precio_unitario": 3, "extra": "promo"},
+        {
+            "descripcion": "Cafe",
+            "cantidad": 1,
+            "precio_unitario": 3,
+            "extra": "promo",
+            "unidad_medida": "kg",
+            "stock": 7,
+        },
         {"descripcion": "Leche", "cantidad": 2, "precio_unitario": None, "subtotal": 4},
     ]
 
@@ -56,5 +63,7 @@ def test_normalizar_items_accepts_alternative_keys():
     assert faltantes == []
     assert items[0]["costo_unitario"] == 3.0
     assert items[0]["descripcion_adicional"] == "extra: promo"
+    assert items[0]["unidad_medida"] == "kg"
+    assert items[0]["stock"] == 7.0
     assert items[1]["costo_unitario"] == 4.0
 

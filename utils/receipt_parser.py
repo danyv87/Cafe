@@ -135,6 +135,8 @@ def _normalizar_items(
                     "precio_unitario",
                     "subtotal",
                     "descripcion_adicional",
+                    "unidad_medida",
+                    "stock",
                 }
             }
             if extras:
@@ -142,15 +144,21 @@ def _normalizar_items(
         if not descripcion:
             descripcion = ""
 
-        items.append(
-            {
-                "producto_id": mp.id,
-                "nombre_producto": mp.nombre,
-                "cantidad": cantidad,
-                "costo_unitario": precio,
-                "descripcion_adicional": descripcion,
-            }
-        )
+        item_dict = {
+            "producto_id": mp.id,
+            "nombre_producto": mp.nombre,
+            "cantidad": cantidad,
+            "costo_unitario": precio,
+            "descripcion_adicional": descripcion,
+        }
+        if raw.get("unidad_medida") is not None:
+            item_dict["unidad_medida"] = raw["unidad_medida"]
+        if raw.get("stock") not in (None, ""):
+            try:
+                item_dict["stock"] = float(raw["stock"])
+            except Exception:
+                pass
+        items.append(item_dict)
     return items, faltantes
 
 

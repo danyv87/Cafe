@@ -34,6 +34,31 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
     assert detalle.nombre_producto == "Cafe"
 
 
+@patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
+def test_registrar_compra_desde_imagen_incluye_unidad_y_stock(mock_parse):
+    mock_parse.return_value = (
+        [
+            {
+                "producto_id": 1,
+                "nombre_producto": "Cafe",
+                "cantidad": 2,
+                "costo_unitario": 5,
+                "unidad_medida": "kg",
+                "stock": 15,
+            }
+        ],
+        [],
+    )
+
+    proveedor = Proveedor("Proveedor")
+    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        proveedor, "img.jpg"
+    )
+    assert pendientes == []
+    assert items[0]["unidad_medida"] == "kg"
+    assert items[0]["stock"] == 15.0
+
+
 @patch(
     "controllers.compras_controller.receipt_parser.parse_receipt_image",
     side_effect=ConnectionError("network"),
@@ -254,7 +279,16 @@ def test_flujo_selecciona_subconjunto_items(
         assert pendientes == []
 
         # Solo se aceptan los dos primeros ítems
-        detalles = [CompraDetalle(**item) for item in items[:2]]
+        detalles = [
+            CompraDetalle(
+                producto_id=i["producto_id"],
+                nombre_producto=i["nombre_producto"],
+                cantidad=i["cantidad"],
+                costo_unitario=i["costo_unitario"],
+                descripcion_adicional=i.get("descripcion_adicional", ""),
+            )
+            for i in items[:2]
+        ]
         compra = compras_controller.registrar_compra(proveedor, detalles)
 
         # El tercer ítem omitido no afecta el total ni el stock
