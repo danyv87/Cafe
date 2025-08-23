@@ -417,6 +417,23 @@ def listar_compras():
     return cargar_compras()
 
 
+def eliminar_compra(compra_id):
+    """Elimina una compra por su ``id``.
+
+    Args:
+        compra_id (str): Identificador de la compra a eliminar.
+
+    Raises:
+        ValueError: Si no se encuentra una compra con el ``id`` dado.
+    """
+    compras = cargar_compras()
+    compras_filtradas = [c for c in compras if c.id != compra_id]
+    if len(compras_filtradas) == len(compras):
+        raise ValueError(f"No se encontró la compra con ID {compra_id}.")
+    guardar_compras(compras_filtradas)
+    return True
+
+
 def total_comprado():
     """
     Calcula y retorna el total de todas las compras registradas.
