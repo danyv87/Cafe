@@ -87,6 +87,9 @@ def mostrar_ventana_compras():
     # Lista para almacenar objetos CompraDetalle para la compra actual
     compra_actual_items = []
 
+    # Último resultado obtenido al importar un comprobante
+    ultima_importacion = {"items": [], "pendientes": [], "meta": {}}
+
     # Lista de materias primas agregadas a la compra actual
     tk.Label(ventana, text="Items en la compra actual:", font=("Helvetica", 10, "bold")).pack(pady=(10, 0))
 
@@ -156,8 +159,73 @@ def mostrar_ventana_compras():
             lista_compra.insert(tk.END, display_text)
         actualizar_total_compra()
 
+    def ver_datos_reconocidos():
+        """Muestra los datos reconocidos del último comprobante importado."""
+        if not ultima_importacion["items"] and not ultima_importacion["pendientes"]:
+            messagebox.showinfo(
+                "Sin datos", "No se ha importado ningún comprobante."
+            )
+            return
+
+        ventana_items = tk.Toplevel(ventana)
+        ventana_items.title("Datos reconocidos")
+        ventana_items.geometry("600x400")
+
+        meta = ultima_importacion["meta"]
+        if meta:
+            frame_meta = tk.Frame(ventana_items)
+            frame_meta.pack(fill=tk.X, padx=10, pady=(10, 0))
+            if meta.get("proveedor"):
+                tk.Label(
+                    frame_meta, text=f"Proveedor: {meta.get('proveedor')}"
+                ).pack(anchor="w")
+            if meta.get("numero"):
+                tk.Label(
+                    frame_meta, text=f"N°: {meta.get('numero')}"
+                ).pack(anchor="w")
+            if meta.get("fecha"):
+                tk.Label(
+                    frame_meta, text=f"Fecha: {meta.get('fecha')}"
+                ).pack(anchor="w")
+            if meta.get("total") is not None:
+                total_val = meta.get("total")
+                tk.Label(
+                    frame_meta,
+                    text=f"Total: Gs {float(total_val):,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                ).pack(anchor="w")
+
+        frame_items = tk.Frame(ventana_items)
+        frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar = tk.Scrollbar(frame_items, orient=tk.VERTICAL)
+        lista_items = tk.Listbox(frame_items, yscrollcommand=scrollbar.set, width=80)
+        scrollbar.config(command=lista_items.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        lista_items.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        for item in ultima_importacion["items"]:
+            total_item = item["cantidad"] * item["costo_unitario"]
+            linea = (
+                f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
+                .replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+            lista_items.insert(tk.END, linea)
+
+        if ultima_importacion["pendientes"]:
+            lista_items.insert(tk.END, "--- Ítems no reconocidos ---")
+            for raw in ultima_importacion["pendientes"]:
+                nombre = raw.get("nombre_producto") or raw.get("producto") or ""
+                lista_items.insert(tk.END, nombre)
+
+        tk.Button(
+            ventana_items,
+            text="Cerrar",
+            command=ventana_items.destroy,
+            bg="lightcoral",
+        ).pack(pady=5)
+
     def importar_items_desde_imagen():
         """Permite al usuario importar ítems desde una imagen o archivo JSON."""
+        nonlocal ultima_importacion
         proveedor_nombre = entry_proveedor.get().strip()
         if not proveedor_nombre:
             messagebox.showwarning(
@@ -236,6 +304,11 @@ def mostrar_ventana_compras():
             meta = {}
             items, faltantes, meta = ejecutar_registro(omitidos)
             pendientes: list[dict] = list(faltantes)
+            ultima_importacion = {
+                "items": items,
+                "pendientes": pendientes,
+                "meta": meta,
+            }
         except Exception as e:
             messagebox.showerror("Error", str(e))
             return
@@ -332,7 +405,7 @@ def mostrar_ventana_compras():
                     lista_falt.insert(tk.END, nombre)
 
                 def registrar_faltantes():
-                    nonlocal items, pendientes
+                    nonlocal items, pendientes, ultima_importacion, meta
                     datos_creacion = solicitar_datos_materia_prima_masivo(
                         pendientes
                     )
@@ -349,8 +422,13 @@ def mostrar_ventana_compras():
                         ]
                     )
                     if registrados:
-                        items, faltantes_nuevos = ejecutar_registro(omitidos)
+                        items, faltantes_nuevos, meta = ejecutar_registro(omitidos)
                         pendientes.extend(faltantes_nuevos)
+                        ultima_importacion = {
+                            "items": items,
+                            "pendientes": pendientes,
+                            "meta": meta,
+                        }
                     ventana_items.destroy()
                     if items or pendientes:
                         mostrar_preview()
@@ -605,6 +683,8 @@ def mostrar_ventana_compras():
               bg="lightgray").pack(pady=5)
     tk.Button(ventana, text="Importar desde imagen", command=importar_items_desde_imagen, width=25,
               bg="lightyellow").pack(pady=5)
+    tk.Button(ventana, text="Ver datos reconocidos", command=ver_datos_reconocidos, width=25,
+              bg="lightgreen").pack(pady=5)
     tk.Button(ventana, text="Quitar Item Seleccionado", command=quitar_item_compra, width=25, bg="lightcoral").pack(
         pady=5)
     tk.Button(ventana, text="Registrar Compra", command=registrar_nueva_compra, width=25, bg="lightblue",
