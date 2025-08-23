@@ -7,6 +7,8 @@ primas que no están registradas.
 
 from typing import Dict, Tuple, List
 
+from controllers.materia_prima_controller import ALLOWED_UNIDADES
+
 
 def solicitar_datos_materia_prima(nombre: str):
     """Pide al usuario datos para crear una nueva materia prima o la omite.
@@ -89,7 +91,7 @@ def solicitar_datos_materia_prima_masivo(
 
     try:  # pragma: no cover - prefer GUI but fall back to CLI in tests
         import tkinter as tk
-        from tkinter import ttk
+        from tkinter import ttk, messagebox
 
         root = tk.Tk()
         root.withdraw()
@@ -124,7 +126,7 @@ def solicitar_datos_materia_prima_masivo(
             )
 
         vars_crear: List[tk.BooleanVar] = []
-        entradas_unidad: List[ttk.Entry] = []
+        entradas_unidad: List[ttk.Combobox] = []
         entradas_costo: List[ttk.Entry] = []
         entradas_stock: List[ttk.Entry] = []
         nombres: List[str] = []
@@ -138,7 +140,9 @@ def solicitar_datos_materia_prima_masivo(
             chk = ttk.Checkbutton(scrollable_frame, variable=var)
             chk.grid(row=idx, column=1)
 
-            e_unidad = ttk.Entry(scrollable_frame, width=10)
+            e_unidad = ttk.Combobox(
+                scrollable_frame, values=ALLOWED_UNIDADES, width=10
+            )
             e_unidad.grid(row=idx, column=2)
             e_costo = ttk.Entry(scrollable_frame, width=10)
             e_costo.grid(row=idx, column=3)
@@ -156,6 +160,13 @@ def solicitar_datos_materia_prima_masivo(
             for i, nombre in enumerate(nombres):
                 if vars_crear[i].get():
                     unidad = entradas_unidad[i].get().strip()
+                    if unidad not in ALLOWED_UNIDADES:
+                        messagebox.showerror(
+                            "Unidad inválida",
+                            f"Unidad '{unidad}' no permitida para '{nombre}'.",
+                            parent=top,
+                        )
+                        continue
                     try:
                         costo = float(entradas_costo[i].get())
                         stock = float(entradas_stock[i].get())
@@ -183,7 +194,17 @@ def solicitar_datos_materia_prima_masivo(
             )
             if accion != "crear":
                 continue
-            unidad = input(f"Unidad de medida para '{nombre}': ").strip()
+            print("Seleccione la unidad de medida:")
+            for idx, opt in enumerate(ALLOWED_UNIDADES, start=1):
+                print(f"{idx}. {opt}")
+            opcion = input(
+                f"Opción para '{nombre}' (1-{len(ALLOWED_UNIDADES)}): "
+            ).strip()
+            try:
+                unidad = ALLOWED_UNIDADES[int(opcion) - 1]
+            except (ValueError, IndexError):
+                print("Unidad inválida. Se omite la materia prima.")
+                continue
             costo = float(input(f"Costo unitario para '{nombre}': "))
             stock = float(input(f"Stock inicial para '{nombre}': "))
             seleccionados[nombre] = (unidad, costo, stock)
