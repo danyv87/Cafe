@@ -132,12 +132,21 @@ def solicitar_datos_materia_prima_masivo(
         entradas_stock: List[ttk.Entry] = []
         nombres: List[str] = []
 
+        def toggle_fields(i: int):
+            estado_combo = "readonly" if vars_crear[i].get() else tk.DISABLED
+            estado_entry = tk.NORMAL if vars_crear[i].get() else tk.DISABLED
+            texto = "Aceptar" if vars_crear[i].get() else "Remover"
+            chkboxes[i].config(text=texto)
+            entradas_unidad[i].config(state=estado_combo)
+            entradas_costo[i].config(state=estado_entry)
+            entradas_stock[i].config(state=estado_entry)
+
         for idx, raw in enumerate(faltantes, start=1):
             nombre = raw.get("nombre_producto") or raw.get("producto") or ""
             nombres.append(nombre)
 
             ttk.Label(scrollable_frame, text=nombre).grid(row=idx, column=0, sticky="w")
-            var = tk.BooleanVar(value=True)
+            var = tk.BooleanVar(value=False)
             chk = ttk.Checkbutton(scrollable_frame, variable=var, text="Aceptar")
             chk.grid(row=idx, column=1)
 
@@ -163,15 +172,7 @@ def solicitar_datos_materia_prima_masivo(
             entradas_unidad.append(e_unidad)
             entradas_costo.append(e_costo)
             entradas_stock.append(e_stock)
-
-        def toggle_fields(i: int):
-            estado_combo = "readonly" if vars_crear[i].get() else tk.DISABLED
-            estado_entry = tk.NORMAL if vars_crear[i].get() else tk.DISABLED
-            texto = "Aceptar" if vars_crear[i].get() else "Remover"
-            chkboxes[i].config(text=texto)
-            entradas_unidad[i].config(state=estado_combo)
-            entradas_costo[i].config(state=estado_entry)
-            entradas_stock[i].config(state=estado_entry)
+            toggle_fields(idx - 1)
 
         for i, chk in enumerate(chkboxes):
             chk.config(command=lambda idx=i: toggle_fields(idx))
