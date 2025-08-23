@@ -4,6 +4,7 @@ from unittest.mock import patch
 from controllers import compras_controller
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
+from models.compra import Compra
 
 
 class TestCompraDesdeImagenGUI(unittest.TestCase):
@@ -35,5 +36,82 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
         self.assertEqual(total, 10 + 15)
 
 
+class TestGestionComprasGUI(unittest.TestCase):
+    def test_eliminar_compra_actualiza_lista(self):
+        import gui.gestion_compras as gestion_compras
+
+        compras = [Compra(proveedor_id="Prov1"), Compra(proveedor_id="Prov2")]
+        compras[0].total = 100
+        compras[1].total = 200
+
+        def fake_listar():
+            return compras
+
+        def fake_eliminar(cid):
+            compras[:] = [c for c in compras if c.id != cid]
+
+        listbox_holder = {}
+
+        class DummyListbox:
+            def __init__(self, *a, **k):
+                self.items = []
+                self.selection = ()
+                listbox_holder['instance'] = self
+
+            def pack(self, *a, **k):
+                pass
+
+            def delete(self, start, end=None):
+                self.items = []
+
+            def insert(self, index, item):
+                self.items.append(item)
+
+            def curselection(self):
+                return self.selection
+
+            def selection_set(self, idx):
+                self.selection = (idx,)
+
+            def get(self, idx):
+                return self.items[idx]
+
+            def size(self):
+                return len(self.items)
+
+        class DummyToplevel:
+            def __init__(self):
+                pass
+
+            def title(self, t):
+                pass
+
+            def geometry(self, g):
+                pass
+
+        class DummyLabel:
+            def __init__(self, *a, **k):
+                pass
+
+            def pack(self, *a, **k):
+                pass
+
+        with patch('gui.gestion_compras.tk.Toplevel', DummyToplevel), \
+             patch('gui.gestion_compras.tk.Label', DummyLabel), \
+             patch('gui.gestion_compras.tk.Listbox', DummyListbox), \
+             patch('gui.gestion_compras.tk.Button') as MockButton, \
+             patch('gui.gestion_compras.listar_compras', side_effect=fake_listar), \
+             patch('gui.gestion_compras.eliminar_compra', side_effect=fake_eliminar), \
+             patch('gui.gestion_compras.messagebox') as mock_msg:
+            mock_msg.askyesno.return_value = True
+            gestion_compras.mostrar_ventana_gestion_compras()
+            lista = listbox_holder['instance']
+            self.assertEqual(lista.size(), 2)
+            lista.selection_set(0)
+            eliminar_func = MockButton.call_args.kwargs['command']
+            eliminar_func()
+            self.assertEqual(lista.size(), 1)
+
 if __name__ == '__main__':
     unittest.main()
+
