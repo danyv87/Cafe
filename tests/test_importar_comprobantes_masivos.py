@@ -10,7 +10,7 @@ def test_importacion_masiva_registra_errores(mock_registrar, tmp_path):
     def side_effect(proveedor, archivo, como_compra=True, selector=None, **kwargs):
         if "bad" in archivo:
             raise ValueError("fail")
-        return ("compra", [])
+        return ("compra", [], {})
 
     mock_registrar.side_effect = side_effect
 

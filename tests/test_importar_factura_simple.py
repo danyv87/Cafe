@@ -7,7 +7,7 @@ from models.compra import Compra
 
 @patch("controllers.compras_controller.registrar_compra_desde_imagen")
 def test_importar_factura_simple_delega(mock_registrar, tmp_path):
-    mock_registrar.return_value = ("compra", [])
+    mock_registrar.return_value = ("compra", [], {})
     proveedor = Proveedor("Prov")
     result = compras_controller.importar_factura_simple(
         proveedor, "img.jpg", destino=tmp_path
@@ -36,6 +36,7 @@ def test_importar_factura_simple_flujo_basico(mock_parse):
             }
         ],
         [],
+        {},
     )
     proveedor = Proveedor("Proveedor")
     compra, pendientes = compras_controller.importar_factura_simple(

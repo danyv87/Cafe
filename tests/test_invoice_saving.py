@@ -18,6 +18,7 @@ def test_registrar_compra_desde_imagen_guarda_factura(mock_parse, tmp_path):
             }
         ],
         [],
+        {},
     )
 
     proveedor = Proveedor("Proveedor")

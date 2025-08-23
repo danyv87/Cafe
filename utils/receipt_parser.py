@@ -156,26 +156,31 @@ def _normalizar_items(
 
 def parse_receipt_image(
     path_imagen: str, omitidos: List[str] | None = None
-) -> Tuple[List[Dict], List[Dict]]:
+) -> Tuple[List[Dict], List[Dict], Dict[str, object]]:
     """Parse a receipt image and return a tuple of item dictionaries.
 
     The function currently supports two backends:
 
     1. **JSON fallback** – If ``path_imagen`` ends with ``.json`` the file is
-       loaded and assumed to contain the list of item dictionaries.
+       loaded and assumed to contain either a list of items or a dictionary
+       containing an ``items`` list and optional metadata.
     2. **Gemini based parser** – Delegates to :mod:`utils.gemini_receipt_parser`
        which relies on the Gemini API to process ``.jpeg``, ``.jpg`` or
-       ``.png`` images.
+       ``.png`` images.  The backend may return either the raw list of items or
+       a dictionary with ``items`` and metadata.
 
     Returns
     -------
-    tuple(list, list)
-        ``items`` normalizados y ``faltantes`` cuyos nombres no coincidieron
-        con ninguna materia prima conocida.
+    tuple(list, list, dict)
+        ``items`` normalizados, ``faltantes`` cuyos nombres no coincidieron con
+        ninguna materia prima conocida y ``meta`` con información adicional del
+        comprobante (por ejemplo ``proveedor`` o ``total``).
     """
 
     if not path_imagen:
         raise ValueError("path_imagen no puede estar vacío")
+
+    meta: Dict[str, object] = {}
 
     # JSON files provide a convenient offline way of specifying receipt items
     if path_imagen.lower().endswith(".json"):
@@ -186,9 +191,25 @@ def parse_receipt_image(
             raise ValueError("Archivo JSON de recibo no encontrado") from exc
         except json.JSONDecodeError as exc:
             raise ValueError("JSON de recibo inválido") from exc
-        if not isinstance(data, list):
+
+        raw_items: List[Dict]
+        if isinstance(data, dict):
+            raw_items = data.get("items", [])
+            if not isinstance(raw_items, list):
+                raise ValueError("El archivo JSON debe contener una lista de items")
+            meta = {
+                "proveedor": data.get("proveedor"),
+                "numero": data.get("numero_comprobante") or data.get("numero"),
+                "fecha": data.get("fecha"),
+                "total": data.get("total"),
+            }
+        elif isinstance(data, list):
+            raw_items = data
+        else:
             raise ValueError("El archivo JSON debe contener una lista de items")
-        return _normalizar_items(data, omitidos)
+
+        items, faltantes = _normalizar_items(raw_items, omitidos)
+        return items, faltantes, meta
 
     # For images, attempt to use the Gemini based parser
     try:  # Import lazily so environments without OpenAI dependencies still work
@@ -198,8 +219,23 @@ def parse_receipt_image(
             "No hay backend disponible para procesar imágenes de recibo"
         ) from exc
 
-    raw_items = gemini_parse(path_imagen)
-    if not isinstance(raw_items, list):
+    raw = gemini_parse(path_imagen)
+    raw_items: List[Dict]
+    if isinstance(raw, dict):
+        raw_items = raw.get("items", [])  # type: ignore[assignment]
+        if not isinstance(raw_items, list):
+            raise ValueError("La respuesta del backend de recibos es inválida")
+        meta = {
+            "proveedor": raw.get("proveedor"),
+            "numero": raw.get("numero_comprobante") or raw.get("numero"),
+            "fecha": raw.get("fecha"),
+            "total": raw.get("total"),
+        }
+    elif isinstance(raw, list):
+        raw_items = raw
+    else:
         raise ValueError("La respuesta del backend de recibos es inválida")
-    return _normalizar_items(raw_items, omitidos)
+
+    items, faltantes = _normalizar_items(raw_items, omitidos)
+    return items, faltantes, meta
 

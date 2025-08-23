@@ -16,17 +16,19 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
     def test_aceptar_items_actualiza_lista_y_total(self, mock_parse, mock_showinfo):
         id_cafe = uuid4().hex
         id_azucar = uuid4().hex
-        mock_parse.return_value = iter([
+        mock_parse.return_value = (
             [
                 {"producto_id": id_cafe, "nombre_producto": "Cafe", "cantidad": 1, "costo_unitario": 10},
                 {"producto_id": id_azucar, "nombre_producto": "Azucar", "cantidad": 3, "costo_unitario": 5},
             ],
             [],
-        ])
+            {},
+        )
 
         proveedor = Proveedor('Proveedor')
-        items, pendientes = compras_controller.registrar_compra_desde_imagen(proveedor, 'img.jpg')
+        items, pendientes, meta = compras_controller.registrar_compra_desde_imagen(proveedor, 'img.jpg')
         self.assertEqual(pendientes, [])
+        self.assertEqual(meta, {})
         compra_actual_items = []
 
         def aceptar_items(indices):
@@ -178,8 +180,11 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
                 pass
 
         class DummyLabel:
+            instances = []
+
             def __init__(self, *a, **k):
-                pass
+                self.text = k.get('text')
+                DummyLabel.instances.append(self)
 
             def pack(self, *a, **k):
                 pass
@@ -256,7 +261,7 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
         mp_fake = type('MP', (), {'unidad_medida': 'u'})()
 
         with patch('gui.compras_view.CompraDetalle', DummyCompraDetalle), \
-             patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, [])), \
+             patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, [], {})), \
              patch('gui.compras_view.filedialog.askopenfilename', return_value='test.png'), \
              patch('gui.compras_view.messagebox'), \
              patch('gui.compras_view.listar_materias_primas', return_value=[]), \
@@ -386,8 +391,11 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
                 pass
 
         class DummyLabel:
+            instances = []
+
             def __init__(self, *a, **k):
-                pass
+                self.text = k.get('text')
+                DummyLabel.instances.append(self)
 
             def pack(self, *a, **k):
                 pass
@@ -459,8 +467,9 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
 
         mp_fake = type('MP', (), {'unidad_medida': 'u'})()
 
+        meta = {"proveedor": "Prov SA", "numero": "123", "fecha": "2024-05-01", "total": 1000}
         with patch('gui.compras_view.CompraDetalle', DummyCompraDetalle), \
-             patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, faltantes_data)), \
+             patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, faltantes_data, meta)), \
              patch('gui.compras_view.solicitar_datos_materia_prima_masivo') as mock_solicitar, \
              patch('gui.compras_view.filedialog.askopenfilename', return_value='test.png'), \
              patch('gui.compras_view.messagebox'), \
@@ -478,6 +487,9 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             import_btn.command()
             self.assertEqual(mock_solicitar.call_count, 0)
             self.assertTrue(any(b.text == 'Registrar faltantes' for b in DummyButton.instances))
+            textos = [lbl.text for lbl in DummyLabel.instances if lbl.text]
+            assert any("Proveedor: Prov SA" in t for t in textos)
+            assert any("N°: 123" in t for t in textos)
 
 
 class TestGestionComprasGUI(unittest.TestCase):

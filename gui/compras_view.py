@@ -187,7 +187,11 @@ def mostrar_ventana_compras():
 
             def worker():
                 try:
-                    resultado["items"], resultado["faltantes"] = registrar_compra_desde_imagen(
+                    (
+                        resultado["items"],
+                        resultado["faltantes"],
+                        resultado["meta"],
+                    ) = registrar_compra_desde_imagen(
                         proveedor, ruta, omitidos=omitidos_local
                     )
                 except Exception as exc:
@@ -220,12 +224,17 @@ def mostrar_ventana_compras():
 
             if resultado.get("error"):
                 raise resultado["error"]
-            return resultado.get("items", []), resultado.get("faltantes", [])
+            return (
+                resultado.get("items", []),
+                resultado.get("faltantes", []),
+                resultado.get("meta", {}),
+            )
 
         try:
             omitidos: list[str] = []
             proveedor = Proveedor(proveedor_nombre)
-            items, faltantes = ejecutar_registro(omitidos)
+            meta = {}
+            items, faltantes, meta = ejecutar_registro(omitidos)
             pendientes: list[dict] = list(faltantes)
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -238,10 +247,32 @@ def mostrar_ventana_compras():
             return
 
         def mostrar_preview():
-            nonlocal items, pendientes
+            nonlocal items, pendientes, meta
             ventana_items = tk.Toplevel(ventana)
             ventana_items.title("Ítems importados")
             ventana_items.geometry("600x400")
+
+            if meta:
+                frame_meta = tk.Frame(ventana_items)
+                frame_meta.pack(fill=tk.X, padx=10, pady=(10, 0))
+                if meta.get("proveedor"):
+                    tk.Label(
+                        frame_meta, text=f"Proveedor: {meta.get('proveedor')}"
+                    ).pack(anchor="w")
+                if meta.get("numero"):
+                    tk.Label(
+                        frame_meta, text=f"N°: {meta.get('numero')}"
+                    ).pack(anchor="w")
+                if meta.get("fecha"):
+                    tk.Label(
+                        frame_meta, text=f"Fecha: {meta.get('fecha')}"
+                    ).pack(anchor="w")
+                if meta.get("total") is not None:
+                    total_val = meta.get("total")
+                    tk.Label(
+                        frame_meta,
+                        text=f"Total: Gs {float(total_val):,.0f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    ).pack(anchor="w")
 
             frame_items = tk.Frame(ventana_items)
             frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)

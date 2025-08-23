@@ -20,14 +20,16 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
             }
         ],
         [],
+        {"proveedor": "Proveedor", "numero": "1", "fecha": "2024-05-01", "total": 10},
     )
 
     proveedor = Proveedor("Proveedor")
-    compra, pendientes = compras_controller.registrar_compra_desde_imagen(
+    compra, pendientes, meta = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg", como_compra=True
     )
     assert pendientes == []
     assert isinstance(compra, Compra)
+    assert meta["proveedor"] == "Proveedor"
     assert compra.proveedor_id == proveedor.id
     assert len(compra.items_compra) == 1
     detalle = compra.items_compra[0]
@@ -60,14 +62,16 @@ def test_registrar_compra_desde_imagen_agrupa_items(mock_parse):
             },
         ],
         [],
+        {},
     )
 
     proveedor = Proveedor("Proveedor")
-    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+    items, pendientes, meta = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg"
     )
 
     assert pendientes == []
+    assert meta == {}
     assert len(items) == 2
     cantidades = sorted(i["cantidad"] for i in items)
     assert cantidades == [1, 3]
@@ -109,6 +113,7 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
                     "costo_unitario": 50,
                 }
             ],
+            {},
         ),
         (
             [
@@ -120,11 +125,12 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
                 }
             ],
             [],
+            {},
         ),
     ]
 
     proveedor = Proveedor("Proveedor")
-    items, faltantes = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes, _ = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg"
     )
 
@@ -140,7 +146,7 @@ def test_registrar_compra_desde_imagen_crea_materia_prima(
     mock_agregar.assert_called_once_with("Azucar", "kg", 50.0, 10.0)
     mock_clear.assert_called_once()
 
-    items, faltantes = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes, _ = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg"
     )
     assert faltantes == []
@@ -171,6 +177,7 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
                     "costo_unitario": 3,
                 }
             ],
+            {},
         ),
         (
             [
@@ -182,11 +189,12 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
                 }
             ],
             [],
+            {},
         ),
     ]
 
     proveedor = Proveedor("Proveedor")
-    items, faltantes = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes, _ = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg"
     )
 
@@ -207,7 +215,7 @@ def test_registrar_compra_desde_imagen_omite_materia_prima(
     mock_clear.assert_not_called()
 
     nombres_omitidos = [raw["nombre_producto"] for raw in omitidos_raw]
-    items, faltantes2 = compras_controller.registrar_compra_desde_imagen(
+    items, faltantes2, _ = compras_controller.registrar_compra_desde_imagen(
         proveedor, "img.jpg", omitidos=nombres_omitidos
     )
     assert faltantes2 == []
@@ -244,6 +252,7 @@ def test_registrar_compra_desde_imagen_producto_id_invalido(mock_parse, producto
             }
         ],
         [],
+        {},
     )
 
     with pytest.raises(ValueError):
@@ -285,11 +294,12 @@ def test_flujo_selecciona_subconjunto_items(
             },
         ],
         [],
+        {},
     )
 
     try:
         proveedor = Proveedor("Proveedor")
-        items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        items, pendientes, _ = compras_controller.registrar_compra_desde_imagen(
             proveedor, "img.jpg"
         )
 
@@ -330,10 +340,11 @@ def test_registrar_compra_desde_imagen_selector(mock_parse):
             },
         ],
         [],
+        {},
     )
 
     proveedor = Proveedor("Proveedor")
-    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+    items, pendientes, _ = compras_controller.registrar_compra_desde_imagen(
         proveedor,
         "img.jpg",
         selector=lambda i: i["nombre_producto"] != "Azucar",
