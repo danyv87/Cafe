@@ -1,6 +1,5 @@
 import logging
 import sqlite3
-from typing import List
 
 from utils.json_utils import read_json, write_json
 from utils.invoice_utils import load_invoice
@@ -8,7 +7,6 @@ from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from controllers.materia_prima_controller import (
-    agregar_materia_prima,
     actualizar_stock_materia_prima,
 )
 import config
