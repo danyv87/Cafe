@@ -1,9 +1,9 @@
 import os
 import json
+import dataclasses
+import sqlite3
 from pathlib import Path
 from typing import Any, Union
-import sqlite3
-import dataclasses
 from uuid import uuid4
 
 
@@ -65,4 +65,49 @@ def save_invoice(inv: Any, destination: Union[str, os.PathLike, sqlite3.Connecti
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-__all__ = ["save_invoice"]
+def load_invoice(
+    source: Union[str, os.PathLike, sqlite3.Connection],
+    invoice_id: str | None = None,
+) -> dict:
+    """Load a previously saved invoice from ``source``.
+
+    Parameters
+    ----------
+    source:
+        Directory path, JSON file path or ``sqlite3.Connection`` from which the
+        invoice will be read.
+    invoice_id:
+        Identifier of the invoice.  Required when ``source`` is a directory or a
+        database connection.  Ignored when ``source`` points directly to a JSON
+        file.
+
+    Returns
+    -------
+    dict
+        A dictionary with all invoice fields, including the associated item
+        fields.
+    """
+
+    # Source is an SQLite database connection
+    if isinstance(source, sqlite3.Connection):
+        if not invoice_id:
+            raise ValueError("invoice_id es requerido para cargar desde la base de datos")
+        cur = source.cursor()
+        cur.execute("SELECT data FROM invoices WHERE id=?", (invoice_id,))
+        row = cur.fetchone()
+        if row is None:
+            raise FileNotFoundError(f"Factura {invoice_id} no encontrada en la base de datos")
+        return json.loads(row[0])
+
+    # Treat source as path
+    path = Path(source)
+    if path.is_dir():
+        if not invoice_id:
+            raise ValueError("invoice_id es requerido para cargar desde un directorio")
+        path = path / f"{invoice_id}.json"
+
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+__all__ = ["save_invoice", "load_invoice"]
