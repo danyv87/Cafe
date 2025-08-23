@@ -2,7 +2,7 @@ import types
 import sys
 
 from gui.materia_prima_dialogs import solicitar_datos_materia_prima_masivo
-from controllers.materia_prima_controller import ALLOWED_UNIDADES
+from models.unidades import ALLOWED_UNIDADES
 
 
 def _force_cli(monkeypatch):

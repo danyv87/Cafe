@@ -7,7 +7,7 @@ primas que no están registradas.
 
 from typing import Dict, Tuple, List
 
-from controllers.materia_prima_controller import ALLOWED_UNIDADES
+from models.unidades import ALLOWED_UNIDADES
 
 
 def solicitar_datos_materia_prima(nombre: str):
