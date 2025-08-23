@@ -54,8 +54,7 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             "Se agregaron 1 ítems importados.",
         )
 
-    def test_remover_items(self):
-        import tkinter as tk
+    def test_items_deseleccionados_no_agregados(self):
         import gui.compras_view as compras_view
 
         items_data = [
@@ -137,24 +136,18 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             def pack(self, *a, **k):
                 pass
 
+            def delete(self, start, end=None):
+                self.items = []
+
             def insert(self, index, item):
                 self.items.append(item)
-
-            def delete(self, start, end=None):
-                if end is None:
-                    del self.items[start]
-                else:
-                    self.items = []
-
-            def yview(self, *a, **k):
-                pass
 
             def curselection(self):
                 return self.selection
 
-            def select_set(self, start, end=None):
-                if end in (None, tk.END):
-                    self.selection = tuple(range(start, len(self.items)))
+            def selection_set(self, start, end=None):
+                if end is None:
+                    self.selection = (start,)
                 else:
                     self.selection = tuple(range(start, end + 1))
 
@@ -164,11 +157,14 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             def size(self):
                 return len(self.items)
 
+            def yview(self, *a, **k):
+                pass
+
             def bind(self, *a, **k):
                 pass
 
-            def selection_set(self, start, end=None):
-                self.select_set(start, end)
+            def config(self, *a, **k):
+                pass
 
         class DummyButton:
             instances = []
@@ -236,12 +232,33 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
             def is_alive(self):
                 return False
 
+        class DummyCheckbutton:
+            instances = []
+
+            def __init__(self, *a, **k):
+                self.variable = k.get('variable')
+                self.text = k.get('text')
+                DummyCheckbutton.instances.append(self)
+
+            def pack(self, *a, **k):
+                pass
+
+        class DummyBooleanVar:
+            def __init__(self, value=False):
+                self.value = value
+
+            def get(self):
+                return self.value
+
+            def set(self, val):
+                self.value = val
+
         mp_fake = type('MP', (), {'unidad_medida': 'u'})()
 
         with patch('gui.compras_view.CompraDetalle', DummyCompraDetalle), \
              patch('gui.compras_view.registrar_compra_desde_imagen', return_value=(items_data, [])), \
              patch('gui.compras_view.filedialog.askopenfilename', return_value='test.png'), \
-             patch('gui.compras_view.messagebox') as mock_msg, \
+             patch('gui.compras_view.messagebox'), \
              patch('gui.compras_view.listar_materias_primas', return_value=[]), \
              patch('gui.compras_view.obtener_materia_prima_por_id', return_value=mp_fake), \
              patch('gui.compras_view.tk.Toplevel', DummyToplevel), \
@@ -254,18 +271,15 @@ class TestCompraDesdeImagenGUI(unittest.TestCase):
              patch('gui.compras_view.DateEntry', DummyEntry), \
              patch('gui.compras_view.ttk.Label', DummyLabel), \
              patch('gui.compras_view.ttk.Progressbar', DummyProgressbar), \
+             patch('gui.compras_view.ttk.Checkbutton', DummyCheckbutton), \
+             patch('gui.compras_view.tk.BooleanVar', DummyBooleanVar), \
              patch('gui.compras_view.threading.Thread', DummyThread):
             compras_view.mostrar_ventana_compras()
             DummyEntry.instances[0].insert(0, 'Proveedor')
             import_btn = next(b for b in DummyButton.instances if b.text == 'Importar desde imagen')
             import_btn.command()
-            remover_btn = next(b for b in DummyButton.instances if b.text == 'Remover')
+            DummyCheckbutton.instances[0].variable.set(False)
             agregar_btn = next(b for b in DummyButton.instances if b.text == 'Agregar a la compra')
-            lista_items = DummyListbox.instances[-1]
-            lista_items.selection = (0,)
-            remover_btn.command()
-            self.assertEqual(len(items_data), 1)
-            self.assertEqual(lista_items.size(), 1)
             agregar_btn.command()
             self.assertEqual(len(created), 1)
             self.assertEqual(created[0].nombre_producto, 'Item2')
