@@ -65,6 +65,29 @@ def save_invoice(inv: Any, destination: Union[str, os.PathLike, sqlite3.Connecti
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+
+def list_invoices(source: Union[str, os.PathLike, sqlite3.Connection]) -> list[str]:
+    """Return all invoice identifiers stored in ``source``.
+
+    ``source`` can be a directory path containing JSON files or a
+    ``sqlite3.Connection`` from which invoice identifiers will be queried.
+    """
+
+    if isinstance(source, sqlite3.Connection):
+        cur = source.cursor()
+        try:
+            cur.execute("SELECT id FROM invoices")
+        except sqlite3.OperationalError:
+            return []
+        return [row[0] for row in cur.fetchall()]
+
+    path = Path(source)
+    if not path.exists():
+        raise FileNotFoundError(str(source))
+    if not path.is_dir():
+        raise ValueError("source debe ser un directorio o conexión SQLite")
+    return sorted(p.stem for p in path.glob("*.json"))
+
 def load_invoice(
     source: Union[str, os.PathLike, sqlite3.Connection],
     invoice_id: str | None = None,
@@ -91,7 +114,16 @@ def load_invoice(
     # Source is an SQLite database connection
     if isinstance(source, sqlite3.Connection):
         if not invoice_id:
-            raise ValueError("invoice_id es requerido para cargar desde la base de datos")
+            ids = list_invoices(source)
+            if len(ids) == 1:
+                invoice_id = ids[0]
+            else:
+                if not ids:
+                    raise FileNotFoundError("No hay facturas en la base de datos")
+                raise ValueError(
+                    "invoice_id es requerido para cargar desde la base de datos; "
+                    f"opciones disponibles: {', '.join(ids)}"
+                )
         cur = source.cursor()
         cur.execute("SELECT data FROM invoices WHERE id=?", (invoice_id,))
         row = cur.fetchone()
@@ -103,11 +135,20 @@ def load_invoice(
     path = Path(source)
     if path.is_dir():
         if not invoice_id:
-            raise ValueError("invoice_id es requerido para cargar desde un directorio")
+            ids = list_invoices(path)
+            if len(ids) == 1:
+                invoice_id = ids[0]
+            else:
+                if not ids:
+                    raise FileNotFoundError("No hay facturas en el directorio")
+                raise ValueError(
+                    "invoice_id es requerido para cargar desde un directorio; "
+                    f"opciones disponibles: {', '.join(ids)}"
+                )
         path = path / f"{invoice_id}.json"
 
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-__all__ = ["save_invoice", "load_invoice"]
+__all__ = ["save_invoice", "load_invoice", "list_invoices"]
