@@ -1,5 +1,6 @@
 import json
 from unittest.mock import patch
+from uuid import uuid4
 
 from controllers import compras_controller
 from models.proveedor import Proveedor
@@ -10,7 +11,7 @@ def test_registrar_compra_desde_imagen_guarda_factura(mock_parse, tmp_path):
     mock_parse.return_value = (
         [
             {
-                "producto_id": 1,
+                "producto_id": uuid4().hex,
                 "nombre_producto": "Cafe",
                 "cantidad": 2,
                 "costo_unitario": 5,

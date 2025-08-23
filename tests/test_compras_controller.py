@@ -3,6 +3,7 @@ import json
 import tempfile
 import unittest
 from unittest.mock import patch
+from uuid import uuid4
 
 from controllers import compras_controller
 from controllers import materia_prima_controller as mp_controller
@@ -76,7 +77,7 @@ class TestCargarCompras(unittest.TestCase):
         mock_parse.return_value = (
             [
                 {
-                    "producto_id": 3,
+                    "producto_id": uuid4().hex,
                     "nombre_producto": "Leche",
                     "cantidad": 2,
                     "costo_unitario": 4,
@@ -134,7 +135,7 @@ class TestCargarCompras(unittest.TestCase):
         mock_parse.return_value = (
             [
                 {
-                    "producto_id": 1,
+                    "producto_id": uuid4().hex,
                     "nombre_producto": "",
                     "cantidad": 0,
                     "costo_unitario": 1,
