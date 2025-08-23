@@ -250,6 +250,16 @@ def registrar_compra_desde_imagen(
         if selector is None or selector(item_validado):
             items_validados.append(item_validado)
 
+    # Consolidar ítems con mismo producto_id y costo
+    agrupados = {}
+    for item in items_validados:
+        clave = (item["producto_id"], item["costo_unitario"])
+        if clave in agrupados:
+            agrupados[clave]["cantidad"] += item["cantidad"]
+        else:
+            agrupados[clave] = item.copy()
+    items_validados = list(agrupados.values())
+
     # Guardar la factura si corresponde
     destino = db_conn if db_conn is not None else output_dir
     if destino is not None:

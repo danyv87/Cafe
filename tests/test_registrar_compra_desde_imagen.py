@@ -35,6 +35,44 @@ def test_registrar_compra_desde_imagen_ok(mock_parse):
     assert detalle.nombre_producto == "Cafe"
 
 
+@patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
+def test_registrar_compra_desde_imagen_agrupa_items(mock_parse):
+    prod_id = uuid4().hex
+    mock_parse.return_value = (
+        [
+            {
+                "producto_id": prod_id,
+                "nombre_producto": "Cafe",
+                "cantidad": 1,
+                "costo_unitario": 10,
+            },
+            {
+                "producto_id": prod_id,
+                "nombre_producto": "Cafe",
+                "cantidad": 2,
+                "costo_unitario": 10,
+            },
+            {
+                "producto_id": prod_id,
+                "nombre_producto": "Cafe",
+                "cantidad": 1,
+                "costo_unitario": 8,
+            },
+        ],
+        [],
+    )
+
+    proveedor = Proveedor("Proveedor")
+    items, pendientes = compras_controller.registrar_compra_desde_imagen(
+        proveedor, "img.jpg"
+    )
+
+    assert pendientes == []
+    assert len(items) == 2
+    cantidades = sorted(i["cantidad"] for i in items)
+    assert cantidades == [1, 3]
+
+
 @patch(
     "controllers.compras_controller.receipt_parser.parse_receipt_image",
     side_effect=ConnectionError("network"),
