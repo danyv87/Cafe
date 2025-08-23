@@ -1,11 +1,4 @@
-"""Gemini based receipt parser.
-
-This module mirrors the behaviour of ``testfactura.py`` while using Google's
-Gemini models to extract structured data from receipt images. The API key is
-retrieved via :func:`utils.gemini_api.get_gemini_api_key` and the results are
-normalised for the application.
-"""
-
+# gemini_receipt_parser.py
 from __future__ import annotations
 
 import io
@@ -20,25 +13,30 @@ from .gemini_api import get_gemini_api_key
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Optional dependency for flexible date parsing
-# ---------------------------------------------------------------------------
-try:  # pragma: no cover - the package is optional
-    import dateparser as _dateparser  # type: ignore
-except Exception:  # pragma: no cover - missing dependency
-    _dateparser = None  # type: ignore
+# Optional dependencies
+try:
+    import dateparser as _dateparser
+except ImportError:
+    _dateparser = None
 
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+try:
+    from fuzzywuzzy import fuzz
+except ImportError:
+    fuzz = None
+
+# Pydantic models (unchanged)
 from pydantic import BaseModel
 
-try:  # pydantic v2
+try:
     from pydantic import ConfigDict
 
     class Item(BaseModel):
         """Representa un producto detectado en la factura."""
-
         descripcion: Optional[str] = None
         cantidad: Optional[float] = None
         precio_unitario: Optional[float] = None
@@ -48,11 +46,9 @@ try:  # pydantic v2
         descripcion_adicional: Optional[str] = None
 
         model_config = ConfigDict(extra="allow")
-
 
     class InvoiceOut(BaseModel):
         """Estructura de salida del comprobante."""
-
         items: List[Item] = []
         proveedor: Optional[str] = None
         ruc_proveedor: Optional[str] = None
@@ -68,8 +64,8 @@ try:  # pydantic v2
         def apply_defaults_and_validate(self) -> None:
             self.items = self.items or []
 
-except Exception:  # pragma: no cover - pydantic v1 fallback
-    class Item(BaseModel):  # type: ignore[no-redef]
+except Exception:
+    class Item(BaseModel):
         descripcion: Optional[str] = None
         cantidad: Optional[float] = None
         precio_unitario: Optional[float] = None
@@ -81,7 +77,7 @@ except Exception:  # pragma: no cover - pydantic v1 fallback
         class Config:
             extra = "allow"
 
-    class InvoiceOut(BaseModel):  # type: ignore[no-redef]
+    class InvoiceOut(BaseModel):
         items: List[Item] = []
         proveedor: Optional[str] = None
         ruc_proveedor: Optional[str] = None
@@ -98,31 +94,26 @@ except Exception:  # pragma: no cover - pydantic v1 fallback
         def apply_defaults_and_validate(self) -> None:
             self.items = self.items or []
 
-
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
+# Helper functions (unchanged)
 def normalize_date(value: Optional[str]) -> Optional[str]:
-    """Normalise ``value`` to ``YYYY-MM-DD`` when possible."""
-
+    """Normalise `value` to `YYYY-MM-DD` when possible."""
     if not value:
         return None
     if _dateparser:
-        dt = _dateparser.parse(value, languages=["es"])  # pragma: no cover - depends on lib
+        dt = _dateparser.parse(value, languages=["es"])
         if dt:
             try:
                 return dt.strftime("%Y-%m-%d")
-            except Exception:  # pragma: no cover - defensive
+            except Exception:
                 return None
     m = re.search(r"\b([0-3]\d)[/\-.]([0-1]\d)[/\-.]([12]\d{3})\b", value)
     if m:
         try:
             dt = datetime.strptime(f"{m.group(1)}/{m.group(2)}/{m.group(3)}", "%d/%m/%Y")
             return dt.strftime("%Y-%m-%d")
-        except Exception:  # pragma: no cover - defensive
+        except Exception:
             return None
     return None
-
 
 def _to_float(value: Any) -> Optional[float]:
     if value in (None, ""):
@@ -133,17 +124,15 @@ def _to_float(value: Any) -> Optional[float]:
         cleaned = value.strip().replace(".", "").replace(",", ".")
         try:
             return float(cleaned)
-        except ValueError:  # pragma: no cover - defensive
+        except ValueError:
             logger.debug("No se pudo convertir '%s' a float", value)
     return None
-
 
 def _has_fraction(x: Optional[float]) -> bool:
     try:
         return x is not None and float(x) != int(round(float(x)))
-    except Exception:  # pragma: no cover - defensive
+    except Exception:
         return False
-
 
 def _auto_should_scale_thousands(inv: InvoiceOut) -> bool:
     prices: List[float] = []
@@ -158,30 +147,24 @@ def _auto_should_scale_thousands(inv: InvoiceOut) -> bool:
     frac = [p for p in prices if p < 1000 and _has_fraction(p)]
     return len(small) >= max(1, int(0.6 * len(prices))) and len(frac) >= max(1, int(0.5 * len(prices)))
 
-
 def _scale_money_fields(inv: InvoiceOut, factor: float) -> None:
     def s(v: Optional[float]) -> Optional[float]:
         return None if v is None else v * factor
-
     inv.total = s(inv.total)
     for it in inv.items:
         it.precio = s(it.precio)
         it.precio_unitario = s(it.precio_unitario)
         it.subtotal = s(it.subtotal)
 
-
 def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut:
     """Normalise numeric fields and optionally scale to thousands."""
-
     for it in inv.items:
         it.cantidad = _to_float(it.cantidad) or 0.0
         it.precio = _to_float(it.precio)
         it.precio_unitario = _to_float(it.precio_unitario)
         it.subtotal = _to_float(it.subtotal)
-
     inv.total = _to_float(inv.total)
     inv.fecha = normalize_date(inv.fecha)
-
     do_scale = False
     if scale_policy == "x1000":
         do_scale = True
@@ -189,21 +172,81 @@ def normalize_numbers(inv: InvoiceOut, scale_policy: str = "auto") -> InvoiceOut
         do_scale = _auto_should_scale_thousands(inv)
     if do_scale:
         _scale_money_fields(inv, 1000.0)
-
     return inv
 
+# New function to load and match materials
+def load_materias_primas(file_path: str = r"C:\Users\ASUS\OneDrive - ITAIPU Binacional\Personal\Cafe\data\materias_primas.json") -> List[Dict]:
+    """Load materias primas from JSON file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.error("No se encontró el archivo %s", file_path)
+        return []
+    except json.JSONDecodeError as e:
+        logger.error("Error al parsear %s: %s", file_path, e)
+        return []
 
-# ---------------------------------------------------------------------------
+def match_material(producto: str, materias_primas: List[Dict], threshold: int = 80) -> Optional[Dict]:
+    """Match a producto to a material in materias_primas using fuzzy matching or exact match."""
+    if not producto:
+        return None
+    producto = producto.lower().strip()
+    if fuzz:
+        best_match = None
+        best_score = 0
+        for material in materias_primas:
+            nombre = material.get("nombre", "").lower().strip()
+            score = fuzz.ratio(producto, nombre)
+            if score > best_score and score >= threshold:
+                best_score = score
+                best_match = material
+        return best_match
+    else:
+        # Fallback to simple substring match
+        for material in materias_primas:
+            nombre = material.get("nombre", "").lower().strip()
+            if producto in nombre or nombre in producto:
+                return material
+        return None
+
+# Image preprocessing
+def image_to_part(path: str) -> Any:
+    """Convert image to Part, using Pillow if available."""
+    try:
+        from google.genai.types import Part
+    except ImportError as exc:
+        raise ImportError(
+            "Falta el paquete 'google-generativeai'. Instálalo con `pip install google-generativeai`."
+        ) from exc
+
+    mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
+    if Image:
+        img = Image.open(path).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG" if mime == "image/jpeg" else "PNG", quality=95)
+        buf.seek(0)
+        return Part.from_bytes(data=buf.getvalue(), mime_type=mime)
+    else:
+        with io.open(path, "rb") as fh:
+            return Part.from_bytes(data=fh.read(), mime_type=mime)
+
 # Gemini helpers
-# ---------------------------------------------------------------------------
-def call_model_once(model: Any, content: Any) -> InvoiceOut:
-    """Invoke ``model`` once and parse the resulting ``InvoiceOut``."""
+def call_model_once(model_name: str, image_path: str, content: List, api_key: str) -> InvoiceOut:
+    """Invoke model once and parse the resulting `InvoiceOut`."""
+    try:
+        from google import genai
+        from google.genai.types import Content, Part
+    except ImportError as exc:
+        raise ImportError(
+            "Falta el paquete 'google-generativeai'. Instálalo con `pip install google-generativeai`."
+        ) from exc
 
-    import google.generativeai as genai  # type: ignore[import]
-
-    response = model.generate_content(
-        content,
-        generation_config={"response_mime_type": "application/json"},
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=model_name,
+        contents=[Content(parts=content)],
+        config={"response_mime_type": "application/json"}
     )
     text = getattr(response, "text", "")
     if not text:
@@ -306,40 +349,37 @@ def call_model_once(model: Any, content: Any) -> InvoiceOut:
     inv.apply_defaults_and_validate()
     return inv
 
-
 def extract_invoice_with_fallback(
-    content: Any, primary: Any, fallback: Optional[Any] = None
+    content: List, image_path: str, primary: str, fallback: Optional[str], api_key: str
 ) -> InvoiceOut:
-    """Try ``primary`` model first and fall back to ``fallback`` if needed."""
-
+    """Try `primary` model first and fall back to `fallback` if needed."""
     def _poor_detail(d: InvoiceOut) -> bool:
         no_items = not d.items or all((not it.producto) for it in d.items)
-        return no_items
+        weak_totals = d.total is None
+        return no_items or weak_totals
 
     try:
-        data = call_model_once(primary, content)
+        return call_model_once(primary, image_path, content, api_key)
     except Exception as exc:
-        logger.warning("Modelo %s falló: %s", getattr(primary, "model_name", primary), exc)
+        logger.warning("Modelo %s falló: %s", primary, exc)
         if not fallback:
             raise
-        return call_model_once(fallback, content)
+        return call_model_once(fallback, image_path, content, api_key)
 
+    data = call_model_once(primary, image_path, content, api_key)
     if _poor_detail(data) and fallback:
         try:
-            return call_model_once(fallback, content)
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("Fallback %s falló: %s", getattr(fallback, "model_name", fallback), exc)
+            logger.info("Resultado insuficiente con %s, intentando %s", primary, fallback)
+            return call_model_once(fallback, image_path, content, api_key)
+        except Exception as exc:
+            logger.warning("Fallback %s falló: %s", fallback, exc)
     return data
 
-
-# ---------------------------------------------------------------------------
-# Public entry point
-# ---------------------------------------------------------------------------
 def parse_receipt_image(path: str) -> List[Dict]:
-    """Parse a receipt image using the Gemini backend."""
-
+    """Parse a receipt image using the Gemini backend and autocomplete unit, cost, and stock."""
     try:
-        import google.generativeai as genai  # type: ignore[import]
+        from google import genai
+        from google.genai.types import Part
     except ImportError as exc:
         raise ImportError(
             "Falta el paquete 'google-generativeai'. Instálalo con `pip install google-generativeai`."
@@ -351,40 +391,72 @@ def parse_receipt_image(path: str) -> List[Dict]:
     if not path.lower().endswith((".jpeg", ".jpg", ".png")):
         raise ValueError("Unsupported format: only .jpeg, .jpg or .png images are allowed")
 
-    genai.configure(api_key=get_gemini_api_key())
+    api_key = get_gemini_api_key()
+    content = [
+        Part.from_text(text="""
+            Eres un extractor de datos para facturas en español (Paraguay).
+            Devuelve SOLO JSON válido que cumpla el siguiente esquema. No inventes: si un campo no está, usa null.
 
-    mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
-    with io.open(path, "rb") as fh:
-        image_bytes = fh.read()
+            Esquema:
+            {
+              "proveedor": str|null,
+              "ruc_proveedor": str|null,
+              "timbrado": str|null,
+              "numero_comprobante": str|null,
+              "fecha": str|null,
+              "condicion_venta": str|null,
+              "moneda": str|null,
+              "subtotal": number|null,
+              "iva_10": number|null,
+              "iva_5": number|null,
+              "total": number|null,
+              "items": [
+                {
+                  "producto": str|null,
+                  "cantidad": number|null,
+                  "precio": number|null,
+                  "descripcion_adicional": str|null
+                }
+              ]|null
+            }
+        """),
+        image_to_part(path)
+    ]
 
-    prompt = (
-        "Extrae todos los productos del comprobante y devuelve un JSON con una "
-        "lista de objetos. Cada objeto debe contener las claves 'producto', "
-        "'cantidad', 'precio' y opcionalmente 'descripcion_adicional'."
-    )
+    model_flash = "gemini-1.5-flash"
+    model_pro = "gemini-1.5-pro"
 
-    prompt_part = genai.types.Part.from_text(text=prompt)
-    image_part = genai.types.Part.from_bytes(data=image_bytes, mime_type=mime)
-    content = [prompt_part, image_part]
-
-    model_flash = genai.GenerativeModel("gemini-1.5-flash")
-    model_pro = genai.GenerativeModel("gemini-1.5-pro")
-
-    invoice = extract_invoice_with_fallback(content, model_flash, model_pro)
+    invoice = extract_invoice_with_fallback(content, path, model_flash, model_pro, api_key)
     invoice = normalize_numbers(invoice)
 
+    # Load materias primas
+    materias_primas = load_materias_primas()
+
+    # Autocomplete fields
     items: List[Dict] = []
     for it in invoice.items:
         nombre = it.producto or ""
         precio = it.precio or 0.0
+        cantidad = float(it.cantidad or 0.0)
         item: Dict[str, Any] = {
             "producto": nombre,
-            "cantidad": float(it.cantidad or 0.0),
+            "cantidad": cantidad,
             "precio": float(precio),
         }
         if it.descripcion_adicional:
             item["descripcion_adicional"] = it.descripcion_adicional
+
+        # Match with materias primas
+        matched_material = match_material(nombre, materias_primas)
+        if matched_material:
+            item["unidad_medida"] = matched_material.get("unidad_medida", None)
+            item["costo_unitario"] = matched_material.get("costo_unitario", precio)
+            item["stock"] = matched_material.get("stock", 0.0) + cantidad
+        else:
+            item["unidad_medida"] = None
+            item["costo_unitario"] = precio  # Fallback to receipt price
+            item["stock"] = cantidad  # Assume new stock is the purchased quantity
+
         items.append(item)
 
     return items
-
