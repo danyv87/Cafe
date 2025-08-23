@@ -123,10 +123,16 @@ class TestGestionComprasGUI(unittest.TestCase):
             gestion_compras.mostrar_ventana_gestion_compras()
             lista = listbox_holder['instance']
             self.assertEqual(lista.size(), 2)
+            self.assertIn("Proveedor: Prov1", lista.get(0))
+            self.assertIn("Proveedor: Prov2", lista.get(1))
+
             lista.selection_set(0)
             eliminar_func = MockButton.call_args.kwargs['command']
             eliminar_func()
+
             self.assertEqual(lista.size(), 1)
+            self.assertIn("Proveedor: Prov2", lista.get(0))
+            mock_msg.askyesno.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()
