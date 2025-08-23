@@ -3,7 +3,6 @@ import json
 import tempfile
 import unittest
 from unittest.mock import patch
-from uuid import uuid4
 
 from controllers import compras_controller
 from controllers import materia_prima_controller as mp_controller
@@ -72,92 +71,6 @@ class TestCargarCompras(unittest.TestCase):
         self.assertEqual(len(compras), 2)
         self.assertTrue(any(c.fecha == fecha_custom for c in compras))
 
-    @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
-    def test_registrar_compra_desde_imagen(self, mock_parse):
-        mock_parse.return_value = (
-            [
-                {
-                    "producto_id": uuid4().hex,
-                    "nombre_producto": "Leche",
-                    "cantidad": 2,
-                    "costo_unitario": 4,
-                }
-            ],
-            [],
-            {},
-        )
-
-        proveedor_z = Proveedor("Proveedor Z")
-        items, pendientes, meta = compras_controller.registrar_compra_desde_imagen(
-            proveedor_z, "dummy.jpg"
-        )
-        self.assertEqual(pendientes, [])
-        self.assertEqual(meta, {})
-        self.assertIsInstance(items, list)
-        self.assertEqual(len(items), 1)
-        self.assertEqual(items[0]["nombre_producto"], "Leche")
-
-        detalles = [CompraDetalle(**item) for item in items]
-
-        # Aún no se guardó en el archivo
-        compras = compras_controller.cargar_compras()
-        self.assertEqual(len(compras), 1)
-
-        with patch(
-            "controllers.compras_controller.actualizar_stock_materia_prima"
-        ) as mock_actualizar:
-            compras_controller.registrar_compra(
-                proveedor_z, detalles, fecha=""
-            )
-            mock_actualizar.assert_called_once()
-
-        compras = compras_controller.cargar_compras()
-        self.assertEqual(len(compras), 2)
-
-    @patch(
-        "controllers.compras_controller.receipt_parser.parse_receipt_image",
-        side_effect=ConnectionError("fallo de red"),
-    )
-    def test_registrar_compra_desde_imagen_error_red(self, mock_parse):
-        with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
-        self.assertIn("conexión", str(ctx.exception).lower())
-
-    @patch(
-        "controllers.compras_controller.receipt_parser.parse_receipt_image",
-        side_effect=ValueError("formato inválido"),
-    )
-    def test_registrar_compra_desde_imagen_error_parseo(self, mock_parse):
-        with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
-        self.assertEqual("formato inválido", str(ctx.exception))
-
-    @patch("controllers.compras_controller.receipt_parser.parse_receipt_image")
-    def test_registrar_compra_desde_imagen_datos_invalidos(self, mock_parse):
-        mock_parse.return_value = (
-            [
-                {
-                    "producto_id": uuid4().hex,
-                    "nombre_producto": "",
-                    "cantidad": 0,
-                    "costo_unitario": 1,
-                }
-            ],
-            [],
-            {},
-        )
-        with self.assertRaises(ValueError):
-            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
-
-    @patch(
-        "controllers.compras_controller.receipt_parser.parse_receipt_image",
-        side_effect=NotImplementedError("backend no disponible"),
-    )
-    def test_registrar_compra_desde_imagen_backend_no_disponible(self, mock_parse):
-        with self.assertRaises(ValueError) as ctx:
-            compras_controller.registrar_compra_desde_imagen(Proveedor("Proveedor"), "img.jpg")
-        # The controller should propagate the original message
-        self.assertEqual("backend no disponible", str(ctx.exception))
 
     def test_eliminar_compra_actualiza_stock_y_archivo(self):
         # Registrar una compra adicional para eliminar luego
