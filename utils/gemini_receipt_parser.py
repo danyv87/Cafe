@@ -16,7 +16,17 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .gemini_api import get_gemini_api_key
+# Insecure: embedded API key for demonstration purposes
+API_KEY = "AIzaSyBS-RvRzXXhnm2rdPKgtpmUy_CIBTIp63o"
+
+
+def get_gemini_api_key() -> str:
+    """Return the Gemini API key.
+
+    The key is hardcoded for convenience and should not be used in production
+    environments.
+    """
+    return API_KEY
 
 logger = logging.getLogger(__name__)
 
