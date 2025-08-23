@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
+from typing import List, Union
 
 from utils.json_utils import read_json, write_json
 from utils.invoice_utils import load_invoice
@@ -89,7 +91,7 @@ def exportar_compras_excel(compras):
 
 def registrar_compra(
     proveedor: Proveedor, items_compra_detalle: List[CompraDetalle], fecha=None
-):
+) -> Compra:
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
@@ -130,14 +132,17 @@ def registrar_compra(
     return nueva_compra
 
 
-def importar_factura(source, invoice_id: str | None = None):
+def importar_factura(
+    source: Union[str, os.PathLike, sqlite3.Connection],
+    invoice_id: Union[str, None] = None,
+) -> Compra:
     """Importa una factura desde ``source`` y la registra como compra.
 
     Parameters
     ----------
     source: Union[str, os.PathLike, sqlite3.Connection]
         Origen donde se encuentra almacenada la factura.
-    invoice_id: str | None, optional
+    invoice_id: Union[str, None], optional
         Identificador de la factura. Se pasa directamente a
         :func:`utils.invoice_utils.load_invoice`.
 
@@ -183,7 +188,7 @@ def eliminar_compra(compra_id: str) -> bool:
             f"Compra con ID '{compra_id}' no encontrada para eliminación."
         )
 
-    procesados: list[CompraDetalle] = []
+    procesados: List[CompraDetalle] = []
     try:
         for item in compra_obj.items_compra:
             actualizar_stock_materia_prima(item.producto_id, -item.cantidad)
