@@ -20,9 +20,10 @@ except ImportError:
     _dateparser = None
 
 try:
-    from PIL import Image
+    from PIL import Image, UnidentifiedImageError
 except ImportError:
     Image = None
+    UnidentifiedImageError = Exception  # type: ignore
 
 try:
     from fuzzywuzzy import fuzz
@@ -222,7 +223,11 @@ def image_to_part(path: str) -> Any:
 
     mime = "image/png" if path.lower().endswith(".png") else "image/jpeg"
     if Image:
-        img = Image.open(path).convert("RGB")
+        try:
+            img = Image.open(path).convert("RGB")
+        except UnidentifiedImageError:
+            with io.open(path, "rb") as fh:
+                return Part.from_bytes(data=fh.read(), mime_type=mime)
         buf = io.BytesIO()
         img.save(buf, format="JPEG" if mime == "image/jpeg" else "PNG", quality=95)
         buf.seek(0)
