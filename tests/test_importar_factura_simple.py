@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 from controllers import compras_controller
 from models.proveedor import Proveedor
@@ -21,6 +21,7 @@ def test_importar_factura_simple_delega(mock_registrar, tmp_path):
         db_conn=None,
         omitidos=None,
         selector=None,
+        importer=ANY,
     )
 
 

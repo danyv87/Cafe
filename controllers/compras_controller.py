@@ -7,6 +7,7 @@ from models.compra import Compra
 from models.compra_detalle import CompraDetalle
 from models.proveedor import Proveedor
 from utils import receipt_parser
+from controllers.invoice_importer import InvoiceImporter
 from controllers.materia_prima_controller import (
     agregar_materia_prima,
     actualizar_stock_materia_prima,
@@ -131,6 +132,7 @@ def registrar_compra_desde_imagen(
     db_conn=None,
     omitidos=None,
     selector: Optional[Callable[[dict], bool]] = None,  # <- fix
+    importer: InvoiceImporter | None = None,
 ):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
@@ -181,110 +183,41 @@ def registrar_compra_desde_imagen(
     if not isinstance(proveedor, Proveedor) or not proveedor.nombre.strip():
         raise ValueError("El nombre del proveedor no puede estar vacío.")
 
+    importer = importer or InvoiceImporter()
+
     omitidos = list(omitidos or [])
     metadata = {"archivo": path_imagen, "proveedor": proveedor.nombre}
     try:
-        parsed = receipt_parser.parse_receipt_image(path_imagen, omitidos=omitidos)
-        if len(parsed) == 3:
-            items_dict, faltantes, meta = parsed
-        else:  # Compatibilidad con implementaciones antiguas
-            items_dict, faltantes = parsed  # type: ignore[misc]
-            meta = {}
-    except (ConnectionError, TimeoutError) as e:
-        logger.exception("Error de red al procesar comprobante", extra=metadata)
-        raise ValueError(
-            "No se pudo procesar la imagen por un problema de conexión."
-        ) from e
-    except NotImplementedError as e:
-        logger.exception(
-            "Funcionalidad no disponible al procesar comprobante", extra=metadata
-        )
-        raise ValueError(str(e)) from e
-    except FileNotFoundError as e:
-        logger.exception("Comprobante no accesible", extra=metadata)
-        raise ValueError("El comprobante no existe o no es accesible.") from e
-    except ValueError as e:
+        items_dict, faltantes, meta = importer.parse(path_imagen, omitidos)
+    except ValueError:
         logger.exception("Error al interpretar la imagen", extra=metadata)
-        raise ValueError(str(e)) from e
-    except RuntimeError as e:
-        # Errores de ejecución (p.ej. falta de clave API) también deben ser
-        # reportados al usuario para facilitar el diagnóstico.
-        logger.exception("Error al interpretar la imagen", extra=metadata)
-        raise ValueError(str(e)) from e
-    except Exception as e:
-        logger.exception("Error al interpretar la imagen", extra=metadata)
-        raise ValueError("No se pudo interpretar la imagen del comprobante.") from e
-
-    if not isinstance(items_dict, list):
-        raise ValueError("Formato de datos inválido del comprobante.")
+        raise
 
     pendientes: List[dict] = list(faltantes)
-    items_validados = []
-    for item in items_dict:
-        try:
-            producto_id = item["producto_id"]
-            nombre = item["nombre_producto"].strip()
-            cantidad = float(item["cantidad"])
-            costo_unitario = float(item["costo_unitario"])
-            descripcion = item.get("descripcion_adicional", "")
-        except Exception as e:  # pragma: no cover - fallthrough validation
-            logger.exception(
-                "Error al convertir datos del comprobante",
-                extra={"archivo": path_imagen, "proveedor": proveedor.nombre},
-            )
-            raise ValueError("Datos de compra inválidos en la imagen.") from e
+    try:
+        items_validados = importer.validate(items_dict)
+    except ValueError:
+        logger.exception(
+            "Error al convertir datos del comprobante",
+            extra={"archivo": path_imagen, "proveedor": proveedor.nombre},
+        )
+        raise
 
-        if not (
-            (isinstance(producto_id, int) and producto_id > 0)
-            or (isinstance(producto_id, str) and producto_id.strip())
-        ):
-            raise ValueError("producto_id vacío o inválido en la imagen.")
-        if not isinstance(nombre, str) or not nombre:
-            raise ValueError("nombre_producto inválido en la imagen.")
-        if cantidad <= 0:
-            raise ValueError("cantidad debe ser un número positivo.")
-        if costo_unitario <= 0:
-            raise ValueError("costo_unitario debe ser un número positivo.")
-        if not isinstance(descripcion, str):
-            raise ValueError("descripcion_adicional debe ser texto.")
-        item_validado = {
-            "producto_id": producto_id,
-            "nombre_producto": nombre,
-            "cantidad": cantidad,
-            "costo_unitario": costo_unitario,
-            "descripcion_adicional": descripcion,
-        }
-        if selector is None or selector(item_validado):
-            items_validados.append(item_validado)
+    if selector is not None:
+        items_validados = [i for i in items_validados if selector(i)]
 
-    # Consolidar ítems con mismo producto_id y costo
-    agrupados = {}
-    for item in items_validados:
-        clave = (item["producto_id"], item["costo_unitario"])
-        if clave in agrupados:
-            agrupados[clave]["cantidad"] += item["cantidad"]
-        else:
-            agrupados[clave] = item.copy()
-    items_validados = list(agrupados.values())
+    items_validados = importer.match(items_validados)
 
-    # Guardar la factura si corresponde
     destino = db_conn if db_conn is not None else output_dir
-    if destino is not None:
-        from utils.invoice_utils import save_invoice  # import local to avoid heavy deps
-
-        factura = {
-            "proveedor_id": proveedor.id,
-            "proveedor": proveedor.nombre,
-            "items": items_validados,
-            "pendientes": pendientes,
-        }
-        if meta:
-            factura.update(meta)
-        try:
-            invoice_id = save_invoice(factura, destino)
-            logger.info(f"Factura guardada con ID {invoice_id}")
-        except Exception as exc:  # pragma: no cover - errores al guardar
-            logger.error(f"No se pudo guardar la factura: {exc}")
+    factura = {
+        "proveedor_id": proveedor.id,
+        "proveedor": proveedor.nombre,
+        "items": items_validados,
+        "pendientes": pendientes,
+    }
+    if meta:
+        factura.update(meta)
+    importer.persist(factura, destino)
 
     if como_compra:
         detalles = [
@@ -330,6 +263,7 @@ def importar_factura_simple(
 
     db_conn = destino if isinstance(destino, sqlite3.Connection) else None
     output_dir = None if db_conn is not None else destino
+    importer = InvoiceImporter()
     compra, pendientes, _ = registrar_compra_desde_imagen(
         proveedor,
         path_imagen,
@@ -338,6 +272,7 @@ def importar_factura_simple(
         db_conn=db_conn,
         omitidos=None,
         selector=None,
+        importer=importer,
     )
     return compra, pendientes
 
@@ -362,8 +297,9 @@ def importar_comprobantes_masivos(proveedor: Proveedor, archivos: List[str]):
     resultados = []
     for archivo in archivos:
         try:
+            importer = InvoiceImporter()
             compra, pendientes, _ = registrar_compra_desde_imagen(
-                proveedor, archivo, como_compra=True
+                proveedor, archivo, como_compra=True, importer=importer
             )
             resultados.append(
                 {
