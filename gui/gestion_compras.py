@@ -1,8 +1,7 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import messagebox
 from controllers.compras_controller import (
     eliminar_compra,
-    importar_factura,
     listar_compras,
 )
 
@@ -45,28 +44,6 @@ def mostrar_ventana_gestion_compras():
             except Exception as ex:
                 messagebox.showerror("Error", str(ex))
 
-    def importar_desde_archivo():
-        """Permite al usuario seleccionar una factura y la registra como compra."""
-
-        source = filedialog.askopenfilename(title="Seleccionar factura")
-        if not source:
-            return
-
-        invoice_id = simpledialog.askstring(
-            "ID de factura", "Ingrese el ID de la factura (opcional):"
-        )
-
-        try:
-            importar_factura(source, invoice_id)
-            messagebox.showinfo("Éxito", "Factura importada correctamente.")
-            actualizar_lista()
-        except Exception as ex:  # pragma: no cover - mostrar errores al usuario
-            messagebox.showerror("Error", str(ex))
-
-    btn_importar = tk.Button(
-        ventana, text="Importar factura", command=importar_desde_archivo, bg="green", fg="white"
-    )
-    btn_importar.pack(pady=5)
 
     btn_eliminar = tk.Button(
         ventana,
