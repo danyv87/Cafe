@@ -196,6 +196,11 @@ def solicitar_datos_materia_prima_masivo(
                         stock = float(entradas_stock[i].get())
                     except ValueError:
                         errores = True
+                        messagebox.showerror(
+                            "Dato inválido",
+                            f"Ingrese números válidos para costo y stock de '{nombre}'.",
+                            parent=top,
+                        )
                         continue
                     resultado[nombre] = (unidad, costo, stock)
             if not errores:
