@@ -1,5 +1,5 @@
 import logging
-from typing import List, Callable
+from typing import List, Callable, Optional
 
 from utils.json_utils import read_json, write_json
 from models.compra import Compra
@@ -129,7 +129,7 @@ def registrar_compra_desde_imagen(
     output_dir=None,
     db_conn=None,
     omitidos=None,
-    selector: Callable[[dict], bool] | None = None,
+    selector: Optional[Callable[[dict], bool]] = None,  # <- fix
 ):
     """Procesa un comprobante en ``path_imagen`` y retorna los ítems obtenidos.
 
