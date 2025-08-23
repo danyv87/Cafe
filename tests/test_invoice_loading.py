@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sqlite3
 from utils.invoice_utils import save_invoice, load_invoice, list_invoices
 
