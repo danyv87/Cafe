@@ -85,12 +85,14 @@ def exportar_compras_excel(compras):
         logger.warning(f"No se pudo exportar las compras a Excel: {e}")
 
 
-def registrar_compra(proveedor: Proveedor, items_compra_detalle, fecha=None):
+def registrar_compra(
+    proveedor: Proveedor, items_compra_detalle: List[CompraDetalle], fecha=None
+):
     """
     Registra una nueva compra con múltiples ítems y actualiza el stock de materias primas.
     Args:
         proveedor (Proveedor): Objeto del proveedor.
-        items_compra_detalle (list): Lista de objetos CompraDetalle (ahora representando materias primas).
+        items_compra_detalle (List[CompraDetalle]): Lista de objetos CompraDetalle que representan materias primas.
         fecha (str, optional): Fecha y hora de la compra en formato "YYYY-MM-DD HH:MM:SS". Si no se
             proporciona, se utilizará la fecha y hora actuales.
     Raises:
