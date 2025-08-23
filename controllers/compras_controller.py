@@ -211,7 +211,7 @@ def registrar_compra_desde_imagen(
     items_validados = []
     for item in items_dict:
         try:
-            producto_id = int(item["producto_id"])
+            producto_id = item["producto_id"]
             nombre = item["nombre_producto"].strip()
             cantidad = float(item["cantidad"])
             costo_unitario = float(item["costo_unitario"])
