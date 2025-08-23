@@ -260,63 +260,34 @@ def mostrar_ventana_compras():
         frame_items = tk.Frame(ventana_items)
         frame_items.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        scrollbar = tk.Scrollbar(frame_items, orient=tk.VERTICAL)
-        lista_items = tk.Listbox(
-            frame_items,
-            yscrollcommand=scrollbar.set,
-            width=80,
-            selectmode="extended",
-        )
-        scrollbar.config(command=lista_items.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        lista_items.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
+        item_vars: list[tk.BooleanVar] = []
         for item in items:
             total_item = item["cantidad"] * item["costo_unitario"]
             linea = (
                 f"{item['nombre_producto']} x {item['cantidad']} = Gs {total_item:,.0f}"
                 .replace(",", "X").replace(".", ",").replace("X", ".")
             )
-            lista_items.insert(tk.END, linea)
+            var = tk.BooleanVar(value=True)
+            chk = ttk.Checkbutton(frame_items, text=linea, variable=var)
+            chk.pack(anchor="w")
+            item_vars.append(var)
 
-        # Preseleccionar todos los ítems importados
-        lista_items.select_set(0, tk.END)
         all_items_selected = True
 
         def toggle_select_all():
             nonlocal all_items_selected
-            if all_items_selected:
-                lista_items.selection_clear(0, tk.END)
-                btn_toggle.config(text="Seleccionar todo")
-                all_items_selected = False
-            else:
-                lista_items.select_set(0, tk.END)
-                btn_toggle.config(text="Deseleccionar todo")
-                all_items_selected = True
-
-        def remover_items():
-            nonlocal all_items_selected
-            seleccionados = lista_items.curselection()
-            for idx in reversed(seleccionados):
-                del items[idx]
-                lista_items.delete(idx)
-            if lista_items.size() == 0:
-                all_items_selected = False
-                btn_toggle.config(text="Seleccionar todo")
+            new_value = not all_items_selected
+            for var in item_vars:
+                var.set(new_value)
+            btn_toggle.config(text="Desmarcar todo" if new_value else "Marcar todo")
+            all_items_selected = new_value
 
         btn_toggle = tk.Button(
             ventana_items,
-            text="Deseleccionar todo",
+            text="Desmarcar todo",
             command=toggle_select_all,
         )
         btn_toggle.pack(pady=5)
-
-        tk.Button(
-            ventana_items,
-            text="Remover",
-            command=remover_items,
-            bg="khaki",
-        ).pack(pady=5)
 
         if pendientes:
             tk.Label(
@@ -338,16 +309,15 @@ def mostrar_ventana_compras():
                 lista_falt.insert(tk.END, nombre)
 
         def aceptar_items():
-            seleccionados = lista_items.curselection()
-            if all_items_selected:
-                seleccionados = range(lista_items.size())
+            seleccionados = [
+                item for var, item in zip(item_vars, items) if var.get()
+            ]
             if not seleccionados:
                 messagebox.showwarning(
-                    "Atención", "Seleccione al menos un ítem para agregar."
+                    "Atención", "Marque al menos un ítem para agregar."
                 )
                 return
-            for idx in seleccionados:
-                item = items[idx]
+            for item in seleccionados:
                 detalle = CompraDetalle(
                     producto_id=item["producto_id"],
                     nombre_producto=item["nombre_producto"],
