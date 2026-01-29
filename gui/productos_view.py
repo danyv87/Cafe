@@ -1,11 +1,18 @@
 import tkinter as tk
 from tkinter import messagebox
-from controllers.productos_controller import listar_productos, agregar_producto, validar_producto, editar_producto, eliminar_producto
+from controllers.pricing_controller import calcular_precio_sugerido
+from controllers.productos_controller import (
+    listar_productos,
+    agregar_producto,
+    validar_producto,
+    editar_producto,
+    eliminar_producto,
+)
 
 def mostrar_ventana_productos():
     ventana = tk.Toplevel()
     ventana.title("Gestión de Productos")
-    ventana.geometry("600x650") # Ajusta el tamaño para acomodar los nuevos textos guía
+    ventana.geometry("600x700") # Ajusta el tamaño para acomodar los nuevos textos guía
     ventana.resizable(False, False) # Hacer la ventana no redimensionable
 
     # --- Variables para los campos de edición ---
@@ -39,9 +46,17 @@ def mostrar_ventana_productos():
     entry_nombre = tk.Entry(frame_form_agregar, width=40)
     entry_nombre.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_agregar, text="Precio (Gs) por unidad:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_agregar, text="Precio (Gs) por unidad:").grid(
+        row=2, column=0, padx=5, pady=2, sticky="w"
+    )
     entry_precio = tk.Entry(frame_form_agregar, width=40)
     entry_precio.grid(row=2, column=1, padx=5, pady=2)
+    tk.Label(
+        frame_form_agregar,
+        text="El precio se ingresa manualmente o puede calcularse en el editor.",
+        font=("Helvetica", 8, "italic"),
+        fg="gray",
+    ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     # Frame para el formulario de Editar/Eliminar
     frame_form_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Producto Seleccionado", padx=10, pady=10)
@@ -53,9 +68,18 @@ def mostrar_ventana_productos():
     entry_nombre_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
     entry_nombre_editar.grid(row=1, column=1, padx=5, pady=2)
 
-    tk.Label(frame_form_editar, text="Precio (Gs) por unidad:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    tk.Label(frame_form_editar, text="Precio (Gs) por unidad:").grid(
+        row=2, column=0, padx=5, pady=2, sticky="w"
+    )
     entry_precio_editar = tk.Entry(frame_form_editar) # Ahora creado antes de las funciones que lo usan
     entry_precio_editar.grid(row=2, column=1, padx=5, pady=2)
+
+    tk.Label(
+        frame_form_editar,
+        text="Puede calcular un precio sugerido con costos fijos, UP, margen e IVA.",
+        font=("Helvetica", 8, "italic"),
+        fg="gray",
+    ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     # --- Funciones (definidas DESPUÉS de los widgets que usan) ---
 
@@ -222,10 +246,153 @@ def mostrar_ventana_productos():
         else:
             messagebox.showinfo("Cancelado", "Eliminación de producto cancelada.")
 
+    def abrir_calculadora_precio():
+        """
+        Abre una ventana para calcular el precio sugerido usando CV, CF/UP, MU e IVA.
+        """
+        producto_id = producto_seleccionado_id.get()
+        if not producto_id:
+            messagebox.showwarning("Atención", "Seleccione un producto para calcular su precio.")
+            return
+
+        ventana_calculo = tk.Toplevel(ventana)
+        ventana_calculo.title("Calculadora de Precio Sugerido")
+        ventana_calculo.geometry("480x420")
+        ventana_calculo.resizable(False, False)
+
+        tk.Label(
+            ventana_calculo,
+            text="Ingrese los costos fijos, UP, margen e IVA para calcular el precio sugerido.",
+            font=("Helvetica", 9, "italic"),
+            fg="gray",
+            wraplength=440,
+        ).pack(pady=(10, 5))
+
+        frame_inputs = tk.Frame(ventana_calculo)
+        frame_inputs.pack(pady=10, padx=10, fill=tk.X)
+
+        tk.Label(frame_inputs, text="Costos fijos del período (Gs):").grid(
+            row=0, column=0, sticky="w", padx=5, pady=5
+        )
+        entry_costos_fijos = tk.Entry(frame_inputs, width=20)
+        entry_costos_fijos.grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(frame_inputs, text="UP (unidades previstas):").grid(
+            row=1, column=0, sticky="w", padx=5, pady=5
+        )
+        entry_up = tk.Entry(frame_inputs, width=20)
+        entry_up.grid(row=1, column=1, padx=5, pady=5)
+
+        tk.Label(frame_inputs, text="Margen de utilidad (ej. 0.3):").grid(
+            row=2, column=0, sticky="w", padx=5, pady=5
+        )
+        entry_margen = tk.Entry(frame_inputs, width=20)
+        entry_margen.grid(row=2, column=1, padx=5, pady=5)
+
+        tk.Label(frame_inputs, text="IVA (ej. 0.10):").grid(
+            row=3, column=0, sticky="w", padx=5, pady=5
+        )
+        entry_iva = tk.Entry(frame_inputs, width=20)
+        entry_iva.insert(0, "0.10")
+        entry_iva.grid(row=3, column=1, padx=5, pady=5)
+
+        frame_resultados = tk.LabelFrame(ventana_calculo, text="Resultados", padx=10, pady=10)
+        frame_resultados.pack(padx=10, pady=10, fill=tk.X)
+
+        resultado_labels = {
+            "cv": tk.Label(frame_resultados, text="Costo variable unitario: -"),
+            "cf": tk.Label(frame_resultados, text="Costo fijo unitario: -"),
+            "ct": tk.Label(frame_resultados, text="Costo total unitario: -"),
+            "pv_sin": tk.Label(frame_resultados, text="Precio sin impuestos: -"),
+            "pv_con": tk.Label(frame_resultados, text="Precio con IVA: -"),
+        }
+
+        for idx, label in enumerate(resultado_labels.values()):
+            label.grid(row=idx, column=0, sticky="w", pady=2)
+
+        resultado_precio = {"valor": None}
+
+        def formatear_gs(valor):
+            return f"{valor:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+        def calcular():
+            try:
+                costos_fijos = float(entry_costos_fijos.get())
+                unidades_previstas = float(entry_up.get())
+                margen = float(entry_margen.get())
+                iva = float(entry_iva.get())
+            except ValueError:
+                messagebox.showerror("Error de Entrada", "Todos los valores deben ser numéricos.")
+                return
+
+            try:
+                resultado = calcular_precio_sugerido(
+                    producto_id=producto_id,
+                    costos_fijos_periodo=costos_fijos,
+                    unidades_previstas=unidades_previstas,
+                    margen_utilidad=margen,
+                    iva=iva,
+                )
+            except ValueError as exc:
+                messagebox.showerror("Error de Cálculo", str(exc))
+                return
+
+            resultado_labels["cv"].config(
+                text=f"Costo variable unitario: Gs {formatear_gs(resultado.costo_variable_unitario)}"
+            )
+            resultado_labels["cf"].config(
+                text=f"Costo fijo unitario: Gs {formatear_gs(resultado.costo_fijo_unitario)}"
+            )
+            resultado_labels["ct"].config(
+                text=f"Costo total unitario: Gs {formatear_gs(resultado.costo_total_unitario)}"
+            )
+            resultado_labels["pv_sin"].config(
+                text=f"Precio sin impuestos: Gs {formatear_gs(resultado.precio_venta_sin_impuestos)}"
+            )
+            resultado_labels["pv_con"].config(
+                text=f"Precio con IVA: Gs {formatear_gs(resultado.precio_venta_con_iva)}"
+            )
+            resultado_precio["valor"] = resultado.precio_venta_con_iva
+
+        def aplicar_precio():
+            if resultado_precio["valor"] is None:
+                messagebox.showwarning(
+                    "Atención", "Primero calcule el precio sugerido antes de aplicar."
+                )
+                return
+            entry_precio_editar.delete(0, tk.END)
+            entry_precio_editar.insert(0, f"{resultado_precio['valor']:.0f}")
+            messagebox.showinfo(
+                "Precio aplicado", "El precio con IVA fue aplicado al campo de edición."
+            )
+
+        frame_botones = tk.Frame(ventana_calculo)
+        frame_botones.pack(pady=10)
+
+        tk.Button(frame_botones, text="Calcular", command=calcular, width=15).grid(
+            row=0, column=0, padx=5
+        )
+        tk.Button(frame_botones, text="Aplicar precio", command=aplicar_precio, width=15).grid(
+            row=0, column=1, padx=5
+        )
+
     # --- Botones de acción ---
-    tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(row=3, column=0, columnspan=2, pady=5)
-    tk.Button(frame_form_editar, text="Editar Producto", command=editar, width=20, bg="lightblue").grid(row=3, column=0, pady=5, padx=5)
-    tk.Button(frame_form_editar, text="Eliminar Producto", command=eliminar, width=20, bg="lightcoral").grid(row=3, column=1, pady=5, padx=5)
+    tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(
+        row=4, column=0, columnspan=2, pady=5
+    )
+    tk.Button(frame_form_editar, text="Editar Producto", command=editar, width=20, bg="lightblue").grid(
+        row=4, column=0, pady=5, padx=5
+    )
+    tk.Button(frame_form_editar, text="Eliminar Producto", command=eliminar, width=20, bg="lightcoral").grid(
+        row=4, column=1, pady=5, padx=5
+    )
+    tk.Button(
+        frame_form_editar,
+        text="Calcular Precio Sugerido",
+        command=abrir_calculadora_precio,
+        width=42,
+        bg="lightgreen",
+    ).grid(row=5, column=0, columnspan=2, pady=5, padx=5)
 
     lista.bind("<<ListboxSelect>>", seleccionar_producto) # Vincula el evento de selección
 

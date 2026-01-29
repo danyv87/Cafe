@@ -53,6 +53,14 @@ El sistema permite registrar compras de materias primas y también eliminarlas
 si se registraron por error. Al borrar una compra se descuenta del stock la
 cantidad de cada ítem asociado para mantener la consistencia de inventario.
 
+### Estrategia de fijación de precios
+
+El módulo `controllers/pricing_controller.py` incluye funciones para calcular
+el costo variable unitario (CV), el costo fijo unitario (CF/UP) y el precio de
+venta sugerido. El valor de **UP (unidades previstas)** debe ser ingresado
+manualmente por el usuario para distribuir los costos fijos del período en la
+fórmula `CT = CV + (CF / UP)`.
+
 ## Respaldo y restauración
 
 Los archivos JSON con los datos de la aplicación se pueden respaldar y
@@ -82,5 +90,4 @@ cp data/history/2024-01-30/*.json data/
 
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
-
 
