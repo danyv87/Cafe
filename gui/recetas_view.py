@@ -24,11 +24,14 @@ def mostrar_ventana_recetas():
     receta_actual_id = tk.StringVar()  # Para almacenar el ID de la receta que se está editando
     filtro_receta_var = tk.StringVar(value="Todos")  # Variable para el filtro de receta
     unidad_medida_seleccionada_mp = tk.StringVar(value="")  # Para mostrar la unidad de medida de la MP seleccionada
+    unidad_medida_ingresada = tk.StringVar(value="")  # Para seleccionar unidad al cargar cantidad
     rendimiento_var = tk.StringVar(value="1")  # Nuevo: Para el rendimiento de la receta
+    ingrediente_seleccionado_var = tk.StringVar(value="")
 
     # Lista temporal para los ingredientes de la receta actual
     # Formato: [{"materia_prima_id": "uuid", "nombre_materia_prima": "Leche", "cantidad_necesaria": 150, "unidad_medida": "ml", "costo_unitario": 5000.0}]
     ingredientes_receta_actual = []
+    ultimo_ingrediente_seleccionado = None
 
     # --- Funciones de Formato ---
     def format_guarani(value):
@@ -85,6 +88,7 @@ def mostrar_ventana_recetas():
     def actualizar_lista_receta_ingredientes():
         lista_receta_ingredientes.delete(0, tk.END)
         total_costo_receta = 0.0
+        opciones_ingredientes = []
         if not ingredientes_receta_actual:
             lista_receta_ingredientes.insert(tk.END, "No hay ingredientes en esta receta.")
         else:
@@ -93,6 +97,9 @@ def mostrar_ventana_recetas():
                 total_costo_receta += total_costo_ingrediente
                 lista_receta_ingredientes.insert(tk.END,
                                                  f"{item['cantidad_necesaria']} {item['unidad_medida']} de {item['nombre_materia_prima']} "f"(Costo Unit: {format_guarani(item['costo_unitario'])} / Total: {format_guarani(total_costo_ingrediente)})")
+                opciones_ingredientes.append(
+                    f"{item['nombre_materia_prima']} ({item['materia_prima_id'][:8]}...)"
+                )
             lista_receta_ingredientes.insert(tk.END,
                                              "------------------------------------------------------------------")
             lista_receta_ingredientes.insert(tk.END, f"Costo Total de Receta: {format_guarani(total_costo_receta)}")
@@ -107,6 +114,17 @@ def mostrar_ventana_recetas():
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento inválido para calcular costo por unidad.")
             except ZeroDivisionError:
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento cero. No se puede calcular costo por unidad.")
+        if ultimo_ingrediente_seleccionado is not None:
+            if 0 <= ultimo_ingrediente_seleccionado < len(ingredientes_receta_actual):
+                lista_receta_ingredientes.selection_clear(0, tk.END)
+                lista_receta_ingredientes.selection_set(ultimo_ingrediente_seleccionado)
+                lista_receta_ingredientes.see(ultimo_ingrediente_seleccionado)
+        combobox_ingrediente_actualizar["values"] = opciones_ingredientes
+        if opciones_ingredientes:
+            if not ingrediente_seleccionado_var.get():
+                ingrediente_seleccionado_var.set(opciones_ingredientes[0])
+        else:
+            ingrediente_seleccionado_var.set("")
 
     def on_producto_seleccionado(event):
         try:
@@ -139,9 +157,11 @@ def mostrar_ventana_recetas():
                         mp = obtener_materia_prima_por_id(ing_data["materia_prima_id"])
                         if mp:
                             ing_data["costo_unitario"] = mp.costo_unitario
+                            ing_data["unidad_medida"] = mp.unidad_medida
                         else:
                             ing_data["costo_unitario"] = 0.0
                         ingredientes_receta_actual.append(ing_data)
+                    sincronizar_ingredientes_con_materias_primas()
 
                     if receta_existente.rendimiento is not None:
                         rendimiento_var.set(str(receta_existente.rendimiento))
@@ -187,13 +207,87 @@ def mostrar_ventana_recetas():
 
             if mp_encontrada:
                 unidad_medida_seleccionada_mp.set(mp_encontrada.unidad_medida)
+                unidad_medida_ingresada.set(mp_encontrada.unidad_medida)
+                if mp_encontrada.unidad_medida in ("g", "kg"):
+                    combo_unidad_ingresada.config(values=["g", "kg"], state="readonly")
+                else:
+                    combo_unidad_ingresada.config(values=[mp_encontrada.unidad_medida], state="readonly")
             else:
                 unidad_medida_seleccionada_mp.set("")
+                unidad_medida_ingresada.set("")
         except Exception as e:
             unidad_medida_seleccionada_mp.set("")
+            unidad_medida_ingresada.set("")
             # print(f"DEBUG: Error al seleccionar materia prima para unidad de medida: {e}") # Comentado para producción
 
+    def convertir_unidad(cantidad, unidad_origen, unidad_destino):
+        conversiones = {
+            ("g", "kg"): 0.001,
+            ("kg", "g"): 1000,
+        }
+        if unidad_origen == unidad_destino:
+            return cantidad
+        factor = conversiones.get((unidad_origen, unidad_destino))
+        if factor is None:
+            raise ValueError("Conversión de unidades no soportada.")
+        return cantidad * factor
+
+    def sincronizar_ingredientes_con_materias_primas():
+        """
+        Actualiza unidad de medida y costo unitario de ingredientes según materias primas actuales.
+        """
+        if not ingredientes_receta_actual:
+            return
+        materias_primas = {mp.id: mp for mp in listar_materias_primas()}
+        actualizados = []
+        for item in ingredientes_receta_actual:
+            mp = materias_primas.get(item["materia_prima_id"])
+            if not mp:
+                actualizados.append(item)
+                continue
+            unidad_anterior = item.get("unidad_medida", mp.unidad_medida)
+            if unidad_anterior != mp.unidad_medida:
+                try:
+                    item["cantidad_necesaria"] = convertir_unidad(
+                        item["cantidad_necesaria"],
+                        unidad_anterior,
+                        mp.unidad_medida,
+                    )
+                except ValueError:
+                    pass
+            item["unidad_medida"] = mp.unidad_medida
+            item["costo_unitario"] = mp.costo_unitario
+            actualizados.append(item)
+        ingredientes_receta_actual.clear()
+        ingredientes_receta_actual.extend(actualizados)
+
+    def cargar_ingrediente_para_editar(event=None):
+        nonlocal ultimo_ingrediente_seleccionado
+        try:
+            seleccion_indices = lista_receta_ingredientes.curselection()
+            if not seleccion_indices:
+                return
+            idx = seleccion_indices[0]
+            if idx >= len(ingredientes_receta_actual):
+                return
+            ultimo_ingrediente_seleccionado = idx
+            item = ingredientes_receta_actual[idx]
+            entry_cantidad_necesaria.delete(0, tk.END)
+            entry_cantidad_necesaria.insert(0, str(item["cantidad_necesaria"]))
+            unidad_actual = item.get("unidad_medida", "")
+            unidad_medida_ingresada.set(unidad_actual)
+            ingrediente_seleccionado_var.set(
+                f"{item['nombre_materia_prima']} ({item['materia_prima_id'][:8]}...)"
+            )
+            if unidad_actual in ("g", "kg"):
+                combo_unidad_ingresada.config(values=["g", "kg"], state="readonly")
+            elif unidad_actual:
+                combo_unidad_ingresada.config(values=[unidad_actual], state="readonly")
+        except Exception:
+            return
+
     def agregar_ingrediente():
+        nonlocal ultimo_ingrediente_seleccionado
         try:
             if not producto_seleccionado_id.get():
                 messagebox.showwarning("Atención",
@@ -229,6 +323,12 @@ def mostrar_ventana_recetas():
                 messagebox.showerror("Error de Entrada", "La cantidad necesaria debe ser un número válido.")
                 return
 
+            unidad_ingresada = unidad_medida_ingresada.get().strip() or mp_encontrada.unidad_medida
+            if unidad_ingresada not in ("g", "kg") and unidad_ingresada != mp_encontrada.unidad_medida:
+                unidad_ingresada = mp_encontrada.unidad_medida
+            if unidad_ingresada in ("g", "kg") and mp_encontrada.unidad_medida in ("g", "kg"):
+                cantidad = convertir_unidad(cantidad, unidad_ingresada, mp_encontrada.unidad_medida)
+
             for item in ingredientes_receta_actual:
                 if item["materia_prima_id"] == mp_encontrada.id:
                     messagebox.showwarning("Duplicado",
@@ -242,13 +342,60 @@ def mostrar_ventana_recetas():
                 "unidad_medida": mp_encontrada.unidad_medida,
                 "costo_unitario": mp_encontrada.costo_unitario  # Añadir el costo unitario aquí
             })
+            ultimo_ingrediente_seleccionado = len(ingredientes_receta_actual) - 1
             actualizar_lista_receta_ingredientes()
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
+            unidad_medida_ingresada.set("")
             messagebox.showinfo("Añadido", f"'{mp_encontrada.nombre}' añadido a la receta.")
 
         except Exception as e:
             messagebox.showerror("Error", f"Ocurrió un error al añadir ingrediente: {e}")
+
+    def actualizar_cantidad_ingrediente():
+        nonlocal ultimo_ingrediente_seleccionado
+        try:
+            seleccion = ingrediente_seleccionado_var.get().strip()
+            item = None
+            if seleccion:
+                for idx, ingrediente in enumerate(ingredientes_receta_actual):
+                    etiqueta = f"{ingrediente['nombre_materia_prima']} ({ingrediente['materia_prima_id'][:8]}...)"
+                    if etiqueta == seleccion:
+                        item = ingrediente
+                        ultimo_ingrediente_seleccionado = idx
+                        break
+            if item is None:
+                messagebox.showwarning("Atención", "Seleccione un ingrediente del combo para actualizar.")
+                return
+
+            mp = obtener_materia_prima_por_id(item["materia_prima_id"])
+            if not mp:
+                messagebox.showerror("Error", "No se pudo encontrar la materia prima asociada.")
+                return
+
+            cantidad_str = entry_cantidad_necesaria.get()
+            try:
+                cantidad = float(cantidad_str)
+                if cantidad <= 0:
+                    messagebox.showerror("Error de Entrada", "La cantidad necesaria debe ser un número positivo.")
+                    return
+            except ValueError:
+                messagebox.showerror("Error de Entrada", "La cantidad necesaria debe ser un número válido.")
+                return
+
+            unidad_ingresada = unidad_medida_ingresada.get().strip() or mp.unidad_medida
+            if unidad_ingresada not in ("g", "kg") and unidad_ingresada != mp.unidad_medida:
+                unidad_ingresada = mp.unidad_medida
+            if unidad_ingresada in ("g", "kg") and mp.unidad_medida in ("g", "kg"):
+                cantidad = convertir_unidad(cantidad, unidad_ingresada, mp.unidad_medida)
+
+            item["cantidad_necesaria"] = cantidad
+            item["unidad_medida"] = mp.unidad_medida
+            item["costo_unitario"] = mp.costo_unitario
+            actualizar_lista_receta_ingredientes()
+            messagebox.showinfo("Actualizado", f"Cantidad de '{item['nombre_materia_prima']}' actualizada.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error al actualizar cantidad: {e}")
 
     def eliminar_ingrediente():
         try:
@@ -296,6 +443,8 @@ def mostrar_ventana_recetas():
             entry_buscar_mp.delete(0, tk.END)
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
+            unidad_medida_ingresada.set("")
+            ingrediente_seleccionado_var.set("")
             text_procedimiento.delete("1.0", tk.END)
             cargar_productos_en_lista(filtro_texto="", filtro_tipo=filtro_receta_var.get())
             messagebox.showinfo("Receta Limpiada", "La receta actual ha sido limpiada.")
@@ -328,15 +477,15 @@ def mostrar_ventana_recetas():
             messagebox.showerror("Error de Validación", "El rendimiento debe ser un número válido.")
             return
 
-        # Prepara los ingredientes para guardar (sin el costo_unitario, ya que no es parte del modelo Receta)
+        procedimiento = text_procedimiento.get("1.0", tk.END).strip()
+        if not procedimiento:
+            procedimiento = None
+
+        sincronizar_ingredientes_con_materias_primas()
         ingredientes_para_guardar = [
             {k: v for k, v in item.items() if k != 'costo_unitario'}
             for item in ingredientes_receta_actual
         ]
-
-        procedimiento = text_procedimiento.get("1.0", tk.END).strip()
-        if not procedimiento:
-            procedimiento = None
 
         es_valido, mensaje_error = validar_receta_completa(
             ingredientes_para_guardar, rendimiento, procedimiento
@@ -346,6 +495,7 @@ def mostrar_ventana_recetas():
             return
 
         try:
+
             if receta_actual_id.get():
                 editar_receta(
                     receta_actual_id.get(),
@@ -374,6 +524,8 @@ def mostrar_ventana_recetas():
             entry_buscar_mp.delete(0, tk.END)
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
+            unidad_medida_ingresada.set("")
+            ingrediente_seleccionado_var.set("")
             text_procedimiento.delete("1.0", tk.END)
 
         except ValueError as e:
@@ -460,8 +612,13 @@ def mostrar_ventana_recetas():
                            lambda event: actualizar_lista_receta_ingredientes())  # Actualizar al cambiar rendimiento
 
     scrollbar_receta_ingredientes = tk.Scrollbar(frame_ingredientes_receta, orient=tk.VERTICAL)
-    lista_receta_ingredientes = tk.Listbox(frame_ingredientes_receta, height=8, width=70,
-                                           yscrollcommand=scrollbar_receta_ingredientes.set)
+    lista_receta_ingredientes = tk.Listbox(
+        frame_ingredientes_receta,
+        height=8,
+        width=70,
+        yscrollcommand=scrollbar_receta_ingredientes.set,
+        exportselection=False,
+    )
     scrollbar_receta_ingredientes.config(command=lista_receta_ingredientes.yview)
     scrollbar_receta_ingredientes.pack(side=tk.RIGHT, fill=tk.Y)
     lista_receta_ingredientes.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
@@ -517,6 +674,14 @@ def mostrar_ventana_recetas():
     tk.Label(frame_add_mp, text="Cantidad Necesaria:").grid(row=1, column=0, padx=5, pady=2, sticky="w")
     entry_cantidad_necesaria = tk.Entry(frame_add_mp, width=15)
     entry_cantidad_necesaria.grid(row=1, column=1, padx=5, pady=2, sticky="ew")
+    combo_unidad_ingresada = ttk.Combobox(
+        frame_add_mp,
+        textvariable=unidad_medida_ingresada,
+        values=["g", "kg"],
+        state="readonly",
+        width=5,
+    )
+    combo_unidad_ingresada.grid(row=1, column=1, padx=(70, 0), pady=2, sticky="e")
     label_unidad_medida = tk.Label(frame_add_mp, textvariable=unidad_medida_seleccionada_mp,
                                    font=("Helvetica", 9, "italic"))
     label_unidad_medida.grid(row=1, column=1, padx=(120, 0), pady=2, sticky="e")  # Posicionar a la derecha del entry
@@ -525,8 +690,20 @@ def mostrar_ventana_recetas():
     frame_add_mp.grid_columnconfigure(2, weight=1)
 
     # --- Botones ---
-    tk.Button(frame_add_mp, text="Añadir Ingrediente", command=agregar_ingrediente, width=20).grid(row=2, column=0,
-                                                                                                   columnspan=2, pady=5)
+    tk.Label(frame_add_mp, text="Ingrediente a Actualizar:").grid(row=2, column=0, padx=5, pady=2, sticky="w")
+    combobox_ingrediente_actualizar = ttk.Combobox(
+        frame_add_mp,
+        textvariable=ingrediente_seleccionado_var,
+        state="readonly",
+        width=30,
+    )
+    combobox_ingrediente_actualizar.grid(row=2, column=1, padx=5, pady=2, sticky="ew")
+    tk.Button(frame_add_mp, text="Añadir Ingrediente", command=agregar_ingrediente, width=20).grid(
+        row=3, column=0, columnspan=2, pady=5
+    )
+    tk.Button(frame_add_mp, text="Actualizar Cantidad", command=actualizar_cantidad_ingrediente, width=20).grid(
+        row=3, column=2, pady=5
+    )
 
     tk.Button(ventana, text="Guardar Receta", command=guardar_receta, width=25, bg="lightblue").pack(pady=10)
     tk.Button(ventana, text="Eliminar Receta del Producto", command=eliminar_receta_seleccionada, width=25,
@@ -541,6 +718,7 @@ def mostrar_ventana_recetas():
     entry_buscar_mp.bind("<KeyRelease>", lambda event: cargar_materias_primas_en_lista(entry_buscar_mp.get()))
     lista_materias_primas.bind("<<ListboxSelect>>",
                                on_materia_prima_seleccionada)  # Nuevo bind para actualizar la unidad de medida
+    lista_receta_ingredientes.bind("<<ListboxSelect>>", cargar_ingrediente_para_editar)
 
     cargar_productos_en_lista()
     cargar_materias_primas_en_lista()
