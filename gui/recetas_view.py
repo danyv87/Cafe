@@ -30,6 +30,7 @@ def mostrar_ventana_recetas():
     # Lista temporal para los ingredientes de la receta actual
     # Formato: [{"materia_prima_id": "uuid", "nombre_materia_prima": "Leche", "cantidad_necesaria": 150, "unidad_medida": "ml", "costo_unitario": 5000.0}]
     ingredientes_receta_actual = []
+    ultimo_ingrediente_seleccionado = None
 
     # --- Funciones de Formato ---
     def format_guarani(value):
@@ -108,6 +109,11 @@ def mostrar_ventana_recetas():
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento inválido para calcular costo por unidad.")
             except ZeroDivisionError:
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento cero. No se puede calcular costo por unidad.")
+        if ultimo_ingrediente_seleccionado is not None:
+            if 0 <= ultimo_ingrediente_seleccionado < len(ingredientes_receta_actual):
+                lista_receta_ingredientes.selection_clear(0, tk.END)
+                lista_receta_ingredientes.selection_set(ultimo_ingrediente_seleccionado)
+                lista_receta_ingredientes.see(ultimo_ingrediente_seleccionado)
 
     def on_producto_seleccionado(event):
         try:
@@ -245,6 +251,7 @@ def mostrar_ventana_recetas():
         ingredientes_receta_actual.extend(actualizados)
 
     def cargar_ingrediente_para_editar(event=None):
+        nonlocal ultimo_ingrediente_seleccionado
         try:
             seleccion_indices = lista_receta_ingredientes.curselection()
             if not seleccion_indices:
@@ -252,6 +259,7 @@ def mostrar_ventana_recetas():
             idx = seleccion_indices[0]
             if idx >= len(ingredientes_receta_actual):
                 return
+            ultimo_ingrediente_seleccionado = idx
             item = ingredientes_receta_actual[idx]
             entry_cantidad_necesaria.delete(0, tk.END)
             entry_cantidad_necesaria.insert(0, str(item["cantidad_necesaria"]))
@@ -265,6 +273,7 @@ def mostrar_ventana_recetas():
             return
 
     def agregar_ingrediente():
+        nonlocal ultimo_ingrediente_seleccionado
         try:
             if not producto_seleccionado_id.get():
                 messagebox.showwarning("Atención",
@@ -319,6 +328,7 @@ def mostrar_ventana_recetas():
                 "unidad_medida": mp_encontrada.unidad_medida,
                 "costo_unitario": mp_encontrada.costo_unitario  # Añadir el costo unitario aquí
             })
+            ultimo_ingrediente_seleccionado = len(ingredientes_receta_actual) - 1
             actualizar_lista_receta_ingredientes()
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
@@ -329,8 +339,13 @@ def mostrar_ventana_recetas():
             messagebox.showerror("Error", f"Ocurrió un error al añadir ingrediente: {e}")
 
     def actualizar_cantidad_ingrediente():
+        nonlocal ultimo_ingrediente_seleccionado
         try:
             seleccion_indices = lista_receta_ingredientes.curselection()
+            if not seleccion_indices and len(ingredientes_receta_actual) == 1:
+                seleccion_indices = (0,)
+            if not seleccion_indices and ultimo_ingrediente_seleccionado is not None:
+                seleccion_indices = (ultimo_ingrediente_seleccionado,)
             if not seleccion_indices:
                 messagebox.showwarning("Atención", "Seleccione un ingrediente de la receta para actualizar.")
                 return
@@ -339,6 +354,7 @@ def mostrar_ventana_recetas():
             if idx >= len(ingredientes_receta_actual):
                 messagebox.showwarning("Atención", "Seleccione un ingrediente válido para actualizar.")
                 return
+            ultimo_ingrediente_seleccionado = idx
 
             item = ingredientes_receta_actual[idx]
             mp = obtener_materia_prima_por_id(item["materia_prima_id"])
@@ -583,8 +599,13 @@ def mostrar_ventana_recetas():
                            lambda event: actualizar_lista_receta_ingredientes())  # Actualizar al cambiar rendimiento
 
     scrollbar_receta_ingredientes = tk.Scrollbar(frame_ingredientes_receta, orient=tk.VERTICAL)
-    lista_receta_ingredientes = tk.Listbox(frame_ingredientes_receta, height=8, width=70,
-                                           yscrollcommand=scrollbar_receta_ingredientes.set)
+    lista_receta_ingredientes = tk.Listbox(
+        frame_ingredientes_receta,
+        height=8,
+        width=70,
+        yscrollcommand=scrollbar_receta_ingredientes.set,
+        exportselection=False,
+    )
     scrollbar_receta_ingredientes.config(command=lista_receta_ingredientes.yview)
     scrollbar_receta_ingredientes.pack(side=tk.RIGHT, fill=tk.Y)
     lista_receta_ingredientes.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
