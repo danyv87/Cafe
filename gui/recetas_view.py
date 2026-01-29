@@ -109,6 +109,11 @@ def mostrar_ventana_recetas():
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento inválido para calcular costo por unidad.")
             except ZeroDivisionError:
                 lista_receta_ingredientes.insert(tk.END, "Rendimiento cero. No se puede calcular costo por unidad.")
+        if ultimo_ingrediente_seleccionado is not None:
+            if 0 <= ultimo_ingrediente_seleccionado < len(ingredientes_receta_actual):
+                lista_receta_ingredientes.selection_clear(0, tk.END)
+                lista_receta_ingredientes.selection_set(ultimo_ingrediente_seleccionado)
+                lista_receta_ingredientes.see(ultimo_ingrediente_seleccionado)
 
     def on_producto_seleccionado(event):
         try:
@@ -268,6 +273,7 @@ def mostrar_ventana_recetas():
             return
 
     def agregar_ingrediente():
+        nonlocal ultimo_ingrediente_seleccionado
         try:
             if not producto_seleccionado_id.get():
                 messagebox.showwarning("Atención",
@@ -322,6 +328,7 @@ def mostrar_ventana_recetas():
                 "unidad_medida": mp_encontrada.unidad_medida,
                 "costo_unitario": mp_encontrada.costo_unitario  # Añadir el costo unitario aquí
             })
+            ultimo_ingrediente_seleccionado = len(ingredientes_receta_actual) - 1
             actualizar_lista_receta_ingredientes()
             entry_cantidad_necesaria.delete(0, tk.END)
             unidad_medida_seleccionada_mp.set("")  # Limpiar la unidad de medida
@@ -335,6 +342,8 @@ def mostrar_ventana_recetas():
         nonlocal ultimo_ingrediente_seleccionado
         try:
             seleccion_indices = lista_receta_ingredientes.curselection()
+            if not seleccion_indices and len(ingredientes_receta_actual) == 1:
+                seleccion_indices = (0,)
             if not seleccion_indices and ultimo_ingrediente_seleccionado is not None:
                 seleccion_indices = (ultimo_ingrediente_seleccionado,)
             if not seleccion_indices:
