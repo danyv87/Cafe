@@ -41,7 +41,22 @@ def cargar_materias_primas():
     logger.debug(f"Intentando cargar materias primas desde: {DATA_PATH}")
     data = read_json(DATA_PATH)
     logger.debug(f"Materias primas cargadas (raw data): {data}")
-    _MATERIAS_CACHE = [MateriaPrima.from_dict(mp) for mp in data]
+    if not isinstance(data, list):
+        logger.error(
+            "El archivo de materias primas no contiene una lista válida. "
+            "Se inicializará una lista vacía."
+        )
+        data = []
+    materias_primas = []
+    for mp in data:
+        if not isinstance(mp, dict):
+            logger.warning(
+                "Entrada de materia prima inválida (se esperaba dict). Se omitirá: %s",
+                mp,
+            )
+            continue
+        materias_primas.append(MateriaPrima.from_dict(mp))
+    _MATERIAS_CACHE = materias_primas
     _CACHE_PATH = DATA_PATH
     return _MATERIAS_CACHE
 
@@ -221,4 +236,3 @@ def establecer_stock_materia_prima(id_materia_prima, nuevo_stock_absoluto):
     # No necesitamos verificar si el stock resultante es negativo aquí,
     # ya que actualizar_stock_materia_prima ya lo hace.
     return actualizar_stock_materia_prima(id_materia_prima, cantidad_cambio)
-

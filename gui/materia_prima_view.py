@@ -36,16 +36,24 @@ def mostrar_ventana_materias_primas():
 
     def cargar_materias_primas():
         lista.delete(0, tk.END)
-        materias_primas = listar_materias_primas()
-        materias_primas.sort(key=lambda mp: mp.nombre.lower())
+        try:
+            materias_primas = listar_materias_primas()
+        except Exception as exc:
+            messagebox.showerror(
+                "Error",
+                f"No se pudieron cargar las materias primas.\nDetalle: {exc}",
+            )
+            lista.insert(tk.END, "Error al cargar materias primas.")
+            return
+        materias_primas.sort(key=lambda mp: (mp.nombre or "").lower())
         if not materias_primas:
             lista.insert(tk.END, "No hay materias primas registradas.")
-        else:
-            for mp in materias_primas:
-                lista.insert(
-                    tk.END,
-                    f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f} (Min: {mp.stock_minimo:,.2f})",
-                )
+            return
+        for mp in materias_primas:
+            lista.insert(
+                tk.END,
+                f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f} (Min: {mp.stock_minimo:,.2f})",
+            )
 
     cargar_materias_primas()
 
