@@ -28,14 +28,50 @@ def mostrar_ventana_materias_primas():
     frame_lista = tk.LabelFrame(ventana, text="Materias Primas", padx=5, pady=5)
     frame_lista.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=5, pady=5)
 
+    frame_lista.grid_columnconfigure(0, weight=1)
+    frame_lista.grid_rowconfigure(1, weight=1)
+
+    frame_busqueda = tk.Frame(frame_lista)
+    frame_busqueda.grid(row=0, column=0, columnspan=2, sticky="ew", padx=5, pady=(0, 4))
+    frame_busqueda.grid_columnconfigure(1, weight=1)
+
+    tk.Label(frame_busqueda, text="Buscar:").grid(row=0, column=0, sticky="w")
+    var_buscar = tk.StringVar()
+    entry_buscar = tk.Entry(frame_busqueda, textvariable=var_buscar)
+    entry_buscar.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+
     scrollbar_lista = tk.Scrollbar(frame_lista, orient=tk.VERTICAL)
     lista = tk.Listbox(frame_lista, width=50, height=25, yscrollcommand=scrollbar_lista.set)
     scrollbar_lista.config(command=lista.yview)
-    lista.grid(row=0, column=0, sticky="nsew")
-    scrollbar_lista.grid(row=0, column=1, sticky="ns")
+    lista.grid(row=1, column=0, sticky="nsew")
+    scrollbar_lista.grid(row=1, column=1, sticky="ns")
+
+    materias_primas_cache = []
+
+    def mostrar_materias_primas(filtro=""):
+        lista.delete(0, tk.END)
+        if not materias_primas_cache:
+            lista.insert(tk.END, "No hay materias primas registradas.")
+            return
+        filtro_normalizado = filtro.strip().lower()
+        filtradas = []
+        for mp in materias_primas_cache:
+            nombre = (mp.nombre or "").lower()
+            id_corto = mp.id[:8].lower()
+            if filtro_normalizado and filtro_normalizado not in nombre and filtro_normalizado not in id_corto:
+                continue
+            filtradas.append(mp)
+        if not filtradas:
+            lista.insert(tk.END, "No hay materias primas que coincidan con la búsqueda.")
+            return
+        for mp in filtradas:
+            lista.insert(
+                tk.END,
+                f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f} (Min: {mp.stock_minimo:,.2f})",
+            )
 
     def cargar_materias_primas():
-        lista.delete(0, tk.END)
+        nonlocal materias_primas_cache
         try:
             materias_primas = listar_materias_primas()
         except Exception as exc:
@@ -43,19 +79,20 @@ def mostrar_ventana_materias_primas():
                 "Error",
                 f"No se pudieron cargar las materias primas.\nDetalle: {exc}",
             )
+            lista.delete(0, tk.END)
             lista.insert(tk.END, "Error al cargar materias primas.")
+            materias_primas_cache = []
             return
         materias_primas.sort(key=lambda mp: (mp.nombre or "").lower())
-        if not materias_primas:
-            lista.insert(tk.END, "No hay materias primas registradas.")
-            return
-        for mp in materias_primas:
-            lista.insert(
-                tk.END,
-                f"ID: {mp.id[:8]}... - {mp.nombre} | Unidad: {mp.unidad_medida} | Costo: Gs {mp.costo_unitario:,.0f} | Stock: {mp.stock:,.2f} (Min: {mp.stock_minimo:,.2f})",
-            )
+        materias_primas_cache = materias_primas
+        mostrar_materias_primas(var_buscar.get())
 
     cargar_materias_primas()
+
+    def filtrar_materias_primas(*_):
+        mostrar_materias_primas(var_buscar.get())
+
+    entry_buscar.bind("<KeyRelease>", filtrar_materias_primas)
 
     # --- Sección Agregar ---
     frame_agregar = tk.LabelFrame(ventana, text="Agregar Materia Prima", padx=10, pady=10)
