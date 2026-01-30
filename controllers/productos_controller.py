@@ -46,7 +46,7 @@ def validar_producto(nombre, precio_unitario):
     return True, ""
 
 
-def agregar_producto(nombre, precio_unitario):
+def agregar_producto(nombre, precio_unitario, disponible_venta=True):
     """
     Agrega un nuevo producto a la lista y lo guarda.
     Realiza una validación básica antes de agregar.
@@ -56,7 +56,11 @@ def agregar_producto(nombre, precio_unitario):
         raise ValueError(mensaje_error)  # Lanza un error si la validación falla
 
     productos = cargar_productos()
-    nuevo_producto = Producto(nombre.strip(), precio_unitario)  # Elimina espacios en blanco del nombre
+    nuevo_producto = Producto(
+        nombre.strip(),
+        precio_unitario,
+        disponible_venta=disponible_venta,
+    )  # Elimina espacios en blanco del nombre
     productos.append(nuevo_producto)
     guardar_productos(productos)
     return nuevo_producto
@@ -81,7 +85,7 @@ def obtener_producto_por_id(id_producto):
     return None
 
 
-def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario):
+def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario, disponible_venta=True):
     """
     Edita un producto existente por su ID.
     Valida los nuevos datos y lanza un ValueError si el producto no se encuentra
@@ -96,6 +100,7 @@ def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario):
         if producto.id == id_producto:
             productos[i].nombre = nuevo_nombre.strip()
             productos[i].precio_unitario = nuevo_precio_unitario
+            productos[i].disponible_venta = disponible_venta
             guardar_productos(productos)
             return productos[i]  # Retorna el producto editado
     raise ValueError(f"Producto con ID '{id_producto}' no encontrado para edición.")
