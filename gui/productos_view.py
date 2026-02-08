@@ -66,7 +66,7 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
-    disponible_var_agregar = tk.BooleanVar(value=False)
+    disponible_var_agregar = tk.BooleanVar(value=True)
     tk.Checkbutton(
         frame_form_agregar,
         text="Disponible para la venta",
@@ -96,7 +96,7 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
-    disponible_var_editar = tk.BooleanVar(value=False)
+    disponible_var_editar = tk.BooleanVar(value=True)
     tk.Checkbutton(
         frame_form_editar,
         text="Disponible para la venta",
@@ -156,7 +156,7 @@ def mostrar_ventana_productos():
                 cargar_productos()
                 entry_nombre.delete(0, tk.END)
                 entry_precio.delete(0, tk.END)
-                disponible_var_agregar.set(False)
+                disponible_var_agregar.set(True)
                 messagebox.showinfo("Éxito", "Producto agregado correctamente.")
             except ValueError as e:
                 messagebox.showerror("Error al Agregar", str(e))
@@ -177,7 +177,7 @@ def mostrar_ventana_productos():
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
-                disponible_var_editar.set(False)
+                disponible_var_editar.set(True)
                 return
 
             linea_seleccionada = lista.get(seleccion_indices[0])
@@ -202,60 +202,14 @@ def mostrar_ventana_productos():
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
-                disponible_var_editar.set(False)
+                disponible_var_editar.set(True)
 
         except Exception as e:
             messagebox.showerror("Error de Selección", f"Ocurrió un error al seleccionar el producto: {e}")
             producto_seleccionado_id.set("")
             entry_nombre_editar.delete(0, tk.END)
             entry_precio_editar.delete(0, tk.END)
-            disponible_var_editar.set(False)
-
-    def obtener_ids_seleccionados():
-        seleccion_indices = lista.curselection()
-        if not seleccion_indices:
-            return []
-
-        productos = listar_productos()
-        ids = []
-        for indice in seleccion_indices:
-            linea_seleccionada = lista.get(indice)
-            if "ID:" not in linea_seleccionada:
-                continue
-            id_abrev = linea_seleccionada.split(' ')[1].replace('...', '')
-            for producto in productos:
-                if producto.id.startswith(id_abrev):
-                    ids.append(producto.id)
-                    break
-        return ids
-
-    def aplicar_disponibilidad(disponible):
-        ids = obtener_ids_seleccionados()
-        if not ids:
-            messagebox.showwarning(
-                "Atención",
-                "Seleccione uno o más productos de la lista para actualizar disponibilidad.",
-            )
-            return
-        actualizados = actualizar_disponibilidad_productos(ids, disponible)
-        cargar_productos()
-        messagebox.showinfo(
-            "Disponibilidad actualizada",
-            f"Se actualizaron {actualizados} productos.",
-        )
-
-    def marcar_todos(disponible):
-        productos = listar_productos()
-        if not productos:
-            messagebox.showwarning("Atención", "No hay productos registrados.")
-            return
-        ids = [p.id for p in productos]
-        actualizar_disponibilidad_productos(ids, disponible)
-        cargar_productos()
-        messagebox.showinfo(
-            "Disponibilidad actualizada",
-            "Se actualizó la disponibilidad de todos los productos.",
-        )
+            disponible_var_editar.set(True)
 
     def editar():
         """
@@ -480,49 +434,6 @@ def mostrar_ventana_productos():
         width=42,
         bg="lightgreen",
     ).grid(row=6, column=0, columnspan=2, pady=5, padx=5)
-
-    frame_disponibilidad = tk.LabelFrame(
-        ventana,
-        text="Disponibilidad en lote",
-        padx=10,
-        pady=10,
-    )
-    frame_disponibilidad.pack(pady=5, fill=tk.X, padx=10)
-
-    tk.Label(
-        frame_disponibilidad,
-        text="Seleccione uno o más productos en la lista y use los botones.",
-        font=("Helvetica", 9, "italic"),
-        fg="gray",
-    ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 5))
-
-    tk.Button(
-        frame_disponibilidad,
-        text="Marcar seleccionados como disponibles",
-        command=lambda: aplicar_disponibilidad(True),
-        width=34,
-    ).grid(row=1, column=0, padx=5, pady=2, sticky="w")
-
-    tk.Button(
-        frame_disponibilidad,
-        text="Marcar seleccionados como no disponibles",
-        command=lambda: aplicar_disponibilidad(False),
-        width=34,
-    ).grid(row=1, column=1, padx=5, pady=2, sticky="w")
-
-    tk.Button(
-        frame_disponibilidad,
-        text="Marcar todos como disponibles",
-        command=lambda: marcar_todos(True),
-        width=34,
-    ).grid(row=2, column=0, padx=5, pady=2, sticky="w")
-
-    tk.Button(
-        frame_disponibilidad,
-        text="Marcar todos como no disponibles",
-        command=lambda: marcar_todos(False),
-        width=34,
-    ).grid(row=2, column=1, padx=5, pady=2, sticky="w")
 
     lista.bind("<<ListboxSelect>>", seleccionar_producto) # Vincula el evento de selección
 
