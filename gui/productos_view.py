@@ -13,8 +13,8 @@ from controllers.productos_controller import (
 def mostrar_ventana_productos():
     ventana = tk.Toplevel()
     ventana.title("Gestión de Productos")
-    ventana.geometry("600x700") # Ajusta el tamaño para acomodar los nuevos textos guía
-    ventana.resizable(False, False) # Hacer la ventana no redimensionable
+    ventana.geometry("700x900") # Ajusta el tamaño para acomodar los nuevos textos guía
+    ventana.resizable(True, True) # Habilitar redimensionado para ver todas las secciones
 
     # --- Variables para los campos de edición ---
     producto_seleccionado_id = tk.StringVar()
