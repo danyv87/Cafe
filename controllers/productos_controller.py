@@ -123,6 +123,27 @@ def eliminar_producto(id_producto):
     return True  # Retorna True si la eliminación fue exitosa
 
 
+def actualizar_disponibilidad_productos(ids_productos, disponible_venta):
+    """
+    Actualiza en lote la disponibilidad de venta para los productos indicados.
+    """
+    if not ids_productos:
+        return 0
+
+    productos = cargar_productos()
+    ids_set = set(ids_productos)
+    actualizados = 0
+
+    for producto in productos:
+        if producto.id in ids_set:
+            producto.disponible_venta = disponible_venta
+            actualizados += 1
+
+    if actualizados:
+        guardar_productos(productos)
+    return actualizados
+
+
 def calcular_costo_produccion_producto(producto_id):
     """
     Calcula el costo total de las materias primas necesarias para producir una unidad de un producto.

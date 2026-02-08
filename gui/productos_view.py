@@ -7,6 +7,7 @@ from controllers.productos_controller import (
     validar_producto,
     editar_producto,
     eliminar_producto,
+    actualizar_disponibilidad_productos,
 )
 
 def mostrar_ventana_productos():
@@ -30,7 +31,14 @@ def mostrar_ventana_productos():
     frame_lista.pack(pady=10, fill=tk.BOTH, expand=True, padx=10) # Añadir padx
 
     scrollbar = tk.Scrollbar(frame_lista, orient=tk.VERTICAL)
-    lista = tk.Listbox(frame_lista, width=70, height=10, yscrollcommand=scrollbar.set, exportselection=False) # Aumentar altura
+    lista = tk.Listbox(
+        frame_lista,
+        width=70,
+        height=10,
+        yscrollcommand=scrollbar.set,
+        exportselection=False,
+        selectmode=tk.EXTENDED,
+    ) # Aumentar altura
     scrollbar.config(command=lista.yview)
 
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
