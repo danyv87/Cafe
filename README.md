@@ -61,6 +61,34 @@ venta sugerido. El valor de **UP (unidades previstas)** debe ser ingresado
 manualmente por el usuario para distribuir los costos fijos del período en la
 fórmula `CT = CV + (CF / UP)`.
 
+Si se desea una distribución más justa para productos con precios distintos,
+se puede usar el reparto proporcional por valor de venta. En este caso se
+registra un plan de ventas (unidades previstas y precio de venta unitario por
+producto), se calcula el peso de cada producto sobre las ventas totales y se
+asigna el costo fijo según ese peso. El cálculo resultante devuelve un costo
+fijo unitario por producto que refleja su participación en los ingresos.
+
+**Cómo fijar el precio por producto con reparto proporcional**
+
+1. Defina el **plan de ventas del período**: unidades previstas y precio de
+   venta unitario esperado por cada producto.
+2. Calcule el **costo fijo unitario proporcional** para cada producto con
+   `calcular_costo_fijo_unitario_proporcional`.
+3. Para cada producto, sume su **CV** (receta) con el costo fijo unitario
+   proporcional y aplique el margen y el IVA con
+   `calcular_precio_sugerido_proporcional`.
+
+El resultado entrega el precio sugerido por producto respetando que los
+productos de mayor valor absorben más costos fijos del período.
+
+### Menú disponible para la venta
+
+Los productos incluyen el indicador `disponible_venta` para decidir qué ítems
+forman parte del menú activo. En **Gestión de Productos** se puede marcar o
+desmarcar la opción *Disponible para la venta* y la ventana de ventas solo
+mostrará los productos habilitados, permitiendo construir el menú en función del
+análisis de precios y stock.
+
 ## Respaldo y restauración
 
 Los archivos JSON con los datos de la aplicación se pueden respaldar y
@@ -90,4 +118,3 @@ cp data/history/2024-01-30/*.json data/
 
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
-

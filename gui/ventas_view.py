@@ -14,9 +14,12 @@ def mostrar_ventana_ventas():
     ventana.title("Registrar Venta (Ticket)")
     ventana.geometry("700x900")  # Aumenta el tamaño para acomodar la información de stock y el campo fecha
 
-    productos_disponibles = listar_productos()
+    productos_disponibles = [p for p in listar_productos() if p.disponible_venta]
     if not productos_disponibles:
-        tk.Label(ventana, text="No hay productos cargados. Agregue al menos uno para registrar ventas.").pack(pady=20)
+        tk.Label(
+            ventana,
+            text="No hay productos disponibles para la venta. Marque al menos uno en Gestión de Productos.",
+        ).pack(pady=20)
         return
 
     # Mapeo de nombre de producto a objeto Producto
@@ -116,7 +119,7 @@ def mostrar_ventana_ventas():
         filtro = filtro.lower()
         productos_filtrados = []
         global productos_disponibles
-        productos_disponibles = listar_productos()
+        productos_disponibles = [p for p in listar_productos() if p.disponible_venta]
         for p in productos_disponibles:
             if filtro in p.nombre.lower():
                 productos_filtrados.append(p)
