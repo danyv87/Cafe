@@ -81,6 +81,14 @@ fijo unitario por producto que refleja su participación en los ingresos.
 El resultado entrega el precio sugerido por producto respetando que los
 productos de mayor valor absorben más costos fijos del período.
 
+### Menú disponible para la venta
+
+Los productos incluyen el indicador `disponible_venta` para decidir qué ítems
+forman parte del menú activo. En **Gestión de Productos** se puede marcar o
+desmarcar la opción *Disponible para la venta* y la ventana de ventas solo
+mostrará los productos habilitados, permitiendo construir el menú en función del
+análisis de precios y stock.
+
 ## Respaldo y restauración
 
 Los archivos JSON con los datos de la aplicación se pueden respaldar y
