@@ -58,7 +58,7 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
-    disponible_var_agregar = tk.BooleanVar(value=False)
+    disponible_var_agregar = tk.BooleanVar(value=True)
     tk.Checkbutton(
         frame_form_agregar,
         text="Disponible para la venta",
@@ -88,7 +88,7 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
-    disponible_var_editar = tk.BooleanVar(value=False)
+    disponible_var_editar = tk.BooleanVar(value=True)
     tk.Checkbutton(
         frame_form_editar,
         text="Disponible para la venta",
@@ -148,7 +148,7 @@ def mostrar_ventana_productos():
                 cargar_productos()
                 entry_nombre.delete(0, tk.END)
                 entry_precio.delete(0, tk.END)
-                disponible_var_agregar.set(False)
+                disponible_var_agregar.set(True)
                 messagebox.showinfo("Éxito", "Producto agregado correctamente.")
             except ValueError as e:
                 messagebox.showerror("Error al Agregar", str(e))
@@ -169,7 +169,7 @@ def mostrar_ventana_productos():
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
-                disponible_var_editar.set(False)
+                disponible_var_editar.set(True)
                 return
 
             linea_seleccionada = lista.get(seleccion_indices[0])
@@ -194,14 +194,14 @@ def mostrar_ventana_productos():
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
-                disponible_var_editar.set(False)
+                disponible_var_editar.set(True)
 
         except Exception as e:
             messagebox.showerror("Error de Selección", f"Ocurrió un error al seleccionar el producto: {e}")
             producto_seleccionado_id.set("")
             entry_nombre_editar.delete(0, tk.END)
             entry_precio_editar.delete(0, tk.END)
-            disponible_var_editar.set(False)
+            disponible_var_editar.set(True)
 
     def editar():
         """

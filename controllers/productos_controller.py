@@ -46,7 +46,7 @@ def validar_producto(nombre, precio_unitario):
     return True, ""
 
 
-def agregar_producto(nombre, precio_unitario, disponible_venta=False):
+def agregar_producto(nombre, precio_unitario, disponible_venta=True):
     """
     Agrega un nuevo producto a la lista y lo guarda.
     Realiza una validación básica antes de agregar.
@@ -85,7 +85,7 @@ def obtener_producto_por_id(id_producto):
     return None
 
 
-def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario, disponible_venta=False):
+def editar_producto(id_producto, nuevo_nombre, nuevo_precio_unitario, disponible_venta=True):
     """
     Edita un producto existente por su ID.
     Valida los nuevos datos y lanza un ValueError si el producto no se encuentra
