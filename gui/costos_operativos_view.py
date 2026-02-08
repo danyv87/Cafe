@@ -31,7 +31,14 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
     tabs.add(frame_mensual, text="Mensual")
     tree_mensual = ttk.Treeview(
         frame_mensual,
-        columns=("Periodo", "Ingresos", "Costo MP", "Gastos Adicionales", "Costo Total", "Ganancia/Pérdida"),
+        columns=(
+            "Periodo",
+            "Ingresos",
+            "Costo MP",
+            "Gastos Adicionales",
+            "Costo Total",
+            "Resultado Operativo",
+        ),
         show="headings",
         height=15,
     )
@@ -41,7 +48,7 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
         ("Costo MP", "Costo Materias Primas (Gs)", 150, "e"),
         ("Gastos Adicionales", "Gastos Adicionales (Gs)", 150, "e"),
         ("Costo Total", "Costo Operativo Total (Gs)", 150, "e"),
-        ("Ganancia/Pérdida", "Ganancia/Pérdida (Gs)", 150, "e"),
+        ("Resultado Operativo", "Resultado operativo (Gs)", 150, "e"),
     ]:
         tree_mensual.heading(col, text=text)
         tree_mensual.column(col, width=width, anchor=anchor)
@@ -54,7 +61,14 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
     tabs.add(frame_semanal, text="Semanal")
     tree_semanal = ttk.Treeview(
         frame_semanal,
-        columns=("Periodo", "Ingresos", "Costo MP", "Gastos Adicionales", "Costo Total", "Ganancia/Pérdida"),
+        columns=(
+            "Periodo",
+            "Ingresos",
+            "Costo MP",
+            "Gastos Adicionales",
+            "Costo Total",
+            "Resultado Operativo",
+        ),
         show="headings",
         height=15,
     )
@@ -64,7 +78,7 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
         ("Costo MP", "Costo Materias Primas (Gs)", 150, "e"),
         ("Gastos Adicionales", "Gastos Adicionales (Gs)", 150, "e"),
         ("Costo Total", "Costo Operativo Total (Gs)", 150, "e"),
-        ("Ganancia/Pérdida", "Ganancia/Pérdida (Gs)", 150, "e"),
+        ("Resultado Operativo", "Resultado operativo (Gs)", 150, "e"),
     ]:
         tree_semanal.heading(col, text=text)
         tree_semanal.column(col, width=width, anchor=anchor)
@@ -77,7 +91,14 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
     tabs.add(frame_diario, text="Diario")
     tree_diario = ttk.Treeview(
         frame_diario,
-        columns=("Periodo", "Ingresos", "Costo MP", "Gastos Adicionales", "Costo Total", "Ganancia/Pérdida"),
+        columns=(
+            "Periodo",
+            "Ingresos",
+            "Costo MP",
+            "Gastos Adicionales",
+            "Costo Total",
+            "Resultado Operativo",
+        ),
         show="headings",
         height=15,
     )
@@ -87,7 +108,7 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
         ("Costo MP", "Costo Materias Primas (Gs)", 150, "e"),
         ("Gastos Adicionales", "Gastos Adicionales (Gs)", 150, "e"),
         ("Costo Total", "Costo Operativo Total (Gs)", 150, "e"),
-        ("Ganancia/Pérdida", "Ganancia/Pérdida (Gs)", 150, "e"),
+        ("Resultado Operativo", "Resultado operativo (Gs)", 150, "e"),
     ]:
         tree_diario.heading(col, text=text)
         tree_diario.column(col, width=width, anchor=anchor)
@@ -124,8 +145,8 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
             costo_mp_val = parse_formatted_currency(costo_mp_str)
             gastos_ad_val = parse_formatted_currency(gastos_ad_str)
             costo_total_val = costo_mp_val + gastos_ad_val
-            ganancia_perdida_val = ingresos_val - costo_total_val
-            row_tag = "positive" if ganancia_perdida_val >= 0 else "negative"
+            resultado_operativo_val = ingresos_val - costo_total_val
+            row_tag = "positive" if resultado_operativo_val >= 0 else "negative"
             tree.insert(
                 "",
                 tk.END,
@@ -135,7 +156,7 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
                     format_currency(costo_mp_val),
                     format_currency(gastos_ad_val),
                     format_currency(costo_total_val),
-                    format_currency(ganancia_perdida_val),
+                    format_currency(resultado_operativo_val),
                 ),
                 tags=(row_tag,),
             )
@@ -171,4 +192,3 @@ def agregar_tab_costos_operativos(notebook: ttk.Notebook) -> None:
 
     tabs.bind("<<NotebookTabChanged>>", on_tab_selected)
     cargar_datos_mensuales()
-
