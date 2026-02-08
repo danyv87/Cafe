@@ -1,7 +1,7 @@
 import uuid
 
 class Producto:
-    def __init__(self, nombre, precio_unitario, id=None, disponible_venta=False):
+    def __init__(self, nombre, precio_unitario, id=None, disponible_venta=True):
         self.id = id or str(uuid.uuid4())
         self.nombre = nombre
         self.precio_unitario = precio_unitario
@@ -29,5 +29,5 @@ class Producto:
             id=data.get("id"),
             nombre=data.get("nombre"),
             precio_unitario=data.get("precio_unitario"),
-            disponible_venta=data.get("disponible_venta", False),
+            disponible_venta=data.get("disponible_venta", True),
         )
