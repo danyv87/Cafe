@@ -58,6 +58,13 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
+    disponible_var_agregar = tk.BooleanVar(value=True)
+    tk.Checkbutton(
+        frame_form_agregar,
+        text="Disponible para la venta",
+        variable=disponible_var_agregar,
+    ).grid(row=4, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
+
     # Frame para el formulario de Editar/Eliminar
     frame_form_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Producto Seleccionado", padx=10, pady=10)
     frame_form_editar.pack(pady=10, fill=tk.X, padx=10) # Añadir padx
@@ -81,6 +88,13 @@ def mostrar_ventana_productos():
         fg="gray",
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
+    disponible_var_editar = tk.BooleanVar(value=True)
+    tk.Checkbutton(
+        frame_form_editar,
+        text="Disponible para la venta",
+        variable=disponible_var_editar,
+    ).grid(row=4, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
+
     # --- Funciones (definidas DESPUÉS de los widgets que usan) ---
 
     def cargar_productos():
@@ -95,7 +109,11 @@ def mostrar_ventana_productos():
             lista.insert(tk.END, "No hay productos registrados.")
         else:
             for p in productos:
-                lista.insert(tk.END, f"ID: {p.id[:8]}... - {p.nombre} - Gs {p.precio_unitario:.0f}")
+                disponibilidad = "" if p.disponible_venta else " (No disponible)"
+                lista.insert(
+                    tk.END,
+                    f"ID: {p.id[:8]}... - {p.nombre} - Gs {p.precio_unitario:.0f}{disponibilidad}",
+                )
 
     def agregar():
         """
@@ -122,10 +140,15 @@ def mostrar_ventana_productos():
         )
         if confirmar:
             try:
-                agregar_producto(nombre, precio)
+                agregar_producto(
+                    nombre,
+                    precio,
+                    disponible_venta=disponible_var_agregar.get(),
+                )
                 cargar_productos()
                 entry_nombre.delete(0, tk.END)
                 entry_precio.delete(0, tk.END)
+                disponible_var_agregar.set(True)
                 messagebox.showinfo("Éxito", "Producto agregado correctamente.")
             except ValueError as e:
                 messagebox.showerror("Error al Agregar", str(e))
@@ -146,6 +169,7 @@ def mostrar_ventana_productos():
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
+                disponible_var_editar.set(True)
                 return
 
             linea_seleccionada = lista.get(seleccion_indices[0])
@@ -164,17 +188,20 @@ def mostrar_ventana_productos():
                 entry_nombre_editar.insert(0, producto_encontrado.nombre)
                 entry_precio_editar.delete(0, tk.END)
                 entry_precio_editar.insert(0, str(producto_encontrado.precio_unitario))
+                disponible_var_editar.set(producto_encontrado.disponible_venta)
             else:
                 messagebox.showwarning("Error", "No se pudo encontrar el producto completo.")
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
+                disponible_var_editar.set(True)
 
         except Exception as e:
             messagebox.showerror("Error de Selección", f"Ocurrió un error al seleccionar el producto: {e}")
             producto_seleccionado_id.set("")
             entry_nombre_editar.delete(0, tk.END)
             entry_precio_editar.delete(0, tk.END)
+            disponible_var_editar.set(True)
 
     def editar():
         """
@@ -205,11 +232,17 @@ def mostrar_ventana_productos():
         )
         if confirmar:
             try:
-                editar_producto(id_a_editar, nuevo_nombre, nuevo_precio)
+                editar_producto(
+                    id_a_editar,
+                    nuevo_nombre,
+                    nuevo_precio,
+                    disponible_venta=disponible_var_editar.get(),
+                )
                 cargar_productos()
                 producto_seleccionado_id.set("")
                 entry_nombre_editar.delete(0, tk.END)
                 entry_precio_editar.delete(0, tk.END)
+                disponible_var_editar.set(True)
                 messagebox.showinfo("Éxito", "Producto editado correctamente.")
             except ValueError as e:
                 messagebox.showerror("Error al Editar", str(e))
@@ -378,13 +411,13 @@ def mostrar_ventana_productos():
 
     # --- Botones de acción ---
     tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(
-        row=4, column=0, columnspan=2, pady=5
+        row=5, column=0, columnspan=2, pady=5
     )
     tk.Button(frame_form_editar, text="Editar Producto", command=editar, width=20, bg="lightblue").grid(
-        row=4, column=0, pady=5, padx=5
+        row=5, column=0, pady=5, padx=5
     )
     tk.Button(frame_form_editar, text="Eliminar Producto", command=eliminar, width=20, bg="lightcoral").grid(
-        row=4, column=1, pady=5, padx=5
+        row=5, column=1, pady=5, padx=5
     )
     tk.Button(
         frame_form_editar,
@@ -392,7 +425,7 @@ def mostrar_ventana_productos():
         command=abrir_calculadora_precio,
         width=42,
         bg="lightgreen",
-    ).grid(row=5, column=0, columnspan=2, pady=5, padx=5)
+    ).grid(row=6, column=0, columnspan=2, pady=5, padx=5)
 
     lista.bind("<<ListboxSelect>>", seleccionar_producto) # Vincula el evento de selección
 
