@@ -436,15 +436,37 @@ def mostrar_ventana_productos():
         plan_items = {}
         resultados_calculo = {}
 
+        contenedor = tk.Frame(ventana_plan)
+        contenedor.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar_principal = tk.Scrollbar(contenedor, orient=tk.VERTICAL)
+        scrollbar_principal.pack(side=tk.RIGHT, fill=tk.Y)
+
+        canvas_principal = tk.Canvas(contenedor, yscrollcommand=scrollbar_principal.set)
+        canvas_principal.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_principal.config(command=canvas_principal.yview)
+
+        contenido = tk.Frame(canvas_principal)
+        contenido_id = canvas_principal.create_window((0, 0), window=contenido, anchor="nw")
+
+        def ajustar_scroll(event=None):
+            canvas_principal.configure(scrollregion=canvas_principal.bbox("all"))
+
+        def ajustar_ancho(event):
+            canvas_principal.itemconfigure(contenido_id, width=event.width)
+
+        contenido.bind("<Configure>", ajustar_scroll)
+        canvas_principal.bind("<Configure>", ajustar_ancho)
+
         tk.Label(
-            ventana_plan,
+            contenido,
             text="Seleccione los productos del menú y defina unidades previstas/precios base.",
             font=("Helvetica", 10, "italic"),
             fg="gray",
             wraplength=760,
         ).pack(pady=(10, 5))
 
-        frame_productos = tk.LabelFrame(ventana_plan, text="Productos disponibles", padx=10, pady=10)
+        frame_productos = tk.LabelFrame(contenido, text="Productos disponibles", padx=10, pady=10)
         frame_productos.pack(fill=tk.X, padx=10, pady=5)
 
         tk.Label(frame_productos, text="Buscar:", font=("Helvetica", 9, "bold")).grid(
@@ -484,7 +506,7 @@ def mostrar_ventana_productos():
 
         entry_buscar.bind("<KeyRelease>", buscar_productos)
 
-        frame_detalle = tk.LabelFrame(ventana_plan, text="Detalle del plan", padx=10, pady=10)
+        frame_detalle = tk.LabelFrame(contenido, text="Detalle del plan", padx=10, pady=10)
         frame_detalle.pack(fill=tk.X, padx=10, pady=5)
 
         tk.Label(frame_detalle, text="Unidades previstas (UP):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
@@ -579,12 +601,12 @@ def mostrar_ventana_productos():
             row=1, column=2, columnspan=2, pady=5
         )
 
-        frame_plan = tk.LabelFrame(ventana_plan, text="Productos en el plan de venta", padx=10, pady=10)
+        frame_plan = tk.LabelFrame(contenido, text="Productos en el plan de venta", padx=10, pady=10)
         frame_plan.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         lista_plan = tk.Listbox(frame_plan, width=80, height=6)
         lista_plan.pack(fill=tk.BOTH, expand=True)
 
-        frame_costos = tk.LabelFrame(ventana_plan, text="Parámetros de cálculo", padx=10, pady=10)
+        frame_costos = tk.LabelFrame(contenido, text="Parámetros de cálculo", padx=10, pady=10)
         frame_costos.pack(fill=tk.X, padx=10, pady=5)
 
         tk.Label(frame_costos, text="Costos fijos del período (Gs):").grid(
@@ -606,7 +628,7 @@ def mostrar_ventana_productos():
         entry_iva.insert(0, "0.10")
         entry_iva.grid(row=1, column=1, padx=5, pady=2)
 
-        frame_resultados = tk.LabelFrame(ventana_plan, text="Resultados", padx=10, pady=10)
+        frame_resultados = tk.LabelFrame(contenido, text="Resultados", padx=10, pady=10)
         frame_resultados.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         lista_resultados = tk.Listbox(frame_resultados, width=80, height=6)
         lista_resultados.pack(fill=tk.BOTH, expand=True)
@@ -687,7 +709,7 @@ def mostrar_ventana_productos():
             else:
                 messagebox.showinfo("Éxito", "Precios sugeridos aplicados al menú de venta.")
 
-        frame_botones = tk.Frame(ventana_plan)
+        frame_botones = tk.Frame(contenido)
         frame_botones.pack(pady=10)
 
         tk.Button(frame_botones, text="Calcular precios sugeridos", command=calcular_precios_plan, width=25).grid(
