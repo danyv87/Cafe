@@ -4,7 +4,6 @@ from tkinter import ttk
 
 from controllers.compras_controller import listar_compras
 from controllers.gastos_adicionales_controller import listar_gastos_adicionales
-from controllers.planes_venta_controller import cargar_planes_venta
 from controllers.tickets_controller import listar_tickets
 
 
@@ -27,18 +26,6 @@ def _parse_fecha(fecha):
             except ValueError:
                 continue
     return None
-
-
-def _obtener_plan_ventas_actual():
-    planes = cargar_planes_venta()
-    if not planes:
-        return None
-    plan_ordenado = sorted(
-        planes,
-        key=lambda plan: _parse_fecha(plan.get("actualizado")) or datetime.min,
-        reverse=True,
-    )
-    return plan_ordenado[0]
 
 
 def agregar_tab_estado_mes(notebook: ttk.Notebook) -> None:
@@ -94,20 +81,6 @@ def agregar_tab_estado_mes(notebook: ttk.Notebook) -> None:
     resultado_neto = total_ventas - total_compras - total_gastos
     promedio_ticket = total_ventas / tickets_mes if tickets_mes else 0.0
     producto_top = max(ventas_por_producto.items(), key=lambda item: item[1], default=None)
-    plan_actual = _obtener_plan_ventas_actual()
-    ventas_plan = 0.0
-    nombre_plan = None
-    if plan_actual:
-        nombre_plan = plan_actual.get("nombre", "").strip() or "Plan sin nombre"
-        for item in plan_actual.get("items", []):
-            unidades = item.get("unidades", item.get("unidades_previstas", 0)) or 0
-            precio = item.get("precio", item.get("precio_venta_unitario", 0)) or 0
-            try:
-                ventas_plan += float(unidades) * float(precio)
-            except (TypeError, ValueError):
-                continue
-    cumplimiento_plan = (total_ventas / ventas_plan * 100) if ventas_plan > 0 else None
-    diferencia_plan = total_ventas - ventas_plan if ventas_plan > 0 else None
 
     datos = [
         ("Ventas del mes", _formatear_moneda(total_ventas)),
@@ -128,22 +101,6 @@ def agregar_tab_estado_mes(notebook: ttk.Notebook) -> None:
         )
     else:
         datos.append(("Producto más vendido del mes", "N/D"))
-
-    if ventas_plan > 0:
-        cumplimiento_fmt = f"{cumplimiento_plan:.2f}%".replace(".", ",") if cumplimiento_plan is not None else "N/D"
-        datos.extend(
-            [
-                ("Plan de ventas activo", nombre_plan or "N/D"),
-                ("Ventas planificadas", _formatear_moneda(ventas_plan)),
-                ("Diferencia vs plan", _formatear_moneda(diferencia_plan or 0.0)),
-                ("Cumplimiento del plan", cumplimiento_fmt),
-            ]
-        )
-    else:
-        datos.append(("Plan de ventas activo", nombre_plan or "N/D"))
-        datos.append(("Ventas planificadas", "N/D"))
-        datos.append(("Diferencia vs plan", "N/D"))
-        datos.append(("Cumplimiento del plan", "N/D"))
 
     for fila, (etiqueta, valor) in enumerate(datos):
         ttk.Label(frame_info, text=f"{etiqueta}:", font=("Helvetica", 11, "bold")).grid(
