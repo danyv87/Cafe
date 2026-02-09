@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from controllers.pricing_controller import (
     PlanVentaItem,
+    calcular_costo_variable_unitario,
     calcular_precio_sugerido,
     calcular_precio_sugerido_proporcional,
 )
@@ -457,6 +458,23 @@ def mostrar_ventana_productos():
             wraplength=760,
         ).pack(pady=(10, 5))
 
+        frame_planes = tk.LabelFrame(contenido, text="Planes guardados", padx=10, pady=10)
+        frame_planes.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_planes, text="Nombre del plan:", font=("Helvetica", 9, "bold")).grid(
+            row=0, column=0, padx=5, pady=2, sticky="w"
+        )
+        entry_nombre_plan = tk.Entry(frame_planes, width=30)
+        entry_nombre_plan.grid(row=0, column=1, padx=5, pady=2, sticky="w")
+
+        tk.Label(frame_planes, text="Planes disponibles:", font=("Helvetica", 9, "bold")).grid(
+            row=1, column=0, padx=5, pady=2, sticky="w"
+        )
+        plan_seleccionado = tk.StringVar(value="")
+        plan_menu = tk.OptionMenu(frame_planes, plan_seleccionado, "")
+        plan_menu.config(width=28)
+        plan_menu.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+
         frame_productos = tk.LabelFrame(contenido, text="Productos disponibles", padx=10, pady=10)
         frame_productos.pack(fill=tk.X, padx=10, pady=5)
 
@@ -497,6 +515,106 @@ def mostrar_ventana_productos():
 
         entry_buscar.bind("<KeyRelease>", buscar_productos)
 
+        def obtener_planes_guardados():
+            planes = cargar_planes_venta()
+            nombres = [plan.get("nombre", "").strip() for plan in planes if plan.get("nombre")]
+            nombres.sort(key=lambda nombre: nombre.lower())
+            return planes, nombres
+
+        def actualizar_menu_planes(nombres_planes):
+            menu = plan_menu["menu"]
+            menu.delete(0, "end")
+            if not nombres_planes:
+                plan_seleccionado.set("")
+                menu.add_command(
+                    label="Sin planes guardados",
+                    command=lambda: plan_seleccionado.set(""),
+                )
+                return
+            for nombre in nombres_planes:
+                menu.add_command(label=nombre, command=lambda n=nombre: plan_seleccionado.set(n))
+            if plan_seleccionado.get() not in nombres_planes:
+                plan_seleccionado.set(nombres_planes[0])
+
+        def cargar_plan_guardado():
+            nombre_plan = plan_seleccionado.get()
+            if not nombre_plan:
+                messagebox.showwarning("Atención", "Seleccione un plan guardado para cargar.")
+                return
+            planes, _ = obtener_planes_guardados()
+            plan = next((p for p in planes if p.get("nombre") == nombre_plan), None)
+            if not plan:
+                messagebox.showerror("Error", "No se encontró el plan seleccionado.")
+                return
+
+            plan_items.clear()
+            resultados_calculo.clear()
+            lista_resultados.delete(0, tk.END)
+
+            faltantes = []
+            for item in plan.get("items", []):
+                producto_id = item.get("id") or item.get("producto_id")
+                if not producto_id:
+                    continue
+                producto = obtener_producto_por_id(producto_id)
+                nombre = producto.nombre if producto else item.get("nombre", "Producto desconocido")
+                if not producto:
+                    faltantes.append(nombre)
+                plan_items[producto_id] = {
+                    "id": producto_id,
+                    "nombre": nombre,
+                    "unidades": float(item.get("unidades", item.get("unidades_previstas", 0)) or 0),
+                    "precio": float(item.get("precio", item.get("precio_venta_unitario", 0)) or 0),
+                    "costo_variable": (
+                        calcular_costo_variable_unitario(producto_id) if producto else None
+                    ),
+                }
+
+            refrescar_plan()
+            entry_nombre_plan.delete(0, tk.END)
+            entry_nombre_plan.insert(0, nombre_plan)
+            if faltantes:
+                messagebox.showwarning(
+                    "Atención",
+                    "Algunos productos del plan ya no existen y se cargaron como desconocidos.",
+                )
+            else:
+                messagebox.showinfo("Plan cargado", "El plan se cargó correctamente.")
+
+        def guardar_plan_actual():
+            nombre_plan = entry_nombre_plan.get().strip()
+            if not nombre_plan:
+                messagebox.showwarning("Atención", "Ingrese un nombre para el plan antes de guardar.")
+                return
+            if not plan_items:
+                messagebox.showwarning("Atención", "Agregue productos al plan antes de guardar.")
+                return
+            items = [
+                {
+                    "id": item["id"],
+                    "nombre": item["nombre"],
+                    "unidades": item["unidades"],
+                    "precio": item["precio"],
+                }
+                for item in plan_items.values()
+            ]
+            try:
+                guardar_plan_venta(nombre_plan, items)
+            except ValueError as exc:
+                messagebox.showerror("Error", str(exc))
+                return
+            _, nombres_planes = obtener_planes_guardados()
+            actualizar_menu_planes(nombres_planes)
+            plan_seleccionado.set(nombre_plan)
+            messagebox.showinfo("Plan guardado", "El plan se guardó correctamente.")
+
+        tk.Button(frame_planes, text="Guardar plan", command=guardar_plan_actual, width=15).grid(
+            row=0, column=2, padx=5, pady=2
+        )
+        tk.Button(frame_planes, text="Cargar plan", command=cargar_plan_guardado, width=15).grid(
+            row=1, column=2, padx=5, pady=2
+        )
+
         frame_detalle = tk.LabelFrame(contenido, text="Detalle del plan", padx=10, pady=10)
         frame_detalle.pack(fill=tk.X, padx=10, pady=5)
 
@@ -531,10 +649,15 @@ def mostrar_ventana_productos():
             for item in plan_items.values():
                 id_corto = item["id"][:8]
                 precio = f"{item['precio']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                costo_variable = item.get("costo_variable")
+                if costo_variable is None:
+                    costo_variable_fmt = "N/D"
+                else:
+                    costo_variable_fmt = f"{costo_variable:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 lista_plan.insert(
                     tk.END,
                     f"ID: {id_corto}... | {item['nombre']} | UP: {item['unidades']:.0f} | "
-                    f"Precio base: Gs {precio}",
+                    f"Precio base: Gs {precio} | CV: Gs {costo_variable_fmt}",
                 )
 
         def agregar_al_plan():
@@ -566,6 +689,7 @@ def mostrar_ventana_productos():
                     "nombre": producto.nombre,
                     "unidades": unidades,
                     "precio": precio_base,
+                    "costo_variable": calcular_costo_variable_unitario(producto.id),
                 }
 
             refrescar_plan()
@@ -630,6 +754,9 @@ def mostrar_ventana_productos():
         resumen_ventas = tk.StringVar(value="Ventas estimadas: Gs 0")
         resumen_costos = tk.StringVar(value="Costos fijos del período: Gs 0")
         resumen_margen = tk.StringVar(value="Margen total estimado: Gs 0")
+        resumen_costo_variable = tk.StringVar(value="Costo variable total: Gs 0")
+        resumen_costo_total = tk.StringVar(value="Costo total estimado: Gs 0")
+        resumen_ganancia = tk.StringVar(value="Ganancia estimada: Gs 0")
 
         tk.Label(frame_conclusiones, textvariable=resumen_ventas).grid(
             row=0, column=0, sticky="w", padx=5, pady=2
@@ -639,6 +766,15 @@ def mostrar_ventana_productos():
         )
         tk.Label(frame_conclusiones, textvariable=resumen_margen).grid(
             row=2, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_variable).grid(
+            row=3, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_total).grid(
+            row=4, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_ganancia).grid(
+            row=5, column=0, sticky="w", padx=5, pady=2
         )
 
         def calcular_precios_plan():
@@ -667,6 +803,9 @@ def mostrar_ventana_productos():
             resumen_ventas.set("Ventas estimadas: Gs 0")
             resumen_costos.set("Costos fijos del período: Gs 0")
             resumen_margen.set("Margen total estimado: Gs 0")
+            resumen_costo_variable.set("Costo variable total: Gs 0")
+            resumen_costo_total.set("Costo total estimado: Gs 0")
+            resumen_ganancia.set("Ganancia estimada: Gs 0")
 
             for producto_id, item in plan_items.items():
                 try:
@@ -693,16 +832,28 @@ def mostrar_ventana_productos():
                 item["unidades"] * resultados_calculo[producto_id].precio_venta_con_iva
                 for producto_id, item in plan_items.items()
             )
+            total_costos_variables = sum(
+                item["unidades"] * resultados_calculo[producto_id].costo_variable_unitario
+                for producto_id, item in plan_items.items()
+            )
             total_costos_fijos = costos_fijos
+            total_costos = total_costos_fijos + total_costos_variables
             margen_total = total_ventas - total_costos_fijos
+            ganancia_total = total_ventas - total_costos
 
             ventas_fmt = f"{total_ventas:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costos_variables_fmt = f"{total_costos_variables:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             costos_fmt = f"{total_costos_fijos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costos_totales_fmt = f"{total_costos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             margen_fmt = f"{margen_total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            ganancia_fmt = f"{ganancia_total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
             resumen_ventas.set(f"Ventas estimadas: Gs {ventas_fmt}")
             resumen_costos.set(f"Costos fijos del período: Gs {costos_fmt}")
             resumen_margen.set(f"Margen total estimado: Gs {margen_fmt}")
+            resumen_costo_variable.set(f"Costo variable total: Gs {costos_variables_fmt}")
+            resumen_costo_total.set(f"Costo total estimado: Gs {costos_totales_fmt}")
+            resumen_ganancia.set(f"Ganancia estimada: Gs {ganancia_fmt}")
 
         def aplicar_precios_plan():
             if not resultados_calculo:
