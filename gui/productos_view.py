@@ -457,6 +457,23 @@ def mostrar_ventana_productos():
             wraplength=760,
         ).pack(pady=(10, 5))
 
+        frame_planes = tk.LabelFrame(contenido, text="Planes guardados", padx=10, pady=10)
+        frame_planes.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_planes, text="Nombre del plan:", font=("Helvetica", 9, "bold")).grid(
+            row=0, column=0, padx=5, pady=2, sticky="w"
+        )
+        entry_nombre_plan = tk.Entry(frame_planes, width=30)
+        entry_nombre_plan.grid(row=0, column=1, padx=5, pady=2, sticky="w")
+
+        tk.Label(frame_planes, text="Planes disponibles:", font=("Helvetica", 9, "bold")).grid(
+            row=1, column=0, padx=5, pady=2, sticky="w"
+        )
+        plan_seleccionado = tk.StringVar(value="")
+        plan_menu = tk.OptionMenu(frame_planes, plan_seleccionado, "")
+        plan_menu.config(width=28)
+        plan_menu.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+
         frame_productos = tk.LabelFrame(contenido, text="Productos disponibles", padx=10, pady=10)
         frame_productos.pack(fill=tk.X, padx=10, pady=5)
 
@@ -496,6 +513,103 @@ def mostrar_ventana_productos():
             cargar_lista_productos(entry_buscar.get())
 
         entry_buscar.bind("<KeyRelease>", buscar_productos)
+
+        def obtener_planes_guardados():
+            planes = cargar_planes_venta()
+            nombres = [plan.get("nombre", "").strip() for plan in planes if plan.get("nombre")]
+            nombres.sort(key=lambda nombre: nombre.lower())
+            return planes, nombres
+
+        def actualizar_menu_planes(nombres_planes):
+            menu = plan_menu["menu"]
+            menu.delete(0, "end")
+            if not nombres_planes:
+                plan_seleccionado.set("")
+                menu.add_command(
+                    label="Sin planes guardados",
+                    command=lambda: plan_seleccionado.set(""),
+                )
+                return
+            for nombre in nombres_planes:
+                menu.add_command(label=nombre, command=lambda n=nombre: plan_seleccionado.set(n))
+            if plan_seleccionado.get() not in nombres_planes:
+                plan_seleccionado.set(nombres_planes[0])
+
+        def cargar_plan_guardado():
+            nombre_plan = plan_seleccionado.get()
+            if not nombre_plan:
+                messagebox.showwarning("Atención", "Seleccione un plan guardado para cargar.")
+                return
+            planes, _ = obtener_planes_guardados()
+            plan = next((p for p in planes if p.get("nombre") == nombre_plan), None)
+            if not plan:
+                messagebox.showerror("Error", "No se encontró el plan seleccionado.")
+                return
+
+            plan_items.clear()
+            resultados_calculo.clear()
+            lista_resultados.delete(0, tk.END)
+
+            faltantes = []
+            for item in plan.get("items", []):
+                producto_id = item.get("id") or item.get("producto_id")
+                if not producto_id:
+                    continue
+                producto = obtener_producto_por_id(producto_id)
+                nombre = producto.nombre if producto else item.get("nombre", "Producto desconocido")
+                if not producto:
+                    faltantes.append(nombre)
+                plan_items[producto_id] = {
+                    "id": producto_id,
+                    "nombre": nombre,
+                    "unidades": float(item.get("unidades", item.get("unidades_previstas", 0)) or 0),
+                    "precio": float(item.get("precio", item.get("precio_venta_unitario", 0)) or 0),
+                }
+
+            refrescar_plan()
+            entry_nombre_plan.delete(0, tk.END)
+            entry_nombre_plan.insert(0, nombre_plan)
+            if faltantes:
+                messagebox.showwarning(
+                    "Atención",
+                    "Algunos productos del plan ya no existen y se cargaron como desconocidos.",
+                )
+            else:
+                messagebox.showinfo("Plan cargado", "El plan se cargó correctamente.")
+
+        def guardar_plan_actual():
+            nombre_plan = entry_nombre_plan.get().strip()
+            if not nombre_plan:
+                messagebox.showwarning("Atención", "Ingrese un nombre para el plan antes de guardar.")
+                return
+            if not plan_items:
+                messagebox.showwarning("Atención", "Agregue productos al plan antes de guardar.")
+                return
+            items = [
+                {
+                    "id": item["id"],
+                    "nombre": item["nombre"],
+                    "unidades": item["unidades"],
+                    "precio": item["precio"],
+                }
+                for item in plan_items.values()
+            ]
+            try:
+                guardar_plan_venta(nombre_plan, items)
+            except ValueError as exc:
+                messagebox.showerror("Error", str(exc))
+                return
+            _, nombres_planes = obtener_planes_guardados()
+            actualizar_menu_planes(nombres_planes)
+            plan_seleccionado.set(nombre_plan)
+            messagebox.showinfo("Plan guardado", "El plan se guardó correctamente.")
+
+        tk.Button(frame_planes, text="Guardar plan", command=guardar_plan_actual, width=15).grid(
+            row=0, column=2, padx=5, pady=2
+        )
+        tk.Button(frame_planes, text="Cargar plan", command=cargar_plan_guardado, width=15).grid(
+            row=1, column=2, padx=5, pady=2
+        )
 
         frame_detalle = tk.LabelFrame(contenido, text="Detalle del plan", padx=10, pady=10)
         frame_detalle.pack(fill=tk.X, padx=10, pady=5)
