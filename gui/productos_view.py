@@ -611,12 +611,6 @@ def mostrar_ventana_productos():
         lista_resultados = tk.Listbox(frame_resultados, width=80, height=6)
         lista_resultados.pack(fill=tk.BOTH, expand=True)
 
-        frame_conclusion = tk.LabelFrame(ventana_plan, text="Conclusión de la estrategia", padx=10, pady=10)
-        frame_conclusion.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        text_conclusion = tk.Text(frame_conclusion, width=80, height=8, wrap=tk.WORD)
-        text_conclusion.pack(fill=tk.BOTH, expand=True)
-        text_conclusion.config(state=tk.DISABLED)
-
         def calcular_precios_plan():
             if not plan_items:
                 messagebox.showwarning("Atención", "Agregue productos al plan antes de calcular.")
@@ -640,8 +634,6 @@ def mostrar_ventana_productos():
 
             lista_resultados.delete(0, tk.END)
             resultados_calculo.clear()
-            text_conclusion.config(state=tk.NORMAL)
-            text_conclusion.delete("1.0", tk.END)
 
             for producto_id, item in plan_items.items():
                 try:
@@ -663,43 +655,6 @@ def mostrar_ventana_productos():
                     f"{item['nombre']} | Precio sugerido (sin IVA): Gs {precio_sin} | con IVA: Gs {precio_con}",
                 )
                 resultados_calculo[producto_id] = resultado
-
-            total_units = sum(item["unidades"] for item in plan_items.values())
-            total_base = sum(item["unidades"] * item["precio"] for item in plan_items.values())
-            total_sin_iva = sum(
-                item["unidades"] * resultados_calculo[pid].precio_venta_sin_impuestos
-                for pid, item in plan_items.items()
-            )
-            total_con_iva = sum(
-                item["unidades"] * resultados_calculo[pid].precio_venta_con_iva
-                for pid, item in plan_items.items()
-            )
-            promedio_con_iva = total_con_iva / total_units if total_units else 0
-
-            def formatear_gs(valor):
-                return f"{valor:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-            text_conclusion.insert(
-                tk.END,
-                "Resumen del plan de venta:\n"
-                f"- Productos en el menú: {len(plan_items)}\n"
-                f"- Unidades previstas totales: {total_units:.0f}\n"
-                f"- Ventas base estimadas (sin estrategia): Gs {formatear_gs(total_base)}\n"
-                f"- Ventas sugeridas sin IVA: Gs {formatear_gs(total_sin_iva)}\n"
-                f"- Ventas sugeridas con IVA: Gs {formatear_gs(total_con_iva)}\n"
-                f"- Precio promedio sugerido con IVA: Gs {formatear_gs(promedio_con_iva)}\n\n"
-                "Distribución de ventas sugeridas por producto:\n"
-            )
-
-            for producto_id, item in plan_items.items():
-                total_prod = item["unidades"] * resultados_calculo[producto_id].precio_venta_con_iva
-                peso = (total_prod / total_con_iva * 100) if total_con_iva else 0
-                text_conclusion.insert(
-                    tk.END,
-                    f"• {item['nombre']}: Gs {formatear_gs(total_prod)} ({peso:.1f}% del total)\n",
-                )
-
-            text_conclusion.config(state=tk.DISABLED)
 
         def aplicar_precios_plan():
             if not resultados_calculo:
