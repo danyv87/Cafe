@@ -20,6 +20,7 @@ class PlanVentaItem:
     producto_id: str
     unidades_previstas: float
     precio_venta_unitario: float
+    margen_utilidad: float | None = None
 
 
 def calcular_costo_variable_unitario(producto_id: str) -> float:
@@ -112,12 +113,10 @@ def calcular_precio_sugerido_proporcional(
     producto_id: str,
     costos_fijos_periodo: float,
     plan_ventas: list[PlanVentaItem],
-    margen_utilidad: float,
+    margen_utilidad: float | None,
     iva: float = 0.10,
 ) -> PrecioSugerido:
     """Calcula el precio de venta sugerido con costos fijos proporcionales."""
-    if margen_utilidad < 0:
-        raise ValueError("El margen de utilidad no puede ser negativo.")
     if iva < 0:
         raise ValueError("El IVA no puede ser negativo.")
 
@@ -128,10 +127,20 @@ def calcular_precio_sugerido_proporcional(
     if producto_id not in costos_fijos_unitarios:
         raise ValueError("El producto no existe en el plan de ventas.")
 
+    item_plan = next((item for item in plan_ventas if item.producto_id == producto_id), None)
+    if not item_plan:
+        raise ValueError("El producto no existe en el plan de ventas.")
+
+    margen_producto = item_plan.margen_utilidad if item_plan.margen_utilidad is not None else margen_utilidad
+    if margen_producto is None:
+        raise ValueError("El margen de utilidad no puede estar vacío.")
+    if margen_producto < 0:
+        raise ValueError("El margen de utilidad no puede ser negativo.")
+
     costo_variable = calcular_costo_variable_unitario(producto_id)
     costo_fijo = costos_fijos_unitarios[producto_id]
     costo_total = costo_variable + costo_fijo
-    precio_sin_impuestos = costo_total + (costo_total * margen_utilidad)
+    precio_sin_impuestos = costo_total + (costo_total * margen_producto)
     precio_con_iva = precio_sin_impuestos * (1 + iva)
 
     return PrecioSugerido(
