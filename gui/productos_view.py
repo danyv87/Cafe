@@ -565,9 +565,6 @@ def mostrar_ventana_productos():
                     "nombre": nombre,
                     "unidades": float(item.get("unidades", item.get("unidades_previstas", 0)) or 0),
                     "precio": float(item.get("precio", item.get("precio_venta_unitario", 0)) or 0),
-                    "costo_variable": (
-                        calcular_costo_variable_unitario(producto_id) if producto else None
-                    ),
                 }
 
             refrescar_plan()
@@ -754,7 +751,6 @@ def mostrar_ventana_productos():
         resumen_ventas = tk.StringVar(value="Ventas estimadas: Gs 0")
         resumen_costos = tk.StringVar(value="Costos fijos del período: Gs 0")
         resumen_margen = tk.StringVar(value="Margen total estimado: Gs 0")
-        resumen_margen_utilidad = tk.StringVar(value="Margen de utilidad aplicado: 0%")
         resumen_costo_variable = tk.StringVar(value="Costo variable total: Gs 0")
         resumen_costo_total = tk.StringVar(value="Costo total estimado: Gs 0")
         resumen_ganancia = tk.StringVar(value="Ganancia estimada: Gs 0")
@@ -768,17 +764,14 @@ def mostrar_ventana_productos():
         tk.Label(frame_conclusiones, textvariable=resumen_margen).grid(
             row=2, column=0, sticky="w", padx=5, pady=2
         )
-        tk.Label(frame_conclusiones, textvariable=resumen_margen_utilidad).grid(
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_variable).grid(
             row=3, column=0, sticky="w", padx=5, pady=2
         )
-        tk.Label(frame_conclusiones, textvariable=resumen_costo_variable).grid(
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_total).grid(
             row=4, column=0, sticky="w", padx=5, pady=2
         )
-        tk.Label(frame_conclusiones, textvariable=resumen_costo_total).grid(
-            row=5, column=0, sticky="w", padx=5, pady=2
-        )
         tk.Label(frame_conclusiones, textvariable=resumen_ganancia).grid(
-            row=6, column=0, sticky="w", padx=5, pady=2
+            row=5, column=0, sticky="w", padx=5, pady=2
         )
 
         def calcular_precios_plan():
@@ -807,7 +800,6 @@ def mostrar_ventana_productos():
             resumen_ventas.set("Ventas estimadas: Gs 0")
             resumen_costos.set("Costos fijos del período: Gs 0")
             resumen_margen.set("Margen total estimado: Gs 0")
-            resumen_margen_utilidad.set("Margen de utilidad aplicado: 0%")
             resumen_costo_variable.set("Costo variable total: Gs 0")
             resumen_costo_total.set("Costo total estimado: Gs 0")
             resumen_ganancia.set("Ganancia estimada: Gs 0")
@@ -856,7 +848,6 @@ def mostrar_ventana_productos():
             resumen_ventas.set(f"Ventas estimadas: Gs {ventas_fmt}")
             resumen_costos.set(f"Costos fijos del período: Gs {costos_fmt}")
             resumen_margen.set(f"Margen total estimado: Gs {margen_fmt}")
-            resumen_margen_utilidad.set(f"Margen de utilidad aplicado: {margen * 100:.1f}%")
             resumen_costo_variable.set(f"Costo variable total: Gs {costos_variables_fmt}")
             resumen_costo_total.set(f"Costo total estimado: Gs {costos_totales_fmt}")
             resumen_ganancia.set(f"Ganancia estimada: Gs {ganancia_fmt}")
