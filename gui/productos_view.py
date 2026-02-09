@@ -744,6 +744,9 @@ def mostrar_ventana_productos():
         resumen_ventas = tk.StringVar(value="Ventas estimadas: Gs 0")
         resumen_costos = tk.StringVar(value="Costos fijos del período: Gs 0")
         resumen_margen = tk.StringVar(value="Margen total estimado: Gs 0")
+        resumen_costo_variable = tk.StringVar(value="Costo variable total: Gs 0")
+        resumen_costo_total = tk.StringVar(value="Costo total estimado: Gs 0")
+        resumen_ganancia = tk.StringVar(value="Ganancia estimada: Gs 0")
 
         tk.Label(frame_conclusiones, textvariable=resumen_ventas).grid(
             row=0, column=0, sticky="w", padx=5, pady=2
@@ -753,6 +756,15 @@ def mostrar_ventana_productos():
         )
         tk.Label(frame_conclusiones, textvariable=resumen_margen).grid(
             row=2, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_variable).grid(
+            row=3, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_costo_total).grid(
+            row=4, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_ganancia).grid(
+            row=5, column=0, sticky="w", padx=5, pady=2
         )
 
         def calcular_precios_plan():
@@ -781,6 +793,9 @@ def mostrar_ventana_productos():
             resumen_ventas.set("Ventas estimadas: Gs 0")
             resumen_costos.set("Costos fijos del período: Gs 0")
             resumen_margen.set("Margen total estimado: Gs 0")
+            resumen_costo_variable.set("Costo variable total: Gs 0")
+            resumen_costo_total.set("Costo total estimado: Gs 0")
+            resumen_ganancia.set("Ganancia estimada: Gs 0")
 
             for producto_id, item in plan_items.items():
                 try:
@@ -807,16 +822,28 @@ def mostrar_ventana_productos():
                 item["unidades"] * resultados_calculo[producto_id].precio_venta_con_iva
                 for producto_id, item in plan_items.items()
             )
+            total_costos_variables = sum(
+                item["unidades"] * resultados_calculo[producto_id].costo_variable_unitario
+                for producto_id, item in plan_items.items()
+            )
             total_costos_fijos = costos_fijos
+            total_costos = total_costos_fijos + total_costos_variables
             margen_total = total_ventas - total_costos_fijos
+            ganancia_total = total_ventas - total_costos
 
             ventas_fmt = f"{total_ventas:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costos_variables_fmt = f"{total_costos_variables:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             costos_fmt = f"{total_costos_fijos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costos_totales_fmt = f"{total_costos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
             margen_fmt = f"{margen_total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            ganancia_fmt = f"{ganancia_total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
             resumen_ventas.set(f"Ventas estimadas: Gs {ventas_fmt}")
             resumen_costos.set(f"Costos fijos del período: Gs {costos_fmt}")
             resumen_margen.set(f"Margen total estimado: Gs {margen_fmt}")
+            resumen_costo_variable.set(f"Costo variable total: Gs {costos_variables_fmt}")
+            resumen_costo_total.set(f"Costo total estimado: Gs {costos_totales_fmt}")
+            resumen_ganancia.set(f"Ganancia estimada: Gs {ganancia_fmt}")
 
         def aplicar_precios_plan():
             if not resultados_calculo:
