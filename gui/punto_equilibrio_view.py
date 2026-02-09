@@ -87,12 +87,14 @@ def agregar_tab_punto_equilibrio(notebook: ttk.Notebook) -> None:
             precio_venta = producto.precio_unitario
             costo_variable = calcular_costo_variable_unitario(producto.id)
             margen_contribucion = precio_venta - costo_variable
-            if margen_contribucion > 0 and costos_fijos > 0:
+            if costo_variable > 0 and margen_contribucion > 0 and costos_fijos > 0:
                 pe_mensual = costos_fijos / margen_contribucion
                 pe_diario = pe_mensual / dias_mes
+                margen_contribucion_str = _formatear_moneda(margen_contribucion)
                 pe_mensual_str = _formatear_numero(pe_mensual)
                 pe_diario_str = _formatear_numero(pe_diario)
             else:
+                margen_contribucion_str = "N/D"
                 pe_mensual_str = "N/D"
                 pe_diario_str = "N/D"
 
@@ -103,7 +105,7 @@ def agregar_tab_punto_equilibrio(notebook: ttk.Notebook) -> None:
                     producto.nombre,
                     _formatear_moneda(precio_venta),
                     _formatear_moneda(costo_variable),
-                    _formatear_moneda(margen_contribucion),
+                    margen_contribucion_str,
                     pe_mensual_str,
                     pe_diario_str,
                 ),

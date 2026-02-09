@@ -13,6 +13,7 @@ from controllers.compras_controller import listar_compras, total_comprado
 from controllers.proveedores_controller import obtener_proveedor_por_id
 
 from gui.estadisticas_view import agregar_tab_estadisticas
+from gui.estado_mes_view import agregar_tab_estado_mes
 from gui.rentabilidad_view import agregar_tab_rentabilidad
 from gui.costos_operativos_view import agregar_tab_costos_operativos
 from gui.reportes_financieros_view import agregar_tab_estado_resultado
@@ -146,6 +147,7 @@ def mostrar_informes_menu() -> None:
     notebook.pack(fill=tk.BOTH, expand=True)
 
     HistoryReportFrame(notebook)
+    agregar_tab_estado_mes(notebook)
     agregar_tab_estadisticas(notebook)
     agregar_tab_rentabilidad(notebook)
     agregar_tab_punto_equilibrio(notebook)
