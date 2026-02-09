@@ -623,6 +623,12 @@ def mostrar_ventana_productos():
         entry_precio_base = tk.Entry(frame_detalle, width=15)
         entry_precio_base.grid(row=0, column=3, padx=5, pady=2, sticky="w")
 
+        tk.Label(frame_detalle, text="Margen (%) por producto:").grid(
+            row=0, column=4, padx=5, pady=2, sticky="w"
+        )
+        entry_margen_producto = tk.Entry(frame_detalle, width=12)
+        entry_margen_producto.grid(row=0, column=5, padx=5, pady=2, sticky="w")
+
         def obtener_producto_por_linea(linea):
             id_abrev = linea.split(' ')[1].replace('...', '')
             for prod in productos:
@@ -669,6 +675,22 @@ def mostrar_ventana_productos():
             except ValueError:
                 messagebox.showerror("Error de Entrada", "Ingrese unidades y precio base numéricos.")
                 return
+
+            margen_texto = entry_margen_producto.get().strip()
+            if margen_texto:
+                try:
+                    margen_producto = float(margen_texto)
+                except ValueError:
+                    messagebox.showerror("Error de Entrada", "El margen del producto debe ser numérico.")
+                    return
+                if margen_producto < 0:
+                    messagebox.showerror(
+                        "Error de Validación",
+                        "El margen del producto no puede ser negativo.",
+                    )
+                    return
+            else:
+                margen_producto = None
 
             if unidades <= 0 or precio_base < 0:
                 messagebox.showerror(
@@ -791,6 +813,7 @@ def mostrar_ventana_productos():
                     producto_id=producto_id,
                     unidades_previstas=item["unidades"],
                     precio_venta_unitario=item["precio"],
+                    margen_utilidad=item.get("margen"),
                 )
                 for producto_id, item in plan_items.items()
             ]
