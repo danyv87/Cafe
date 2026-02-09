@@ -842,9 +842,15 @@ def mostrar_ventana_productos():
 
                 precio_con = f"{resultado.precio_venta_con_iva:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 precio_sin = f"{resultado.precio_venta_sin_impuestos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                margen_item = item.get("margen")
+                if margen_item is None:
+                    margen_fmt = "Global"
+                else:
+                    margen_fmt = f"{margen_item * 100:.1f}%"
                 lista_resultados.insert(
                     tk.END,
-                    f"{item['nombre']} | Precio sugerido (sin IVA): Gs {precio_sin} | con IVA: Gs {precio_con}",
+                    f"{item['nombre']} | Precio sugerido (sin IVA): Gs {precio_sin} | "
+                    f"con IVA: Gs {precio_con} | MU: {margen_fmt}",
                 )
                 resultados_calculo[producto_id] = resultado
 
