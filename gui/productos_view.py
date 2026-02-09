@@ -73,11 +73,6 @@ def mostrar_ventana_productos():
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     disponible_var_agregar = tk.BooleanVar(value=True)
-    tk.Checkbutton(
-        frame_form_agregar,
-        text="Disponible para la venta",
-        variable=disponible_var_agregar,
-    ).grid(row=4, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     # Frame para el formulario de Editar/Eliminar
     frame_form_editar = tk.LabelFrame(ventana, text="Editar / Eliminar Producto Seleccionado", padx=10, pady=10)
@@ -103,11 +98,6 @@ def mostrar_ventana_productos():
     ).grid(row=3, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     disponible_var_editar = tk.BooleanVar(value=True)
-    tk.Checkbutton(
-        frame_form_editar,
-        text="Disponible para la venta",
-        variable=disponible_var_editar,
-    ).grid(row=4, column=0, columnspan=2, padx=5, pady=(0, 5), sticky="w")
 
     # --- Funciones (definidas DESPUÉS de los widgets que usan) ---
 
