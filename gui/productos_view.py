@@ -565,9 +565,6 @@ def mostrar_ventana_productos():
                     "nombre": nombre,
                     "unidades": float(item.get("unidades", item.get("unidades_previstas", 0)) or 0),
                     "precio": float(item.get("precio", item.get("precio_venta_unitario", 0)) or 0),
-                    "costo_variable": (
-                        calcular_costo_variable_unitario(producto_id) if producto else None
-                    ),
                 }
 
             refrescar_plan()
