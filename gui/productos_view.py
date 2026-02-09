@@ -1,6 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox
-from controllers.pricing_controller import calcular_precio_sugerido
+from tkinter import messagebox, ttk
+from controllers.pricing_controller import (
+    PlanVentaItem,
+    calcular_precio_sugerido,
+    calcular_precio_sugerido_proporcional,
+)
 from controllers.productos_controller import (
     listar_productos,
     agregar_producto,
@@ -8,6 +12,12 @@ from controllers.productos_controller import (
     editar_producto,
     eliminar_producto,
     actualizar_disponibilidad_productos,
+    obtener_producto_por_id,
+)
+from controllers.planes_venta_controller import (
+    cargar_planes_venta,
+    guardar_plan_venta,
+    eliminar_plan_venta,
 )
 
 def mostrar_ventana_productos():
@@ -417,6 +427,427 @@ def mostrar_ventana_productos():
             row=0, column=1, padx=5
         )
 
+    def abrir_plan_venta_multiple():
+        """
+        Abre una ventana para definir el menú de venta y calcular precios con estrategia multi-producto.
+        """
+        ventana_plan = tk.Toplevel(ventana)
+        ventana_plan.title("Plan de Venta Multi-Producto")
+        ventana_plan.geometry("820x720")
+        ventana_plan.resizable(True, True)
+
+        productos = listar_productos()
+        productos.sort(key=lambda item: item.nombre.lower())
+        plan_items = {}
+        resultados_calculo = {}
+
+        tk.Label(
+            ventana_plan,
+            text="Seleccione los productos del menú y defina unidades previstas/precios base.",
+            font=("Helvetica", 10, "italic"),
+            fg="gray",
+            wraplength=760,
+        ).pack(pady=(10, 5))
+
+        frame_planes = tk.LabelFrame(ventana_plan, text="Planes guardados", padx=10, pady=10)
+        frame_planes.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_planes, text="Nombre del plan:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        plan_nombre_var = tk.StringVar()
+        combo_planes = ttk.Combobox(frame_planes, textvariable=plan_nombre_var, width=35)
+        combo_planes.grid(row=0, column=1, padx=5, pady=2, sticky="w")
+
+        def refrescar_planes():
+            planes = cargar_planes_venta()
+            nombres = [plan.get("nombre") for plan in planes if plan.get("nombre")]
+            combo_planes["values"] = nombres
+            if nombres and not plan_nombre_var.get():
+                plan_nombre_var.set(nombres[-1])
+                cargar_plan_seleccionado()
+
+        def cargar_plan_seleccionado():
+            nombre = plan_nombre_var.get().strip()
+            if not nombre:
+                messagebox.showwarning("Atención", "Seleccione un plan para cargar.")
+                return
+            planes = cargar_planes_venta()
+            plan = next((p for p in planes if p.get("nombre") == nombre), None)
+            if not plan:
+                messagebox.showerror("Error", "No se encontró el plan seleccionado.")
+                return
+            plan_items.clear()
+            for item in plan.get("items", []):
+                plan_items[item["id"]] = {
+                    "id": item["id"],
+                    "nombre": item["nombre"],
+                    "unidades": item["unidades"],
+                    "precio": item["precio"],
+                }
+            refrescar_plan()
+            text_conclusion.config(state=tk.NORMAL)
+            text_conclusion.delete("1.0", tk.END)
+            text_conclusion.insert(
+                tk.END,
+                "Plan cargado. Calcule los precios sugeridos para ver la conclusión.",
+            )
+            text_conclusion.config(state=tk.DISABLED)
+
+        def guardar_plan_actual():
+            nombre = plan_nombre_var.get().strip()
+            if not nombre:
+                messagebox.showwarning("Atención", "Ingrese un nombre para guardar el plan.")
+                return
+            if not plan_items:
+                messagebox.showwarning("Atención", "Agregue productos al plan antes de guardar.")
+                return
+            try:
+                guardar_plan_venta(nombre, list(plan_items.values()))
+            except ValueError as exc:
+                messagebox.showerror("Error", str(exc))
+                return
+            refrescar_planes()
+            messagebox.showinfo("Éxito", "Plan guardado correctamente.")
+
+        def eliminar_plan_actual():
+            nombre = plan_nombre_var.get().strip()
+            if not nombre:
+                messagebox.showwarning("Atención", "Seleccione un plan para eliminar.")
+                return
+            confirmar = messagebox.askyesno(
+                "Confirmar Eliminación",
+                "¿Está seguro de que desea eliminar este plan? Esta acción no se puede deshacer.",
+            )
+            if not confirmar:
+                return
+            try:
+                eliminar_plan_venta(nombre)
+            except ValueError as exc:
+                messagebox.showerror("Error", str(exc))
+                return
+            plan_nombre_var.set("")
+            plan_items.clear()
+            refrescar_plan()
+            refrescar_planes()
+            text_conclusion.config(state=tk.NORMAL)
+            text_conclusion.delete("1.0", tk.END)
+            text_conclusion.insert(tk.END, "Plan eliminado. Cree o cargue otro plan.")
+            text_conclusion.config(state=tk.DISABLED)
+
+        tk.Button(frame_planes, text="Cargar", command=cargar_plan_seleccionado, width=12).grid(
+            row=0, column=2, padx=5, pady=2
+        )
+        tk.Button(frame_planes, text="Guardar", command=guardar_plan_actual, width=12).grid(
+            row=0, column=3, padx=5, pady=2
+        )
+        tk.Button(frame_planes, text="Eliminar", command=eliminar_plan_actual, width=12).grid(
+            row=0, column=4, padx=5, pady=2
+        )
+
+        frame_productos = tk.LabelFrame(ventana_plan, text="Productos disponibles", padx=10, pady=10)
+        frame_productos.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_productos, text="Buscar:", font=("Helvetica", 9, "bold")).grid(
+            row=0, column=0, sticky="w", padx=5
+        )
+        entry_buscar = tk.Entry(frame_productos, width=30)
+        entry_buscar.grid(row=0, column=1, padx=5, pady=2, sticky="w")
+
+        frame_lista_productos = tk.Frame(frame_productos)
+        frame_lista_productos.grid(row=1, column=0, columnspan=3, sticky="ew", padx=5, pady=5)
+        frame_lista_productos.columnconfigure(0, weight=1)
+
+        scrollbar_plan = tk.Scrollbar(frame_lista_productos, orient=tk.VERTICAL)
+        lista_productos = tk.Listbox(
+            frame_lista_productos,
+            width=70,
+            height=6,
+            yscrollcommand=scrollbar_plan.set,
+            exportselection=False,
+            selectmode=tk.EXTENDED,
+        )
+        scrollbar_plan.config(command=lista_productos.yview)
+        lista_productos.grid(row=0, column=0, sticky="nsew")
+        scrollbar_plan.grid(row=0, column=1, sticky="ns")
+
+        def cargar_lista_productos(filtro=""):
+            lista_productos.delete(0, tk.END)
+            filtro = filtro.lower().strip()
+            for prod in productos:
+                if filtro and filtro not in prod.nombre.lower():
+                    continue
+                precio = f"{prod.precio_unitario:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lista_productos.insert(tk.END, f"ID: {prod.id[:8]}... - {prod.nombre} - Gs {precio}")
+
+        def buscar_productos(event=None):
+            cargar_lista_productos(entry_buscar.get())
+
+        entry_buscar.bind("<KeyRelease>", buscar_productos)
+
+        frame_detalle = tk.LabelFrame(ventana_plan, text="Detalle del plan", padx=10, pady=10)
+        frame_detalle.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_detalle, text="Unidades previstas (UP):").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+        entry_unidades = tk.Entry(frame_detalle, width=15)
+        entry_unidades.grid(row=0, column=1, padx=5, pady=2, sticky="w")
+
+        tk.Label(frame_detalle, text="Precio base (Gs):").grid(row=0, column=2, padx=5, pady=2, sticky="w")
+        entry_precio_base = tk.Entry(frame_detalle, width=15)
+        entry_precio_base.grid(row=0, column=3, padx=5, pady=2, sticky="w")
+
+        def obtener_producto_por_linea(linea):
+            id_abrev = linea.split(' ')[1].replace('...', '')
+            for prod in productos:
+                if prod.id.startswith(id_abrev):
+                    return prod
+            return None
+
+        def on_producto_seleccionado_plan(event=None):
+            seleccion = lista_productos.curselection()
+            if not seleccion:
+                return
+            producto = obtener_producto_por_linea(lista_productos.get(seleccion[0]))
+            if producto:
+                entry_precio_base.delete(0, tk.END)
+                entry_precio_base.insert(0, f"{producto.precio_unitario:.0f}")
+
+        lista_productos.bind("<<ListboxSelect>>", on_producto_seleccionado_plan)
+
+        def refrescar_plan():
+            lista_plan.delete(0, tk.END)
+            for item in plan_items.values():
+                id_corto = item["id"][:8]
+                precio = f"{item['precio']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lista_plan.insert(
+                    tk.END,
+                    f"ID: {id_corto}... | {item['nombre']} | UP: {item['unidades']:.0f} | "
+                    f"Precio base: Gs {precio}",
+                )
+
+        def agregar_al_plan():
+            seleccion = lista_productos.curselection()
+            if not seleccion:
+                messagebox.showwarning("Atención", "Seleccione al menos un producto para agregar al plan.")
+                return
+
+            try:
+                unidades = float(entry_unidades.get())
+                precio_base = float(entry_precio_base.get())
+            except ValueError:
+                messagebox.showerror("Error de Entrada", "Ingrese unidades y precio base numéricos.")
+                return
+
+            if unidades <= 0 or precio_base < 0:
+                messagebox.showerror(
+                    "Error de Validación",
+                    "Las unidades previstas deben ser mayores a cero y el precio base no puede ser negativo.",
+                )
+                return
+
+            for indice in seleccion:
+                producto = obtener_producto_por_linea(lista_productos.get(indice))
+                if not producto:
+                    continue
+                plan_items[producto.id] = {
+                    "id": producto.id,
+                    "nombre": producto.nombre,
+                    "unidades": unidades,
+                    "precio": precio_base,
+                }
+
+            refrescar_plan()
+
+        def quitar_del_plan():
+            seleccion = lista_plan.curselection()
+            if not seleccion:
+                messagebox.showwarning("Atención", "Seleccione un ítem del plan para quitar.")
+                return
+            for indice in reversed(seleccion):
+                linea = lista_plan.get(indice)
+                id_abrev = linea.split(' ')[1].replace('...', '')
+                producto_id = next(
+                    (pid for pid in plan_items if pid.startswith(id_abrev)), None
+                )
+                if producto_id:
+                    plan_items.pop(producto_id, None)
+            refrescar_plan()
+
+        tk.Button(frame_detalle, text="Agregar/Actualizar en plan", command=agregar_al_plan).grid(
+            row=1, column=0, columnspan=2, pady=5
+        )
+        tk.Button(frame_detalle, text="Quitar del plan", command=quitar_del_plan).grid(
+            row=1, column=2, columnspan=2, pady=5
+        )
+
+        frame_plan = tk.LabelFrame(ventana_plan, text="Productos en el plan de venta", padx=10, pady=10)
+        frame_plan.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        lista_plan = tk.Listbox(frame_plan, width=80, height=6)
+        lista_plan.pack(fill=tk.BOTH, expand=True)
+
+        frame_costos = tk.LabelFrame(ventana_plan, text="Parámetros de cálculo", padx=10, pady=10)
+        frame_costos.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(frame_costos, text="Costos fijos del período (Gs):").grid(
+            row=0, column=0, sticky="w", padx=5, pady=2
+        )
+        entry_costos_fijos = tk.Entry(frame_costos, width=20)
+        entry_costos_fijos.grid(row=0, column=1, padx=5, pady=2)
+
+        tk.Label(frame_costos, text="Margen de utilidad (ej. 0.3):").grid(
+            row=0, column=2, sticky="w", padx=5, pady=2
+        )
+        entry_margen = tk.Entry(frame_costos, width=15)
+        entry_margen.grid(row=0, column=3, padx=5, pady=2)
+
+        tk.Label(frame_costos, text="IVA (ej. 0.10):").grid(
+            row=1, column=0, sticky="w", padx=5, pady=2
+        )
+        entry_iva = tk.Entry(frame_costos, width=15)
+        entry_iva.insert(0, "0.10")
+        entry_iva.grid(row=1, column=1, padx=5, pady=2)
+
+        frame_resultados = tk.LabelFrame(ventana_plan, text="Resultados", padx=10, pady=10)
+        frame_resultados.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        lista_resultados = tk.Listbox(frame_resultados, width=80, height=6)
+        lista_resultados.pack(fill=tk.BOTH, expand=True)
+
+        frame_conclusion = tk.LabelFrame(ventana_plan, text="Conclusión de la estrategia", padx=10, pady=10)
+        frame_conclusion.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        text_conclusion = tk.Text(frame_conclusion, width=80, height=8, wrap=tk.WORD)
+        text_conclusion.pack(fill=tk.BOTH, expand=True)
+        text_conclusion.insert(
+            tk.END,
+            "Cree un plan o cargue uno existente para ver la conclusión de su estrategia.",
+        )
+        text_conclusion.config(state=tk.DISABLED)
+
+        def calcular_precios_plan():
+            if not plan_items:
+                messagebox.showwarning("Atención", "Agregue productos al plan antes de calcular.")
+                return
+            try:
+                costos_fijos = float(entry_costos_fijos.get())
+                margen = float(entry_margen.get())
+                iva = float(entry_iva.get())
+            except ValueError:
+                messagebox.showerror("Error de Entrada", "Los parámetros de cálculo deben ser numéricos.")
+                return
+
+            plan_ventas = [
+                PlanVentaItem(
+                    producto_id=producto_id,
+                    unidades_previstas=item["unidades"],
+                    precio_venta_unitario=item["precio"],
+                )
+                for producto_id, item in plan_items.items()
+            ]
+
+            lista_resultados.delete(0, tk.END)
+            resultados_calculo.clear()
+            text_conclusion.config(state=tk.NORMAL)
+            text_conclusion.delete("1.0", tk.END)
+
+            for producto_id, item in plan_items.items():
+                try:
+                    resultado = calcular_precio_sugerido_proporcional(
+                        producto_id=producto_id,
+                        costos_fijos_periodo=costos_fijos,
+                        plan_ventas=plan_ventas,
+                        margen_utilidad=margen,
+                        iva=iva,
+                    )
+                except ValueError as exc:
+                    messagebox.showerror("Error de Cálculo", str(exc))
+                    return
+
+                precio_con = f"{resultado.precio_venta_con_iva:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                precio_sin = f"{resultado.precio_venta_sin_impuestos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                lista_resultados.insert(
+                    tk.END,
+                    f"{item['nombre']} | Precio sugerido (sin IVA): Gs {precio_sin} | con IVA: Gs {precio_con}",
+                )
+                resultados_calculo[producto_id] = resultado
+
+            total_units = sum(item["unidades"] for item in plan_items.values())
+            total_base = sum(item["unidades"] * item["precio"] for item in plan_items.values())
+            total_sin_iva = sum(
+                item["unidades"] * resultados_calculo[pid].precio_venta_sin_impuestos
+                for pid, item in plan_items.items()
+            )
+            total_con_iva = sum(
+                item["unidades"] * resultados_calculo[pid].precio_venta_con_iva
+                for pid, item in plan_items.items()
+            )
+            promedio_con_iva = total_con_iva / total_units if total_units else 0
+
+            def formatear_gs(valor):
+                return f"{valor:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            text_conclusion.insert(
+                tk.END,
+                "Resumen del plan de venta:\n"
+                f"- Productos en el menú: {len(plan_items)}\n"
+                f"- Unidades previstas totales: {total_units:.0f}\n"
+                f"- Ventas base estimadas (sin estrategia): Gs {formatear_gs(total_base)}\n"
+                f"- Ventas sugeridas sin IVA: Gs {formatear_gs(total_sin_iva)}\n"
+                f"- Ventas sugeridas con IVA: Gs {formatear_gs(total_con_iva)}\n"
+                f"- Precio promedio sugerido con IVA: Gs {formatear_gs(promedio_con_iva)}\n\n"
+                "Distribución de ventas sugeridas por producto:\n"
+            )
+
+            for producto_id, item in plan_items.items():
+                total_prod = item["unidades"] * resultados_calculo[producto_id].precio_venta_con_iva
+                peso = (total_prod / total_con_iva * 100) if total_con_iva else 0
+                text_conclusion.insert(
+                    tk.END,
+                    f"• {item['nombre']}: Gs {formatear_gs(total_prod)} ({peso:.1f}% del total)\n",
+                )
+
+            text_conclusion.config(state=tk.DISABLED)
+
+        def aplicar_precios_plan():
+            if not resultados_calculo:
+                messagebox.showwarning(
+                    "Atención", "Calcule los precios sugeridos antes de aplicar."
+                )
+                return
+            errores = []
+            for producto_id, resultado in resultados_calculo.items():
+                producto = obtener_producto_por_id(producto_id)
+                if not producto:
+                    errores.append(producto_id)
+                    continue
+                try:
+                    editar_producto(
+                        producto_id,
+                        producto.nombre,
+                        resultado.precio_venta_con_iva,
+                        disponible_venta=producto.disponible_venta,
+                    )
+                except ValueError:
+                    errores.append(producto_id)
+
+            cargar_productos()
+            if errores:
+                messagebox.showwarning(
+                    "Atención",
+                    "Algunos productos no pudieron actualizarse. Revise el listado.",
+                )
+            else:
+                messagebox.showinfo("Éxito", "Precios sugeridos aplicados al menú de venta.")
+
+        frame_botones = tk.Frame(ventana_plan)
+        frame_botones.pack(pady=10)
+
+        tk.Button(frame_botones, text="Calcular precios sugeridos", command=calcular_precios_plan, width=25).grid(
+            row=0, column=0, padx=5
+        )
+        tk.Button(frame_botones, text="Aplicar precios al menú", command=aplicar_precios_plan, width=25).grid(
+            row=0, column=1, padx=5
+        )
+
+        refrescar_planes()
+        cargar_lista_productos()
+
     # --- Botones de acción ---
     tk.Button(frame_form_agregar, text="Agregar producto", command=agregar, width=20).grid(
         row=5, column=0, columnspan=2, pady=5
@@ -434,6 +865,13 @@ def mostrar_ventana_productos():
         width=42,
         bg="lightgreen",
     ).grid(row=6, column=0, columnspan=2, pady=5, padx=5)
+    tk.Button(
+        frame_form_editar,
+        text="Plan de Venta Multi-Producto",
+        command=abrir_plan_venta_multiple,
+        width=42,
+        bg="lightyellow",
+    ).grid(row=7, column=0, columnspan=2, pady=5, padx=5)
 
     lista.bind("<<ListboxSelect>>", seleccionar_producto) # Vincula el evento de selección
 
