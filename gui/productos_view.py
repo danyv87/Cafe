@@ -633,6 +633,23 @@ def mostrar_ventana_productos():
         lista_resultados = tk.Listbox(frame_resultados, width=80, height=6)
         lista_resultados.pack(fill=tk.BOTH, expand=True)
 
+        frame_conclusiones = tk.LabelFrame(contenido, text="Conclusiones", padx=10, pady=10)
+        frame_conclusiones.pack(fill=tk.X, padx=10, pady=5)
+
+        resumen_ventas = tk.StringVar(value="Ventas estimadas: Gs 0")
+        resumen_costos = tk.StringVar(value="Costos fijos del período: Gs 0")
+        resumen_margen = tk.StringVar(value="Margen total estimado: Gs 0")
+
+        tk.Label(frame_conclusiones, textvariable=resumen_ventas).grid(
+            row=0, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_costos).grid(
+            row=1, column=0, sticky="w", padx=5, pady=2
+        )
+        tk.Label(frame_conclusiones, textvariable=resumen_margen).grid(
+            row=2, column=0, sticky="w", padx=5, pady=2
+        )
+
         def calcular_precios_plan():
             if not plan_items:
                 messagebox.showwarning("Atención", "Agregue productos al plan antes de calcular.")
@@ -656,6 +673,9 @@ def mostrar_ventana_productos():
 
             lista_resultados.delete(0, tk.END)
             resultados_calculo.clear()
+            resumen_ventas.set("Ventas estimadas: Gs 0")
+            resumen_costos.set("Costos fijos del período: Gs 0")
+            resumen_margen.set("Margen total estimado: Gs 0")
 
             for producto_id, item in plan_items.items():
                 try:
@@ -677,6 +697,21 @@ def mostrar_ventana_productos():
                     f"{item['nombre']} | Precio sugerido (sin IVA): Gs {precio_sin} | con IVA: Gs {precio_con}",
                 )
                 resultados_calculo[producto_id] = resultado
+
+            total_ventas = sum(
+                item["unidades"] * resultados_calculo[producto_id].precio_venta_con_iva
+                for producto_id, item in plan_items.items()
+            )
+            total_costos_fijos = costos_fijos
+            margen_total = total_ventas - total_costos_fijos
+
+            ventas_fmt = f"{total_ventas:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costos_fmt = f"{total_costos_fijos:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            margen_fmt = f"{margen_total:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            resumen_ventas.set(f"Ventas estimadas: Gs {ventas_fmt}")
+            resumen_costos.set(f"Costos fijos del período: Gs {costos_fmt}")
+            resumen_margen.set(f"Margen total estimado: Gs {margen_fmt}")
 
         def aplicar_precios_plan():
             if not resultados_calculo:
