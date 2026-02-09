@@ -47,10 +47,15 @@ def agregar_tab_rentabilidad(notebook: ttk.Notebook) -> None:
         tree.insert("", tk.END, values=("No hay datos de contribución para mostrar.", "", "", "", ""))
     else:
         for item in rentabilidad_data:
-            precio_venta_formatted = f"{item['precio_venta_unitario']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            costo_produccion_formatted = f"{item['costo_produccion']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            margen_contribucion_formatted = f"{item['ganancia']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            margen_contribucion_pct_formatted = f"{item['margen_beneficio']:.2f}".replace(".", ",")
+            precio_venta_formatted = f"Gs {item['precio_venta_unitario']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            costo_produccion_formatted = f"Gs {item['costo_produccion']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+            if item["costo_produccion"] > 0:
+                margen_contribucion_formatted = f"Gs {item['ganancia']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                margen_contribucion_pct_formatted = f"{item['margen_beneficio']:.2f}%".replace(".", ",")
+            else:
+                margen_contribucion_formatted = "N/D"
+                margen_contribucion_pct_formatted = "N/D"
 
             tree.insert(
                 "",
