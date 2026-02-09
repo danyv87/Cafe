@@ -14,6 +14,7 @@ from controllers.productos_controller import (
     actualizar_disponibilidad_productos,
     obtener_producto_por_id,
 )
+from controllers.planes_venta_controller import cargar_planes_venta, guardar_plan_venta
 
 def mostrar_ventana_productos():
     ventana = tk.Toplevel()
@@ -753,6 +754,9 @@ def mostrar_ventana_productos():
         tk.Button(frame_botones, text="Aplicar precios al menú", command=aplicar_precios_plan, width=25).grid(
             row=0, column=1, padx=5
         )
+
+        _, nombres_planes = obtener_planes_guardados()
+        actualizar_menu_planes(nombres_planes)
 
         cargar_lista_productos()
 
