@@ -18,6 +18,7 @@ from gui.rentabilidad_view import agregar_tab_rentabilidad
 from gui.costos_operativos_view import agregar_tab_costos_operativos
 from gui.reportes_financieros_view import agregar_tab_estado_resultado
 from gui.punto_equilibrio_view import agregar_tab_punto_equilibrio
+from gui.dashboard_ejecutivo_view import agregar_tab_dashboard_ejecutivo
 
 
 class HistoryReportFrame:
@@ -148,6 +149,7 @@ def mostrar_informes_menu() -> None:
 
     HistoryReportFrame(notebook)
     agregar_tab_estado_mes(notebook)
+    agregar_tab_dashboard_ejecutivo(notebook)
     agregar_tab_estadisticas(notebook)
     agregar_tab_rentabilidad(notebook)
     agregar_tab_punto_equilibrio(notebook)
