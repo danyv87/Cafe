@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from controllers.pricing_controller import (
     PlanVentaItem,
+    calcular_costo_variable_unitario,
     calcular_precio_sugerido,
     calcular_precio_sugerido_proporcional,
 )
@@ -645,10 +646,15 @@ def mostrar_ventana_productos():
             for item in plan_items.values():
                 id_corto = item["id"][:8]
                 precio = f"{item['precio']:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                costo_variable = item.get("costo_variable")
+                if costo_variable is None:
+                    costo_variable_fmt = "N/D"
+                else:
+                    costo_variable_fmt = f"{costo_variable:,.0f}".replace(",", "X").replace(".", ",").replace("X", ".")
                 lista_plan.insert(
                     tk.END,
                     f"ID: {id_corto}... | {item['nombre']} | UP: {item['unidades']:.0f} | "
-                    f"Precio base: Gs {precio}",
+                    f"Precio base: Gs {precio} | CV: Gs {costo_variable_fmt}",
                 )
 
         def agregar_al_plan():
@@ -680,6 +686,7 @@ def mostrar_ventana_productos():
                     "nombre": producto.nombre,
                     "unidades": unidades,
                     "precio": precio_base,
+                    "costo_variable": calcular_costo_variable_unitario(producto.id),
                 }
 
             refrescar_plan()
