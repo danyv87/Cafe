@@ -149,4 +149,6 @@ def test_calcular_metricas_dashboard_mensual(monkeypatch, tmp_path):
     assert metricas.ticket_promedio == 25
     assert metricas.ventas_diarias_promedio == 25
     assert metricas.top_productos[0]["producto_id"] == "p2"
+    assert metricas.top_productos[0]["nombre_producto"] == "Producto 2"
     assert metricas.productos_problema[0]["producto_id"] == "p1"
+    assert metricas.productos_problema[0]["nombre_producto"] == "Producto 1"

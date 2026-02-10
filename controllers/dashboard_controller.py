@@ -95,6 +95,7 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
     ventas_por_producto = defaultdict(float)
     unidades_por_producto = defaultdict(int)
     margen_por_producto = defaultdict(float)
+    nombres_por_producto = {}
 
     for ticket in cargar_tickets():
         fecha_ticket = _parse_fecha(getattr(ticket, "fecha", None))
@@ -108,6 +109,8 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
             cantidad = int(item.cantidad or 0)
             total_item = float(item.total or 0)
             producto_id = item.producto_id
+            if producto_id and producto_id not in nombres_por_producto:
+                nombres_por_producto[producto_id] = getattr(item, "nombre_producto", "")
             unidades_vendidas += cantidad
             ventas_por_producto[producto_id] += total_item
             unidades_por_producto[producto_id] += cantidad
@@ -146,6 +149,7 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
         ranking.append(
             {
                 "producto_id": producto_id,
+                "nombre_producto": nombres_por_producto.get(producto_id, ""),
                 "ventas": total_vendido,
                 "margen_pct": margen_pct,
                 "margen_total": margen_total,
