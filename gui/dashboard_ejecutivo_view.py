@@ -58,15 +58,20 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
             main_canvas.yview_scroll(paso, "units")
         return "break"
 
-    def _vincular_scroll(widget: tk.Widget) -> None:
-        widget.bind("<MouseWheel>", _scroll_con_rueda)
-        widget.bind("<Button-4>", _scroll_con_rueda)
-        widget.bind("<Button-5>", _scroll_con_rueda)
-        for child in widget.winfo_children():
-            _vincular_scroll(child)
+    def _activar_scroll(_: tk.Event | None = None) -> None:
+        main_canvas.bind_all("<MouseWheel>", _scroll_con_rueda)
+        main_canvas.bind_all("<Button-4>", _scroll_con_rueda)
+        main_canvas.bind_all("<Button-5>", _scroll_con_rueda)
+
+    def _desactivar_scroll(_: tk.Event | None = None) -> None:
+        main_canvas.unbind_all("<MouseWheel>")
+        main_canvas.unbind_all("<Button-4>")
+        main_canvas.unbind_all("<Button-5>")
 
     main_canvas.bind("<Configure>", _ajustar_ancho_contenido)
     content_frame.bind("<Configure>", _actualizar_region_scroll)
+    main_canvas.bind("<Enter>", _activar_scroll)
+    main_canvas.bind("<Leave>", _desactivar_scroll)
 
     ttk.Label(
         content_frame,
