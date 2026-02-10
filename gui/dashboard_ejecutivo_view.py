@@ -193,5 +193,7 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
     for alerta in alertas:
         ttk.Label(content_frame, text=alerta, font=("Helvetica", 11)).pack(anchor="w", pady=2)
 
+    _vincular_scroll(main_canvas)
+
     content_frame.update_idletasks()
     _actualizar_region_scroll()
