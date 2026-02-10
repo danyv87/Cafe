@@ -23,6 +23,7 @@ class DashboardMetricas:
     ticket_promedio: float
     ventas_diarias_promedio: float
     dias_operativos: int
+    costos_produccion_pendientes: bool
     top_productos: list[dict]
     productos_problema: list[dict]
 
@@ -95,6 +96,7 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
     ventas_por_producto = defaultdict(float)
     unidades_por_producto = defaultdict(int)
     margen_por_producto = defaultdict(float)
+    costo_pendiente_por_producto = defaultdict(bool)
     nombres_por_producto = {}
 
     for ticket in cargar_tickets():
@@ -116,6 +118,8 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
             unidades_por_producto[producto_id] += cantidad
 
             costo_unitario = _costo_unitario_producto(producto_id)
+            if cantidad > 0 and costo_unitario <= 0:
+                costo_pendiente_por_producto[producto_id] = True
             costo_item = costo_unitario * cantidad
             costos_produccion += costo_item
             margen_por_producto[producto_id] += total_item - costo_item
@@ -154,6 +158,7 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
                 "margen_pct": margen_pct,
                 "margen_total": margen_total,
                 "unidades": unidades_por_producto[producto_id],
+                "costo_pendiente": costo_pendiente_por_producto[producto_id],
             }
         )
 
@@ -171,6 +176,7 @@ def calcular_metricas_dashboard_mensual(mes: str) -> DashboardMetricas:
         ticket_promedio=ticket_promedio,
         ventas_diarias_promedio=ventas_diarias_promedio,
         dias_operativos=dias_operativos,
+        costos_produccion_pendientes=any(costo_pendiente_por_producto.values()),
         top_productos=top_productos,
         productos_problema=productos_problema,
     )
