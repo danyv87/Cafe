@@ -50,8 +50,28 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
     def _ajustar_ancho_contenido(event: tk.Event) -> None:
         main_canvas.itemconfigure(content_window, width=event.width)
 
+    def _scroll_con_rueda(event: tk.Event) -> str:
+        if event.delta:
+            main_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        else:
+            paso = -1 if event.num == 4 else 1
+            main_canvas.yview_scroll(paso, "units")
+        return "break"
+
+    def _activar_scroll(_: tk.Event | None = None) -> None:
+        main_canvas.bind_all("<MouseWheel>", _scroll_con_rueda)
+        main_canvas.bind_all("<Button-4>", _scroll_con_rueda)
+        main_canvas.bind_all("<Button-5>", _scroll_con_rueda)
+
+    def _desactivar_scroll(_: tk.Event | None = None) -> None:
+        main_canvas.unbind_all("<MouseWheel>")
+        main_canvas.unbind_all("<Button-4>")
+        main_canvas.unbind_all("<Button-5>")
+
     main_canvas.bind("<Configure>", _ajustar_ancho_contenido)
     content_frame.bind("<Configure>", _actualizar_region_scroll)
+    main_canvas.bind("<Enter>", _activar_scroll)
+    main_canvas.bind("<Leave>", _desactivar_scroll)
 
     ttk.Label(
         content_frame,
@@ -173,6 +193,7 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
     for alerta in alertas:
         ttk.Label(content_frame, text=alerta, font=("Helvetica", 11)).pack(anchor="w", pady=2)
 
+    _vincular_scroll(main_canvas)
 
     content_frame.update_idletasks()
     _actualizar_region_scroll()
