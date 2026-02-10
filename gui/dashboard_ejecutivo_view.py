@@ -138,7 +138,10 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
 
         for prod in datos:
             nombre = prod.get("nombre_producto") or _nombre_producto(prod["producto_id"])
-            margen = f"{prod['margen_pct']:.1f} %"
+            if prod.get("costo_pendiente"):
+                margen = "Pendiente"
+            else:
+                margen = f"{prod['margen_pct']:.1f} %"
             ventas = _formatear_moneda(prod["ventas"])
             ttk.Label(frame_obj, text=nombre, font=("Helvetica", 11, "bold"), foreground=color).pack(anchor="w")
             ttk.Label(
@@ -158,16 +161,22 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
         mensaje_var.set("")
 
         cards["resultado"][0].set(_formatear_moneda(metricas.resultado_mes))
-        if metricas.ventas_totales > 0:
+        if metricas.ventas_totales > 0 and not metricas.costos_produccion_pendientes:
             margen_promedio = (metricas.resultado_mes / metricas.ventas_totales) * 100
         else:
             margen_promedio = 0.0
-        cards["margen"][0].set(f"{margen_promedio:.1f} %")
+        if metricas.costos_produccion_pendientes and metricas.ventas_totales > 0:
+            cards["margen"][0].set("Pendiente")
+        else:
+            cards["margen"][0].set(f"{margen_promedio:.1f} %")
         cards["ventas"][0].set(_formatear_moneda(metricas.ventas_totales))
         cards["equilibrio"][0].set(_formatear_moneda(metricas.punto_equilibrio))
 
         cards["resultado"][1].set(f"Costos + gastos: {_formatear_moneda(metricas.costos_produccion + metricas.gastos_adicionales)}")
-        cards["margen"][1].set(f"Costos producción: {_formatear_moneda(metricas.costos_produccion)}")
+        if metricas.costos_produccion_pendientes:
+            cards["margen"][1].set("Costo de producción pendiente de carga")
+        else:
+            cards["margen"][1].set(f"Costos producción: {_formatear_moneda(metricas.costos_produccion)}")
         cards["ventas"][1].set("Mes seleccionado")
 
         faltante = max(metricas.punto_equilibrio - metricas.ventas_totales, 0)
@@ -193,6 +202,8 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
 
         if metricas.unidades_vendidas == 0:
             insight_var.set("💡 No hubo ventas en el mes seleccionado.")
+        elif metricas.costos_produccion_pendientes:
+            insight_var.set("💡 Hay ventas con costo de producción pendiente; completar recetas/costos para calcular margen real.")
         elif margen_promedio < 20:
             insight_var.set("💡 Hay ventas, pero el margen del mes es bajo.")
         else:

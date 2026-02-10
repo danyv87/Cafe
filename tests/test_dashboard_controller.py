@@ -146,9 +146,45 @@ def test_calcular_metricas_dashboard_mensual(monkeypatch, tmp_path):
     assert metricas.resultado_mes == 25
     assert metricas.unidades_vendidas == 3
     assert metricas.dias_operativos == 2
+    assert metricas.costos_produccion_pendientes is False
     assert metricas.ticket_promedio == 25
     assert metricas.ventas_diarias_promedio == 25
     assert metricas.top_productos[0]["producto_id"] == "p2"
     assert metricas.top_productos[0]["nombre_producto"] == "Producto 2"
     assert metricas.productos_problema[0]["producto_id"] == "p1"
     assert metricas.productos_problema[0]["nombre_producto"] == "Producto 1"
+
+
+def test_calcular_metricas_dashboard_mensual_con_costos_pendientes(monkeypatch, tmp_path):
+    tickets, gastos, materias, recetas = _configurar_paths(monkeypatch, tmp_path)
+
+    _write(
+        tickets,
+        [
+            {
+                "id": "t1",
+                "fecha": "2025-06-10 10:00:00",
+                "cliente": "Ana",
+                "items_venta": [
+                    {
+                        "fecha_item": "2025-06-10 10:00:00",
+                        "producto_id": "p1",
+                        "nombre_producto": "Producto sin receta",
+                        "cantidad": 1,
+                        "precio_unitario": 10,
+                        "total": 10,
+                    }
+                ],
+                "total": 10,
+            }
+        ],
+    )
+    _write(gastos, [])
+    _write(materias, [])
+    _write(recetas, [])
+
+    metricas = dashboard_controller.calcular_metricas_dashboard_mensual("2025-06")
+
+    assert metricas.costos_produccion == 0
+    assert metricas.costos_produccion_pendientes is True
+    assert metricas.top_productos[0]["costo_pendiente"] is True
