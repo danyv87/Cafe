@@ -137,7 +137,7 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
             return
 
         for prod in datos:
-            nombre = _nombre_producto(prod["producto_id"])
+            nombre = prod.get("nombre_producto") or _nombre_producto(prod["producto_id"])
             margen = f"{prod['margen_pct']:.1f} %"
             ventas = _formatear_moneda(prod["ventas"])
             ttk.Label(frame_obj, text=nombre, font=("Helvetica", 11, "bold"), foreground=color).pack(anchor="w")
