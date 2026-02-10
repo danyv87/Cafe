@@ -106,6 +106,11 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
     tree.column("Estado", width=120, anchor="center")
     tree.pack(fill=tk.X, padx=2)
 
+    definiciones_var = tk.StringVar(value="")
+    ttk.Label(contenido, textvariable=definiciones_var, font=("Helvetica", 9, "italic")).pack(
+        anchor="w", pady=(4, 0)
+    )
+
     insight_var = tk.StringVar(value="")
     ttk.Label(contenido, textvariable=insight_var, font=("Helvetica", 10, "italic")).pack(
         anchor="w", pady=(6, 12)
@@ -180,7 +185,14 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
         cards["ventas"][1].set("Mes seleccionado")
 
         faltante = max(metricas.punto_equilibrio - metricas.ventas_totales, 0)
-        if faltante > 0:
+        if metricas.costos_produccion_pendientes:
+            cards["equilibrio"][1].set("Pendiente: faltan costos de producción para estimar mejor")
+        elif metricas.punto_equilibrio == 0:
+            if metricas.ventas_totales > 0:
+                cards["equilibrio"][1].set("Sin costos/gastos cargados en el mes")
+            else:
+                cards["equilibrio"][1].set("Sin actividad ni costos registrados")
+        elif faltante > 0:
             cards["equilibrio"][1].set(f"Falta cubrir: {_formatear_moneda(faltante)}")
         else:
             cards["equilibrio"][1].set("Objetivo cubierto")
@@ -199,6 +211,11 @@ def agregar_tab_dashboard_ejecutivo(notebook: ttk.Notebook) -> None:
         ]
         for fila in indicadores:
             tree.insert("", tk.END, values=fila)
+
+        definiciones_var.set(
+            "Ventas diarias promedio = ventas totales del mes / días operativos. "
+            "Días operativos = días con al menos una venta registrada."
+        )
 
         if metricas.unidades_vendidas == 0:
             insight_var.set("💡 No hubo ventas en el mes seleccionado.")
