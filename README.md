@@ -119,10 +119,12 @@ cp data/history/2024-01-30/*.json data/
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
 
-## Android roadmap (Kotlin + Jetpack Compose)
+## Mobile roadmap (Kivy/BeeWare)
 
-The mobile direction is now **Android native** with Kotlin + Jetpack Compose.
+A new `mobile/` directory contains an initial Kivy prototype (`mobile/kivy_app.py`)
+that reuses existing controllers to show base metrics.
 
-For migration architecture and implementation steps, see:
+For mobile dependencies and packaging notes, see:
 
-- `android/README.md`
+- `requirements-mobile.txt`
+- `mobile/README.md`
