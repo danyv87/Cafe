@@ -118,3 +118,13 @@ cp data/history/2024-01-30/*.json data/
 
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
+
+## Mobile roadmap (Kivy/BeeWare)
+
+A new `mobile/` directory contains an initial Kivy prototype (`mobile/kivy_app.py`)
+that reuses existing controllers to show base metrics.
+
+For mobile dependencies and packaging notes, see:
+
+- `requirements-mobile.txt`
+- `mobile/README.md`
