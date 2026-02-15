@@ -118,3 +118,11 @@ cp data/history/2024-01-30/*.json data/
 
 ⚠️ **Importante:** después de restaurar los archivos es necesario reiniciar la
 aplicación para que cargue la información actualizada.
+
+## Android roadmap (Kotlin + Jetpack Compose)
+
+The mobile direction is now **Android native** with Kotlin + Jetpack Compose.
+
+For migration architecture and implementation steps, see:
+
+- `android/README.md`
